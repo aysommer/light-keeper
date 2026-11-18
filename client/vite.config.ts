@@ -18,5 +18,7 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    // Основной вес бандла — Three.js (~145 КБ gzip); для 3D-игры это ожидаемо.
+    chunkSizeWarningLimit: 800,
   },
 });

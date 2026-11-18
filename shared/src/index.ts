@@ -40,5 +40,9 @@ export { HallTemplate } from './generation/templates/HallTemplate.ts';
 export { OfficeTemplate } from './generation/templates/OfficeTemplate.ts';
 export { RoomTemplateRegistry } from './generation/templates/RoomTemplateRegistry.ts';
 
+// Физика
+export { CollisionResolver } from './physics/CollisionResolver.ts';
+export { CollisionWorld } from './physics/CollisionWorld.ts';
+
 // Навигация
 export { OccupancyGrid, ReachableSet } from './navigation/OccupancyGrid.ts';

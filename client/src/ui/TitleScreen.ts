@@ -1,11 +1,15 @@
+import type { Screen } from './Screen.ts';
 import type { ServerStatusIndicator } from './ServerStatusIndicator.ts';
 import { StickmanIcon } from './StickmanIcon.ts';
 
-/** Титульный экран-заглушка этапа 0. */
-export class TitleScreen {
+/** Титульный экран. */
+export class TitleScreen implements Screen {
   public readonly element: HTMLElement;
 
-  public constructor(statusIndicator: ServerStatusIndicator) {
+  public constructor(
+    private readonly statusIndicator: ServerStatusIndicator,
+    onStartSolo: () => void,
+  ) {
     this.element = document.createElement('main');
     this.element.className = 'title-screen';
 
@@ -21,6 +25,18 @@ export class TitleScreen {
     tagline.className = 'title-screen__tagline';
     tagline.textContent = 'Не дай свету погаснуть.';
 
-    this.element.append(heroes, name, tagline, statusIndicator.element);
+    const start = document.createElement('button');
+    start.type = 'button';
+    start.className = 'button';
+    start.textContent = 'Пройтись одному';
+    start.addEventListener('click', onStartSolo);
+
+    this.element.append(heroes, name, tagline, start, statusIndicator.element);
   }
+
+  public mount(): void {
+    void this.statusIndicator.refresh();
+  }
+
+  public dispose(): void {}
 }

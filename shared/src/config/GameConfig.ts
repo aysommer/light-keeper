@@ -7,6 +7,8 @@ export interface WorldSettings {
   /** Клеток вдоль пути (ось y) в одном чанке. */
   readonly rowsPerChunk: number;
   readonly wallThickness: number;
+  /** Высота стен и потолка. */
+  readonly ceilingHeight: number;
   readonly doorWidth: number;
   /** Вероятность дополнительной двери между уже связанными комнатами (создаёт петли). */
   readonly extraDoorChance: number;
@@ -36,6 +38,12 @@ export interface WorldSettings {
 export interface PlayerSettings {
   /** Радиус коллизии игрока. */
   readonly radius: number;
+  /** Высота глаз (камеры от первого лица). */
+  readonly eyeHeight: number;
+  /** Скорость шага, м/с. */
+  readonly walkSpeed: number;
+  /** Скорость бега, м/с. */
+  readonly runSpeed: number;
 }
 
 /** Единая точка настроек баланса игры. */
@@ -45,6 +53,7 @@ export class GameConfig {
     columns: 6,
     rowsPerChunk: 5,
     wallThickness: 0.2,
+    ceilingHeight: 3,
     doorWidth: 1.4,
     extraDoorChance: 0.15,
     pillarSize: 0.6,
@@ -65,5 +74,8 @@ export class GameConfig {
 
   public static readonly player: PlayerSettings = {
     radius: 0.3,
+    eyeHeight: 1.6,
+    walkSpeed: 2.2,
+    runSpeed: 3.8,
   };
 }
