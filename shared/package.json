@@ -1,0 +1,14 @@
+{
+  "name": "@light-keeper/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Общий код клиента и сервера: типы, протокол, константы",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  }
+}

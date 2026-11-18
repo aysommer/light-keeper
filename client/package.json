@@ -1,0 +1,20 @@
+{
+  "name": "@light-keeper/client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Браузерный клиент Light Keeper",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@light-keeper/shared": "*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8"
+  }
+}

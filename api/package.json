@@ -1,0 +1,17 @@
+{
+  "name": "@light-keeper/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Игровой сервер Light Keeper",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --sourcemap --outfile=dist/index.js",
+    "start": "node --enable-source-maps dist/index.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@light-keeper/shared": "*"
+  }
+}
