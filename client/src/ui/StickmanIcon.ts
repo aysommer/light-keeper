@@ -1,11 +1,10 @@
-/** Цвет персонажа-стикмена. */
-export type StickmanColor = 'red' | 'blue';
+import type { PlayerColor } from '@light-keeper/shared';
 
 /** SVG-иконка стикмена с лампой в руке. */
 export class StickmanIcon {
   public readonly element: SVGSVGElement;
 
-  public constructor(color: StickmanColor, mirrored = false) {
+  public constructor(color: PlayerColor, mirrored = false) {
     const template = document.createElement('template');
     template.innerHTML = `
       <svg class="stickman stickman--${color}" viewBox="0 0 64 96" aria-hidden="true">

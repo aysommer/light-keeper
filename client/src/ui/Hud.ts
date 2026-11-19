@@ -1,11 +1,18 @@
+import type { PlayerColor } from '@light-keeper/shared';
+
 /** Игровой интерфейс поверх 3D-сцены: дистанция, прицел, подсказка управления. */
 export class Hud {
+  private static readonly COLOR_LABELS: Record<PlayerColor, string> = {
+    red: 'Ты — красный',
+    blue: 'Ты — голубой',
+  };
+
   public readonly element: HTMLElement;
   private readonly distance: HTMLElement;
   private readonly overlay: HTMLElement;
   private lastShownMeters = -1;
 
-  public constructor(seed: number, onExit: () => void) {
+  public constructor(seed: number, color: PlayerColor | null, onExit: () => void) {
     this.element = document.createElement('div');
     this.element.className = 'hud';
 
@@ -40,6 +47,12 @@ export class Hud {
     this.overlay.append(hint);
 
     this.element.append(this.distance, seedLabel, crosshair, this.overlay);
+    if (color) {
+      const chip = document.createElement('div');
+      chip.className = `hud__player hud__player--${color}`;
+      chip.textContent = Hud.COLOR_LABELS[color];
+      this.element.append(chip);
+    }
     this.setDistance(0);
   }
 

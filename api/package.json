@@ -12,6 +12,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@light-keeper/shared": "*"
+    "@light-keeper/shared": "*",
+    "ws": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2"
   }
 }

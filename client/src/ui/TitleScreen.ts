@@ -1,14 +1,25 @@
+import { LobbyCode } from '@light-keeper/shared';
 import type { Screen } from './Screen.ts';
 import type { ServerStatusIndicator } from './ServerStatusIndicator.ts';
 import { StickmanIcon } from './StickmanIcon.ts';
 
-/** Титульный экран. */
+export interface TitleScreenActions {
+  onCreateLobby(): void;
+  onJoinLobby(code: string): void;
+  onStartSolo(): void;
+}
+
+/** Титульный экран: создать комнату, войти по коду или погулять одному. */
 export class TitleScreen implements Screen {
   public readonly element: HTMLElement;
+  private readonly error: HTMLElement;
+  private readonly buttons: HTMLButtonElement[] = [];
+  private readonly codeInput: HTMLInputElement;
 
   public constructor(
     private readonly statusIndicator: ServerStatusIndicator,
-    onStartSolo: () => void,
+    actions: TitleScreenActions,
+    initialError: string | null = null,
   ) {
     this.element = document.createElement('main');
     this.element.className = 'title-screen';
@@ -25,13 +36,45 @@ export class TitleScreen implements Screen {
     tagline.className = 'title-screen__tagline';
     tagline.textContent = 'Не дай свету погаснуть.';
 
-    const start = document.createElement('button');
-    start.type = 'button';
-    start.className = 'button';
-    start.textContent = 'Пройтись одному';
-    start.addEventListener('click', onStartSolo);
+    const create = this.button('Создать комнату', () => actions.onCreateLobby());
 
-    this.element.append(heroes, name, tagline, start, statusIndicator.element);
+    const joinForm = document.createElement('form');
+    joinForm.className = 'join-form';
+    this.codeInput = document.createElement('input');
+    this.codeInput.className = 'join-form__input';
+    this.codeInput.placeholder = 'КОД';
+    this.codeInput.maxLength = LobbyCode.LENGTH;
+    this.codeInput.autocomplete = 'off';
+    this.codeInput.spellcheck = false;
+    this.codeInput.setAttribute('aria-label', 'Код комнаты');
+    this.codeInput.addEventListener('input', () => {
+      this.codeInput.value = LobbyCode.normalize(this.codeInput.value);
+    });
+    const join = this.button('Войти', () => undefined, 'button--secondary');
+    join.type = 'submit';
+    joinForm.append(this.codeInput, join);
+    joinForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const code = LobbyCode.normalize(this.codeInput.value);
+      if (!LobbyCode.isValid(code)) {
+        this.showError(`Код — ${LobbyCode.LENGTH} латинские буквы.`);
+        return;
+      }
+      actions.onJoinLobby(code);
+    });
+
+    const solo = this.button('Пройтись одному', () => actions.onStartSolo(), 'button--ghost-dark');
+
+    const menu = document.createElement('div');
+    menu.className = 'title-screen__menu';
+    menu.append(create, joinForm, solo);
+
+    this.error = document.createElement('p');
+    this.error.className = 'title-screen__error';
+    this.error.setAttribute('role', 'alert');
+
+    this.element.append(heroes, name, tagline, menu, this.error, statusIndicator.element);
+    this.showError(initialError);
   }
 
   public mount(): void {
@@ -39,4 +82,25 @@ export class TitleScreen implements Screen {
   }
 
   public dispose(): void {}
+
+  public setBusy(busy: boolean): void {
+    this.buttons.forEach((button) => (button.disabled = busy));
+    this.codeInput.disabled = busy;
+    if (busy) this.showError(null);
+  }
+
+  public showError(text: string | null): void {
+    this.error.textContent = text ?? '';
+    this.error.hidden = text === null;
+  }
+
+  private button(label: string, onClick: () => void, modifier = ''): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `button ${modifier}`.trim();
+    button.textContent = label;
+    button.addEventListener('click', onClick);
+    this.buttons.push(button);
+    return button;
+  }
 }

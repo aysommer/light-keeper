@@ -2,6 +2,22 @@
 export { PROTOCOL_VERSION } from './protocol/ProtocolVersion.ts';
 export { ProtocolGuard } from './protocol/HealthResponse.ts';
 export type { HealthResponse } from './protocol/HealthResponse.ts';
+export { MessageCodec } from './protocol/MessageCodec.ts';
+export { LobbyCode } from './protocol/LobbyCode.ts';
+export { PLAYER_COLORS } from './protocol/Messages.ts';
+export type {
+  ClientMessage,
+  ClientMessageType,
+  ErrorCode,
+  LobbyPlayerInfo,
+  LobbySnapshot,
+  LobbyStatus,
+  MatchPlayerInfo,
+  PlayerColor,
+  ServerMessage,
+  ServerMessageOf,
+  ServerMessageType,
+} from './protocol/Messages.ts';
 
 // Конфигурация
 export { GameConfig } from './config/GameConfig.ts';

@@ -1,4 +1,5 @@
 import { ChunkGenerator, CollisionWorld, WorldLayout } from '@light-keeper/shared';
+import type { PlayerColor } from '@light-keeper/shared';
 import { GameLoop } from '../core/GameLoop.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
 import { LocalPlayer } from '../game/LocalPlayer.ts';
@@ -11,7 +12,17 @@ import { WorldRenderer } from '../scene/WorldRenderer.ts';
 import { Hud } from './Hud.ts';
 import type { Screen } from './Screen.ts';
 
-/** Одиночная прогулка по миру (этап 2): рендер, ходьба, коллизии. */
+export interface GameScreenOptions {
+  readonly seed: number;
+  /** Цвет игрока в сетевой партии; `null` — одиночная прогулка. */
+  readonly color: PlayerColor | null;
+  readonly onExit: () => void;
+}
+
+/**
+ * Игровой экран: рендер, ходьба, коллизии. Синхронизация с напарником — этап 4;
+ * пока каждый игрок идёт по своей копии мира с общим seed.
+ */
 export class GameScreen implements Screen {
   public readonly element: HTMLElement;
   private sceneManager: SceneManager | null = null;
@@ -22,13 +33,15 @@ export class GameScreen implements Screen {
   private loop: GameLoop | null = null;
   private readonly hud: Hud;
 
-  public constructor(
-    private readonly seed: number,
-    onExit: () => void,
-  ) {
+  private readonly seed: number;
+  private readonly color: PlayerColor | null;
+
+  public constructor(options: GameScreenOptions) {
+    this.seed = options.seed;
+    this.color = options.color;
     this.element = document.createElement('div');
     this.element.className = 'game-screen';
-    this.hud = new Hud(seed, onExit);
+    this.hud = new Hud(options.seed, options.color, options.onExit);
   }
 
   public mount(): void {
@@ -45,7 +58,8 @@ export class GameScreen implements Screen {
       new ChunkMeshBuilder(materials, this.seed),
     );
     const input = new InputController(sceneManager.canvas);
-    const player = new LocalPlayer(generator.startPositions()[0]);
+    const [redStart, blueStart] = generator.startPositions();
+    const player = new LocalPlayer(this.color === 'blue' ? blueStart : redStart);
     const controller = new FirstPersonController(player, input, collisions);
     const lamp = new HandLampLight(sceneManager.camera);
 
