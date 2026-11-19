@@ -1,3 +1,5 @@
+import type { PlayerInput } from '../simulation/PlayerInput.ts';
+
 /** Цвет персонажа-стикмена. Первый вошедший — красный, второй — голубой. */
 export type PlayerColor = 'red' | 'blue';
 
@@ -25,6 +27,27 @@ export interface MatchPlayerInfo {
   readonly color: PlayerColor;
 }
 
+/** Состояние игрока в снимке мира. */
+export interface PlayerSnapshot {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly yaw: number;
+  readonly pitch: number;
+  /** Номер последней применённой команды ввода этого игрока. */
+  readonly lastSeq: number;
+}
+
+/** Снимок мира, который сервер рассылает каждый тик. */
+export interface MatchSnapshot {
+  readonly tick: number;
+  /** Время сервера с начала партии, мс. */
+  readonly serverTime: number;
+  /** Пройденное командой расстояние, м. */
+  readonly distance: number;
+  readonly players: readonly PlayerSnapshot[];
+}
+
 export type ErrorCode =
   | 'version_mismatch'
   | 'bad_message'
@@ -43,7 +66,8 @@ export type ClientMessage =
   | { readonly type: 'lobby:join'; readonly code: string }
   | { readonly type: 'lobby:leave' }
   | { readonly type: 'lobby:ready'; readonly ready: boolean }
-  | { readonly type: 'ping'; readonly sentAt: number };
+  | { readonly type: 'ping'; readonly sentAt: number }
+  | { readonly type: 'input'; readonly commands: readonly PlayerInput[] };
 
 /** Сообщения сервер → клиент. */
 export type ServerMessage =
@@ -55,7 +79,10 @@ export type ServerMessage =
       readonly seed: number;
       readonly you: PlayerColor;
       readonly players: readonly MatchPlayerInfo[];
+      /** Частота тиков сервера, Гц. */
+      readonly tickRate: number;
     }
+  | { readonly type: 'match:snapshot'; readonly snapshot: MatchSnapshot }
   | { readonly type: 'match:aborted'; readonly reason: 'partner_left' }
   | { readonly type: 'error'; readonly code: ErrorCode; readonly message: string }
   | { readonly type: 'pong'; readonly sentAt: number };

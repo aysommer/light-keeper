@@ -1,4 +1,5 @@
 import { LobbyCode } from './LobbyCode.ts';
+import type { PlayerInput } from '../simulation/PlayerInput.ts';
 import type { ClientMessage, ServerMessage, ServerMessageType } from './Messages.ts';
 
 type JsonObject = Record<string, unknown>;
@@ -10,12 +11,17 @@ type JsonObject = Record<string, unknown>;
 export class MessageCodec {
   /** Максимальный размер одного сообщения, байт. */
   public static readonly MAX_MESSAGE_BYTES = 4096;
+  /** Максимум команд ввода в одном сообщении `input`. */
+  public static readonly MAX_INPUT_COMMANDS = 16;
+  private static readonly MAX_SEQ = 2 ** 31;
+  private static readonly MAX_ANGLE = 1e4;
 
   private static readonly SERVER_TYPES: ReadonlySet<ServerMessageType> = new Set([
     'welcome',
     'lobby:state',
     'lobby:left',
     'match:start',
+    'match:snapshot',
     'match:aborted',
     'error',
     'pong',
@@ -56,6 +62,8 @@ export class MessageCodec {
         return this.isFiniteNumber(data['sentAt'])
           ? { type: 'ping', sentAt: data['sentAt'] }
           : null;
+      case 'input':
+        return this.decodeInput(data['commands']);
       default:
         return null;
     }
@@ -71,6 +79,54 @@ export class MessageCodec {
       return null;
     }
     return data as unknown as ServerMessage;
+  }
+
+  private decodeInput(raw: unknown): ClientMessage | null {
+    if (!Array.isArray(raw) || raw.length === 0 || raw.length > MessageCodec.MAX_INPUT_COMMANDS) {
+      return null;
+    }
+    const commands: PlayerInput[] = [];
+    for (const item of raw) {
+      const command = this.decodeCommand(item);
+      if (!command) {
+        return null;
+      }
+      commands.push(command);
+    }
+    return { type: 'input', commands };
+  }
+
+  private decodeCommand(raw: unknown): PlayerInput | null {
+    if (typeof raw !== 'object' || raw === null) {
+      return null;
+    }
+    const { seq, dt, moveX, moveY, yaw, pitch, run } = raw as JsonObject;
+    const valid =
+      Number.isInteger(seq) &&
+      (seq as number) >= 0 &&
+      (seq as number) < MessageCodec.MAX_SEQ &&
+      this.inRange(dt, 0, 1) &&
+      this.inRange(moveX, -1, 1) &&
+      this.inRange(moveY, -1, 1) &&
+      this.inRange(yaw, -MessageCodec.MAX_ANGLE, MessageCodec.MAX_ANGLE) &&
+      this.inRange(pitch, -Math.PI, Math.PI) &&
+      typeof run === 'boolean';
+    if (!valid) {
+      return null;
+    }
+    return {
+      seq: seq as number,
+      dt: dt as number,
+      moveX: moveX as number,
+      moveY: moveY as number,
+      yaw: yaw as number,
+      pitch: pitch as number,
+      run: run as boolean,
+    };
+  }
+
+  private inRange(value: unknown, min: number, max: number): value is number {
+    return this.isFiniteNumber(value) && value >= min && value <= max;
   }
 
   private parseObject(raw: string): JsonObject | null {

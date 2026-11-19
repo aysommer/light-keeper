@@ -1,5 +1,7 @@
 import { PLAYER_COLORS } from '@light-keeper/shared';
 import type { LobbySnapshot, LobbyStatus, PlayerColor, ServerMessage } from '@light-keeper/shared';
+import { Match } from '../game/Match.ts';
+import type { MatchOptions } from '../game/Match.ts';
 import { LobbyError } from './LobbyError.ts';
 import type { LobbyParticipant } from './LobbyParticipant.ts';
 
@@ -8,6 +10,8 @@ export interface LobbyOptions {
   readonly countdownSeconds: number;
   /** Источник seed для новой партии. */
   readonly createSeed: () => number;
+  /** Настройки партии; по умолчанию `Match.DEFAULT_OPTIONS`. */
+  readonly match?: MatchOptions;
 }
 
 class LobbyMember {
@@ -30,6 +34,7 @@ export class Lobby {
   private currentStatus: LobbyStatus = 'waiting';
   private countdownLeft = 0;
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
+  private currentMatch: Match | null = null;
 
   public constructor(
     public readonly code: string,
@@ -46,6 +51,11 @@ export class Lobby {
 
   public get isEmpty(): boolean {
     return this.members.size === 0;
+  }
+
+  /** Идущая партия или `null`. */
+  public get match(): Match | null {
+    return this.currentMatch;
   }
 
   public has(participantId: string): boolean {
@@ -73,6 +83,7 @@ export class Lobby {
       return;
     }
     if (this.currentStatus === 'in_game') {
+      this.stopMatch();
       this.broadcast({ type: 'match:aborted', reason: 'partner_left' });
     }
     this.cancelCountdown();
@@ -113,6 +124,7 @@ export class Lobby {
 
   public dispose(): void {
     this.cancelCountdown();
+    this.stopMatch();
     this.members.clear();
   }
 
@@ -154,15 +166,28 @@ export class Lobby {
 
   private startMatch(): void {
     this.currentStatus = 'in_game';
-    const seed = this.options.createSeed();
-    const players = [...this.members.values()].map((member) => ({
-      id: member.participant.id,
-      color: member.color,
-    }));
+    const match = new Match(
+      this.options.createSeed(),
+      [...this.members.values()],
+      this.options.match ?? Match.DEFAULT_OPTIONS,
+    );
+    this.currentMatch = match;
     this.broadcastState();
     for (const member of this.members.values()) {
-      member.participant.send({ type: 'match:start', seed, you: member.color, players });
+      member.participant.send({
+        type: 'match:start',
+        seed: match.seed,
+        you: member.color,
+        players: match.playerInfo,
+        tickRate: match.tickRate,
+      });
     }
+    match.start();
+  }
+
+  private stopMatch(): void {
+    this.currentMatch?.stop();
+    this.currentMatch = null;
   }
 
   private broadcastState(): void {

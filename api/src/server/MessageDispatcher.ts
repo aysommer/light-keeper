@@ -69,6 +69,10 @@ export class MessageDispatcher {
       case 'ping':
         connection.send({ type: 'pong', sentAt: message.sentAt });
         return;
+      case 'input':
+        // Команды, долетевшие после конца партии, просто отбрасываются.
+        this.lobbies.lobbyOf(connection.id)?.match?.receiveInput(connection.id, message.commands);
+        return;
     }
   }
 }

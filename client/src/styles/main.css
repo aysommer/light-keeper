@@ -393,3 +393,12 @@ kbd {
 .hud__player--blue {
   background: var(--player-blue);
 }
+
+.hud__network {
+  position: absolute;
+  top: 54px;
+  left: 20px;
+  font-size: 13px;
+  opacity: 0.75;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.6);
+}

@@ -121,6 +121,40 @@ describe('WsGateway (интеграция)', () => {
     expect(hostStart.players.map((p) => p.id).sort()).toEqual([hostId, guestId].sort());
   });
 
+  it('ввод игрока двигает его в снимках сервера', async () => {
+    const host = await connect();
+    const guest = await connect();
+    const hostId = await host.hello();
+    await guest.hello();
+    host.send({ type: 'lobby:create' });
+    const { lobby } = await host.waitFor('lobby:state');
+    guest.send({ type: 'lobby:join', code: lobby.code });
+    host.send({ type: 'lobby:ready', ready: true });
+    guest.send({ type: 'lobby:ready', ready: true });
+    const start = await host.waitFor('match:start');
+    expect(start.tickRate).toBe(20);
+
+    const first = await guest.waitFor('match:snapshot');
+    const startY = first.snapshot.players.find((p) => p.id === hostId)!.y;
+    host.send({
+      type: 'input',
+      commands: [1, 2, 3].map((seq) => ({
+        seq,
+        dt: 0.05,
+        moveX: 0,
+        moveY: 1,
+        yaw: 0,
+        pitch: 0,
+        run: false,
+      })),
+    });
+    const moved = await guest.waitFor('match:snapshot', (m) =>
+      m.snapshot.players.some((p) => p.id === hostId && p.lastSeq === 3),
+    );
+    const host3 = moved.snapshot.players.find((p) => p.id === hostId)!;
+    expect(host3.y).toBeGreaterThan(startY + 0.2);
+  });
+
   it('обрыв соединения партнёра прерывает партию', async () => {
     const host = await connect();
     const guest = await connect();

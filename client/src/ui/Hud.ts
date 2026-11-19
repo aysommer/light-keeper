@@ -10,7 +10,9 @@ export class Hud {
   public readonly element: HTMLElement;
   private readonly distance: HTMLElement;
   private readonly overlay: HTMLElement;
+  private readonly network: HTMLElement;
   private lastShownMeters = -1;
+  private lastNetworkText = '';
 
   public constructor(seed: number, color: PlayerColor | null, onExit: () => void) {
     this.element = document.createElement('div');
@@ -22,6 +24,9 @@ export class Hud {
     const seedLabel = document.createElement('div');
     seedLabel.className = 'hud__seed';
     seedLabel.textContent = `seed ${seed}`;
+
+    this.network = document.createElement('div');
+    this.network.className = 'hud__network';
 
     const crosshair = document.createElement('div');
     crosshair.className = 'hud__crosshair';
@@ -46,7 +51,7 @@ export class Hud {
     hint.append(exit);
     this.overlay.append(hint);
 
-    this.element.append(this.distance, seedLabel, crosshair, this.overlay);
+    this.element.append(this.distance, this.network, seedLabel, crosshair, this.overlay);
     if (color) {
       const chip = document.createElement('div');
       chip.className = `hud__player hud__player--${color}`;
@@ -61,6 +66,18 @@ export class Hud {
     if (rounded !== this.lastShownMeters) {
       this.lastShownMeters = rounded;
       this.distance.textContent = `${rounded} м`;
+    }
+  }
+
+  /** Пинг и расстояние до напарника (только в сетевой игре). */
+  public setNetworkInfo(pingMs: number | null, partnerMeters: number | null): void {
+    const partner =
+      partnerMeters === null ? 'напарник: —' : `напарник: ${partnerMeters.toFixed(0)} м`;
+    const ping = pingMs === null ? '' : ` · пинг ${pingMs} мс`;
+    const text = partner + ping;
+    if (text !== this.lastNetworkText) {
+      this.lastNetworkText = text;
+      this.network.textContent = text;
     }
   }
 

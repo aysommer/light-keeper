@@ -13,6 +13,8 @@ export type {
   LobbySnapshot,
   LobbyStatus,
   MatchPlayerInfo,
+  MatchSnapshot,
+  PlayerSnapshot,
   PlayerColor,
   ServerMessage,
   ServerMessageOf,
@@ -59,6 +61,10 @@ export { RoomTemplateRegistry } from './generation/templates/RoomTemplateRegistr
 // Физика
 export { CollisionResolver } from './physics/CollisionResolver.ts';
 export { CollisionWorld } from './physics/CollisionWorld.ts';
+
+// Симуляция
+export { PlayerMovement } from './simulation/PlayerMovement.ts';
+export type { PlayerInput } from './simulation/PlayerInput.ts';
 
 // Навигация
 export { OccupancyGrid, ReachableSet } from './navigation/OccupancyGrid.ts';

@@ -1,4 +1,4 @@
-import type { ClientMessage, LobbySnapshot, PlayerColor } from '@light-keeper/shared';
+import type { ClientMessage, LobbySnapshot, ServerMessageOf } from '@light-keeper/shared';
 import { ConnectionError, NetworkClient } from '../network/NetworkClient.ts';
 import { ErrorMessages } from '../ui/ErrorMessages.ts';
 import { GameScreen } from '../ui/GameScreen.ts';
@@ -34,7 +34,14 @@ export class App {
       {
         onCreateLobby: () => void this.enterLobby(title, { type: 'lobby:create' }),
         onJoinLobby: (code) => void this.enterLobby(title, { type: 'lobby:join', code }),
-        onStartSolo: () => this.showGame(this.pickSoloSeed(), null),
+        onStartSolo: () =>
+          this.show(
+            new GameScreen({
+              seed: this.pickSoloSeed(),
+              match: null,
+              onExit: () => this.showTitle(),
+            }),
+          ),
       },
       error,
     );
@@ -65,7 +72,7 @@ export class App {
     this.subscriptions = [
       network.on('lobby:state', (message) => this.handleLobbyState(message.lobby)),
       network.on('lobby:left', () => this.showTitle()),
-      network.on('match:start', (message) => this.showGame(message.seed, message.you)),
+      network.on('match:start', (message) => this.showMatch(network, message)),
       network.on('match:aborted', () => {
         this.pendingNotice = 'Напарник вышел из игры.';
       }),
@@ -110,8 +117,22 @@ export class App {
     }
   }
 
-  private showGame(seed: number, color: PlayerColor | null): void {
-    this.show(new GameScreen({ seed, color, onExit: () => this.showTitle() }));
+  private showMatch(network: NetworkClient, start: ServerMessageOf<'match:start'>): void {
+    if (!network.playerId) {
+      return;
+    }
+    this.show(
+      new GameScreen({
+        seed: start.seed,
+        match: {
+          network,
+          playerId: network.playerId,
+          color: start.you,
+          players: start.players,
+        },
+        onExit: () => this.showTitle(),
+      }),
+    );
   }
 
   private show(screen: Screen): void {

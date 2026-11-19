@@ -1,36 +1,58 @@
-import { GameConfig } from '@light-keeper/shared';
-import type { CollisionWorld, PlayerSettings } from '@light-keeper/shared';
+import { GameConfig, PlayerMovement } from '@light-keeper/shared';
+import type { PlayerInput, PlayerSettings } from '@light-keeper/shared';
 import type { PerspectiveCamera } from 'three';
 import type { InputController } from '../input/InputController.ts';
 import { SceneCoords } from '../scene/SceneCoords.ts';
 import type { LocalPlayer } from './LocalPlayer.ts';
 
-/** Управление от первого лица: взгляд мышью, ходьба WASD, бег Shift, покачивание головы. */
+/**
+ * Управление от первого лица. Каждый кадр превращает ввод в команду `PlayerInput`,
+ * сразу применяет её к игроку (предсказание) и отдаёт подписчику — в сетевой
+ * игре команда уходит на сервер.
+ */
 export class FirstPersonController {
   private static readonly MOUSE_SENSITIVITY = 0.0022;
-  private static readonly MAX_PITCH = Math.PI / 2 - 0.05;
   private static readonly BOB_AMPLITUDE = 0.035;
   private static readonly BOB_FREQUENCY = 1.9;
 
+  private nextSeq = 0;
   private bobPhase = 0;
   private bobOffset = 0;
+  private commandListener: ((command: PlayerInput) => void) | null = null;
 
   public constructor(
     private readonly player: LocalPlayer,
     private readonly input: InputController,
-    private readonly collisions: CollisionWorld,
+    private readonly movement: PlayerMovement,
     private readonly settings: PlayerSettings = GameConfig.player,
   ) {}
 
+  public onCommand(listener: (command: PlayerInput) => void): void {
+    this.commandListener = listener;
+  }
+
   public update(deltaSeconds: number): void {
     this.updateLook();
-    this.updateMovement(deltaSeconds);
+    const axis = this.input.movementAxis();
+    const command: PlayerInput = {
+      seq: this.nextSeq++,
+      dt: Math.min(deltaSeconds, PlayerMovement.MAX_COMMAND_DT),
+      moveX: axis.x,
+      moveY: axis.y,
+      yaw: this.player.yaw,
+      pitch: this.player.pitch,
+      run: this.input.isPressed('ShiftLeft') || this.input.isPressed('ShiftRight'),
+    };
+    this.player.isMoving = axis.lengthSquared() > 0;
+    this.player.moveTo(this.movement.apply(this.player.position, command));
+    this.player.updateSmoothing(deltaSeconds);
+    this.commandListener?.(command);
     this.updateBob(deltaSeconds);
   }
 
   public applyToCamera(camera: PerspectiveCamera): void {
     const position = SceneCoords.toScene(
-      this.player.position,
+      this.player.renderPosition,
       this.settings.eyeHeight + this.bobOffset,
     );
     camera.position.copy(position);
@@ -40,31 +62,10 @@ export class FirstPersonController {
   private updateLook(): void {
     const delta = this.input.consumeMouseDelta();
     const sensitivity = FirstPersonController.MOUSE_SENSITIVITY;
-    this.player.yaw -= delta.x * sensitivity;
-    this.player.pitch = Math.min(
-      FirstPersonController.MAX_PITCH,
-      Math.max(-FirstPersonController.MAX_PITCH, this.player.pitch - delta.y * sensitivity),
-    );
-  }
-
-  private updateMovement(deltaSeconds: number): void {
-    const axis = this.input.movementAxis();
-    this.player.isMoving = axis.lengthSquared() > 0;
-    if (!this.player.isMoving) {
-      return;
-    }
-    const running = this.input.isPressed('ShiftLeft') || this.input.isPressed('ShiftRight');
-    const speed = running ? this.settings.runSpeed : this.settings.walkSpeed;
-    const direction = this.player.forward
-      .scale(axis.y)
-      .add(this.player.right.scale(axis.x))
-      .normalize();
-    const next = this.collisions.move(
-      this.player.position,
-      direction.scale(speed * deltaSeconds),
-      this.settings.radius,
-    );
-    this.player.moveTo(next);
+    // Держим yaw в (−π, π], чтобы он не рос бесконечно.
+    const yaw = this.player.yaw - delta.x * sensitivity;
+    this.player.yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
+    this.player.pitch = PlayerMovement.clampPitch(this.player.pitch - delta.y * sensitivity);
   }
 
   private updateBob(deltaSeconds: number): void {
