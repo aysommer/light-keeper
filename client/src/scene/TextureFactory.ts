@@ -1,34 +1,44 @@
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
 import { SeededRandom } from '@light-keeper/shared';
+import type { SpacePalette, WallpaperPattern } from '@light-keeper/shared';
 
-/** Процедурные текстуры лиминального пространства (без внешних файлов). */
+type Painter = (ctx: CanvasRenderingContext2D, size: number) => void;
+
+/** Процедурные текстуры пространства по его палитре (без внешних файлов). */
 export class TextureFactory {
   private static readonly SIZE = 256;
 
-  /** Блёклые жёлтые обои с вертикальными полосами. Плитка — 1 м. */
+  public constructor(private readonly palette: SpacePalette) {}
+
+  /** Обои: цвет и узор из палитры. Плитка — 1 м. */
   public createWallpaper(): CanvasTexture {
+    const painters: Record<WallpaperPattern, Painter> = {
+      stripes: (ctx, size) => this.paintStripes(ctx, size),
+      diamonds: (ctx, size) => this.paintDiamonds(ctx, size),
+      checks: (ctx, size) => this.paintChecks(ctx, size),
+      plain: () => undefined,
+      damask: (ctx, size) => this.paintDamask(ctx, size),
+    };
     return this.paint(17, (ctx, rng, size) => {
-      ctx.fillStyle = '#c9b765';
+      ctx.fillStyle = this.palette.wall.toHex();
       ctx.fillRect(0, 0, size, size);
-      for (let x = 0; x < size; x += 32) {
-        ctx.fillStyle = 'rgba(255, 245, 190, 0.18)';
-        ctx.fillRect(x, 0, 12, size);
-        ctx.fillStyle = 'rgba(120, 100, 40, 0.10)';
-        ctx.fillRect(x + 14, 0, 2, size);
-      }
-      this.speckle(ctx, rng, size, 2500, 'rgba(90, 75, 30, 0.10)');
+      ctx.save();
+      painters[this.palette.pattern](ctx, size);
+      ctx.restore();
+      this.speckle(ctx, rng, size, 2500, 'rgba(40, 35, 20, 0.08)');
     });
   }
 
-  /** Пёстрый ковролин. Плитка — 2 м. */
+  /** Ковролин в цвет пола. Плитка — 2 м. */
   public createCarpet(): CanvasTexture {
+    const floor = this.palette.floor;
     return this.paint(29, (ctx, rng, size) => {
-      ctx.fillStyle = '#8f8048';
+      ctx.fillStyle = floor.toHex();
       ctx.fillRect(0, 0, size, size);
-      this.speckle(ctx, rng, size, 9000, 'rgba(60, 50, 20, 0.25)');
-      this.speckle(ctx, rng, size, 6000, 'rgba(200, 185, 120, 0.18)');
+      this.speckle(ctx, rng, size, 9000, floor.withLightness(floor.lightness * 0.6).toHex());
+      this.speckle(ctx, rng, size, 6000, floor.withLightness(floor.lightness * 1.35).toHex());
+      ctx.fillStyle = 'rgba(20, 15, 5, 0.12)';
       for (let i = 0; i < 6; i++) {
-        ctx.fillStyle = 'rgba(50, 40, 15, 0.12)';
         ctx.beginPath();
         ctx.ellipse(
           rng.float(0, size),
@@ -44,19 +54,98 @@ export class TextureFactory {
     });
   }
 
-  /** Подвесной потолок «Армстронг»: 2×2 плитки на текстуру. Плитка текстуры — 1.2 м. */
+  /** Подвесной потолок: 2×2 плитки на текстуру. Плитка текстуры — 1.2 м. */
   public createCeiling(): CanvasTexture {
+    const ceiling = this.palette.ceiling;
     return this.paint(41, (ctx, rng, size) => {
-      ctx.fillStyle = '#d6d0b4';
+      ctx.fillStyle = ceiling.toHex();
       ctx.fillRect(0, 0, size, size);
-      this.speckle(ctx, rng, size, 3000, 'rgba(110, 100, 70, 0.25)');
-      ctx.fillStyle = '#8f8a72';
+      this.speckle(ctx, rng, size, 3000, ceiling.withLightness(0.55).toHex());
+      ctx.fillStyle = ceiling.withLightness(0.5).toHex();
       const half = size / 2;
       for (const offset of [0, half]) {
         ctx.fillRect(offset, 0, 3, size);
         ctx.fillRect(0, offset, size, 3);
       }
     });
+  }
+
+  private paintStripes(ctx: CanvasRenderingContext2D, size: number): void {
+    ctx.fillStyle = this.palette.accent.toHex();
+    for (let x = 0; x < size; x += 32) {
+      ctx.globalAlpha = 0.55;
+      ctx.fillRect(x, 0, 12, size);
+      ctx.globalAlpha = 0.35;
+      ctx.fillRect(x + 15, 0, 2, size);
+    }
+  }
+
+  private paintDiamonds(ctx: CanvasRenderingContext2D, size: number): void {
+    ctx.strokeStyle = this.palette.accent.toHex();
+    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 3;
+    const step = size / 4;
+    for (let offset = -size; offset <= size; offset += step) {
+      ctx.beginPath();
+      ctx.moveTo(offset, 0);
+      ctx.lineTo(offset + size, size);
+      ctx.moveTo(offset + size, 0);
+      ctx.lineTo(offset, size);
+      ctx.stroke();
+    }
+    ctx.fillStyle = this.palette.accent.toHex();
+    for (let y = 0; y < size; y += step) {
+      for (let x = 0; x < size; x += step) {
+        ctx.beginPath();
+        ctx.arc(x + step / 2, y + step / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  private paintChecks(ctx: CanvasRenderingContext2D, size: number): void {
+    ctx.fillStyle = this.palette.accent.toHex();
+    const cell = 16;
+    ctx.globalAlpha = 0.25;
+    for (let y = 0; y < size; y += cell) {
+      for (let x = (y / cell) % 2 === 0 ? 0 : cell; x < size; x += cell * 2) {
+        ctx.fillRect(x, y, cell, cell);
+      }
+    }
+    ctx.globalAlpha = 0.45;
+    for (let i = 0; i < size; i += cell * 4) {
+      ctx.fillRect(i, 0, 2, size);
+      ctx.fillRect(0, i, size, 2);
+    }
+  }
+
+  /** Цветочный трафарет: четыре лепестка и сердцевина, ряды со сдвигом. */
+  private paintDamask(ctx: CanvasRenderingContext2D, size: number): void {
+    ctx.fillStyle = this.palette.accent.toHex();
+    ctx.globalAlpha = 0.6;
+    const step = size / 4;
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 4; col++) {
+        const x = col * step + (row % 2 === 0 ? step / 2 : 0);
+        const y = row * step + step / 2;
+        for (let petal = 0; petal < 4; petal++) {
+          ctx.beginPath();
+          ctx.ellipse(
+            x + Math.cos((petal * Math.PI) / 2) * 9,
+            y + Math.sin((petal * Math.PI) / 2) * 9,
+            8,
+            4,
+            (petal * Math.PI) / 2,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   private paint(
@@ -86,6 +175,7 @@ export class TextureFactory {
     count: number,
     color: string,
   ): void {
+    ctx.globalAlpha = 1;
     ctx.fillStyle = color;
     for (let i = 0; i < count; i++) {
       ctx.fillRect(rng.float(0, size), rng.float(0, size), 1.5, 1.5);

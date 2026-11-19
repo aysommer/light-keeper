@@ -1,6 +1,6 @@
 import { PlayerMovement, Vector2 } from '@light-keeper/shared';
 
-/** Состояние игрока на этом клиенте: позиция, направление взгляда, пройденный путь. */
+/** Состояние игрока на этом клиенте: позиция и направление взгляда. */
 export class LocalPlayer {
   /** Ошибка предсказания больше этой — не сглаживаем, а сразу переносим камеру. */
   private static readonly SNAP_DISTANCE = 2;
@@ -12,16 +12,10 @@ export class LocalPlayer {
   /** Наклон головы, рад. Положительный — вверх. */
   public pitch = 0;
   public isMoving = false;
-  private farthestY: number;
   /** Визуальная поправка: камера плавно догоняет исправленную сервером позицию. */
   private visualOffset = Vector2.ZERO;
 
-  public constructor(
-    public position: Vector2,
-    private readonly startY: number = position.y,
-  ) {
-    this.farthestY = position.y;
-  }
+  public constructor(public position: Vector2) {}
 
   public get forward(): Vector2 {
     return PlayerMovement.forward(this.yaw);
@@ -31,11 +25,6 @@ export class LocalPlayer {
     return PlayerMovement.right(this.yaw);
   }
 
-  /** Максимальное продвижение вперёд от старта, м. */
-  public get distance(): number {
-    return Math.max(0, this.farthestY - this.startY);
-  }
-
   /** Позиция для отрисовки камеры (с учётом сглаживания поправок). */
   public get renderPosition(): Vector2 {
     return this.position.add(this.visualOffset);
@@ -43,7 +32,14 @@ export class LocalPlayer {
 
   public moveTo(position: Vector2): void {
     this.position = position;
-    this.farthestY = Math.max(this.farthestY, position.y);
+  }
+
+  /** Мгновенный перенос без сглаживания на старт пространства с заданным взглядом. */
+  public teleport(position: Vector2, yaw: number): void {
+    this.visualOffset = Vector2.ZERO;
+    this.position = position;
+    this.yaw = yaw;
+    this.pitch = 0;
   }
 
   /** Сервер поправил позицию: переносим игрока, а камеру сдвигаем плавно. */

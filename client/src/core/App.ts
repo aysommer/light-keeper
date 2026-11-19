@@ -34,14 +34,6 @@ export class App {
       {
         onCreateLobby: () => void this.enterLobby(title, { type: 'lobby:create' }),
         onJoinLobby: (code) => void this.enterLobby(title, { type: 'lobby:join', code }),
-        onStartSolo: () =>
-          this.show(
-            new GameScreen({
-              seed: this.pickSoloSeed(),
-              match: null,
-              onExit: () => this.showTitle(),
-            }),
-          ),
       },
       error,
     );
@@ -124,12 +116,10 @@ export class App {
     this.show(
       new GameScreen({
         seed: start.seed,
-        match: {
-          network,
-          playerId: network.playerId,
-          color: start.you,
-          players: start.players,
-        },
+        network,
+        playerId: network.playerId,
+        color: start.you,
+        players: start.players,
         onExit: () => this.showTitle(),
       }),
     );
@@ -147,14 +137,5 @@ export class App {
     this.subscriptions = [];
     this.network?.disconnect();
     this.network = null;
-  }
-
-  /** Seed для одиночной прогулки: из адреса (`?seed=123`) или случайный. */
-  private pickSoloSeed(): number {
-    const fromUrl = Number(new URLSearchParams(window.location.search).get('seed'));
-    if (Number.isInteger(fromUrl) && fromUrl > 0) {
-      return fromUrl;
-    }
-    return Math.floor(Math.random() * 2 ** 31);
   }
 }

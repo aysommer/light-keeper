@@ -26,7 +26,7 @@ export class Application {
     this.lobbies = new LobbyManager(options.lobby);
     this.gateway = new WsGateway(
       this.httpServer.raw,
-      new MessageDispatcher(this.lobbies),
+      new MessageDispatcher(this.lobbies, { allowDebug: this.config.allowDebug }),
       options.gateway,
     );
   }

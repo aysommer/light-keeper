@@ -146,6 +146,7 @@ describe('WsGateway (интеграция)', () => {
         yaw: 0,
         pitch: 0,
         run: false,
+        space: 0,
       })),
     });
     const moved = await guest.waitFor('match:snapshot', (m) =>
@@ -153,6 +154,45 @@ describe('WsGateway (интеграция)', () => {
     );
     const host3 = moved.snapshot.players.find((p) => p.id === hostId)!;
     expect(host3.y).toBeGreaterThan(startY + 0.2);
+  });
+
+  it('отладочный переход работает только с allowDebug', async () => {
+    const startMatch = async (): Promise<[TestClient, TestClient]> => {
+      const host = await connect();
+      const guest = await connect();
+      await host.hello();
+      await guest.hello();
+      host.send({ type: 'lobby:create' });
+      const { lobby } = await host.waitFor('lobby:state');
+      guest.send({ type: 'lobby:join', code: lobby.code });
+      host.send({ type: 'lobby:ready', ready: true });
+      guest.send({ type: 'lobby:ready', ready: true });
+      await host.waitFor('match:start');
+      return [host, guest];
+    };
+
+    // Без allowDebug команда игнорируется.
+    const [host] = await startMatch();
+    host.send({ type: 'debug:next-space' });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const plain = await host.waitFor('match:snapshot', (m) => m.snapshot.tick > 3);
+    expect(plain.snapshot.phase).toBe('playing');
+
+    // С allowDebug — начинается переход.
+    await app.stop();
+    app = new Application(new ServerConfig(0, '127.0.0.1', true), {
+      lobby: {
+        countdownSeconds: 0,
+        maxLobbies: 10,
+        createSeed: () => 777,
+        match: { tickRate: 20, transitionSeconds: 0.1 },
+      },
+    });
+    url = `ws://127.0.0.1:${(await app.start()).port}/ws`;
+    const [debugHost, debugGuest] = await startMatch();
+    debugHost.send({ type: 'debug:next-space' });
+    await debugGuest.waitFor('match:snapshot', (m) => m.snapshot.phase === 'transition');
+    await debugGuest.waitFor('match:snapshot', (m) => m.snapshot.spaceIndex === 1);
   });
 
   it('обрыв соединения партнёра прерывает партию', async () => {

@@ -1,7 +1,7 @@
 import { AABB } from '../math/AABB.ts';
-import type { ChunkGrid } from './ChunkGrid.ts';
 import type { EdgeOrientation } from './GridEdge.ts';
 import type { RoomLayout } from './RoomLayout.ts';
+import type { SpaceGrid } from './SpaceGrid.ts';
 import { Wall } from './Wall.ts';
 
 /** Отрезок стены вдоль одной линии сетки. */
@@ -14,18 +14,13 @@ interface WallSpan {
 }
 
 /**
- * Строит стены чанка по разбиению на комнаты.
- *
- * Чанк владеет своей нижней границей (row = 0), левой и правой границами и
- * всеми внутренними рёбрами между разными комнатами. Верхняя граница
- * принадлежит следующему чанку — так стены на стыке не дублируются.
- *
- * Соседние сплошные рёбра на одной линии сливаются в один коллайдер,
- * в местах дверей остаётся проём шириной `doorWidth`.
+ * Строит стены пространства по разбиению на комнаты: внешний контур со всех
+ * сторон и все рёбра между разными комнатами. Соседние сплошные рёбра на одной
+ * линии сливаются в один коллайдер, в местах дверей остаётся проём.
  */
 export class WallBuilder {
   public constructor(
-    private readonly grid: ChunkGrid,
+    private readonly grid: SpaceGrid,
     private readonly wallThickness: number,
     private readonly doorWidth: number,
   ) {}
@@ -33,26 +28,22 @@ export class WallBuilder {
   public build(layout: RoomLayout, doorEdgeKeys: ReadonlySet<string>): Wall[] {
     const walls: Wall[] = [];
 
-    for (let row = 0; row < this.grid.rows; row++) {
+    // За пределами сетки ownerAt() возвращает −1, поэтому внешний контур
+    // получается автоматически: «комната» снаружи всегда другая.
+    for (let row = 0; row <= this.grid.rows; row++) {
       const spans: WallSpan[] = [];
       for (let col = 0; col < this.grid.columns; col++) {
-        const isBoundary = row === 0;
-        const separatesRooms = layout.ownerAt(col, row - 1) !== layout.ownerAt(col, row);
-        if (isBoundary || separatesRooms) {
+        if (layout.ownerAt(col, row - 1) !== layout.ownerAt(col, row)) {
           this.addEdgeSpans(spans, col, doorEdgeKeys.has(`H:${col}:${row}`));
         }
       }
-      walls.push(
-        ...this.toWalls(spans, 'horizontal', this.grid.originY + row * this.grid.cellSize),
-      );
+      walls.push(...this.toWalls(spans, 'horizontal', row * this.grid.cellSize));
     }
 
     for (let col = 0; col <= this.grid.columns; col++) {
       const spans: WallSpan[] = [];
       for (let row = 0; row < this.grid.rows; row++) {
-        const isBoundary = col === 0 || col === this.grid.columns;
-        const separatesRooms = layout.ownerAt(col - 1, row) !== layout.ownerAt(col, row);
-        if (isBoundary || separatesRooms) {
+        if (layout.ownerAt(col - 1, row) !== layout.ownerAt(col, row)) {
           this.addEdgeSpans(spans, row, doorEdgeKeys.has(`V:${col}:${row}`));
         }
       }
@@ -95,7 +86,7 @@ export class WallBuilder {
       const bounds =
         orientation === 'horizontal'
           ? new AABB(start, line - half, end, line + half)
-          : new AABB(line - half, this.grid.originY + start, line + half, this.grid.originY + end);
+          : new AABB(line - half, start, line + half, end);
       return new Wall(bounds, orientation);
     });
   }

@@ -16,4 +16,6 @@ export interface PlayerInput {
   /** Наклон головы, рад. */
   readonly pitch: number;
   readonly run: boolean;
+  /** Номер пространства, в котором сформирована команда. Чужие команды сервер не двигает. */
+  readonly space: number;
 }

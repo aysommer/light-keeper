@@ -18,6 +18,11 @@ export class RemotePlayerTrack {
   private static readonly MAX_STATES = 32;
   private readonly states: TimedState[] = [];
 
+  /** Забыть историю (напарник перенесён в новое пространство — интерполировать нечего). */
+  public clear(): void {
+    this.states.length = 0;
+  }
+
   public push(time: number, state: RemotePlayerState): void {
     const last = this.states.at(-1);
     if (last && time <= last.time) {

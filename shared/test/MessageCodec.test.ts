@@ -16,6 +16,7 @@ describe('MessageCodec.decodeClientMessage', () => {
       ready: true,
     });
     expect(decode({ type: 'ping', sentAt: 123 })).toEqual({ type: 'ping', sentAt: 123 });
+    expect(decode({ type: 'debug:next-space' })).toEqual({ type: 'debug:next-space' });
   });
 
   it('нормализует код комнаты', () => {

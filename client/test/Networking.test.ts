@@ -1,20 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ChunkGenerator,
-  CollisionWorld,
-  PlayerMovement,
-  Vector2,
-  WorldLayout,
-} from '@light-keeper/shared';
+import { CollisionWorld, PlayerMovement, Vector2 } from '@light-keeper/shared';
 import type { PlayerInput } from '@light-keeper/shared';
+import type { MovementProvider } from '../src/game/ActiveSpace.ts';
 import { LocalPlayer } from '../src/game/LocalPlayer.ts';
 import { PredictionReconciler } from '../src/network/PredictionReconciler.ts';
 import { RemotePlayerTrack } from '../src/network/RemotePlayerTrack.ts';
 import { ServerClock } from '../src/network/ServerClock.ts';
 
-const generator = new ChunkGenerator(77);
-const movement = new PlayerMovement(new CollisionWorld(new WorldLayout(generator)));
-const start = generator.startPositions()[0];
+// Пустой мир без стен: проверяем логику согласования, а не коллизии.
+const movement = new PlayerMovement(new CollisionWorld([]));
+const rules: MovementProvider = { movement, spaceIndex: 0 };
+const start = new Vector2(10, 10);
 const step = (seq: number): PlayerInput => ({
   seq,
   dt: 1 / 60,
@@ -23,12 +19,13 @@ const step = (seq: number): PlayerInput => ({
   yaw: 0,
   pitch: 0,
   run: false,
+  space: 0,
 });
 
 describe('PredictionReconciler', () => {
   it('если сервер согласен, позиция не меняется', () => {
     const player = new LocalPlayer(start);
-    const reconciler = new PredictionReconciler(movement);
+    const reconciler = new PredictionReconciler(rules);
     let serverPosition = start;
     for (let seq = 0; seq < 30; seq++) {
       const command = step(seq);
@@ -45,7 +42,7 @@ describe('PredictionReconciler', () => {
 
   it('поправка сервера применяется и неподтверждённые команды переигрываются', () => {
     const player = new LocalPlayer(start);
-    const reconciler = new PredictionReconciler(movement);
+    const reconciler = new PredictionReconciler(rules);
     for (let seq = 0; seq < 10; seq++) {
       const command = step(seq);
       player.moveTo(movement.apply(player.position, command));
@@ -62,6 +59,34 @@ describe('PredictionReconciler', () => {
     expect(player.renderPosition.x).toBeGreaterThan(player.position.x + 0.9);
     player.updateSmoothing(1);
     expect(player.renderPosition.distanceTo(player.position)).toBeLessThan(0.001);
+  });
+});
+
+describe('PredictionReconciler: смена пространства', () => {
+  it('clear() забывает неподтверждённые команды', () => {
+    const reconciler = new PredictionReconciler(rules);
+    reconciler.record(step(1));
+    reconciler.record(step(2));
+    reconciler.clear();
+    expect(reconciler.pendingCount).toBe(0);
+  });
+
+  it('команды прошлого пространства не переигрываются на новой карте', () => {
+    const player = new LocalPlayer(start);
+    const nextRules: MovementProvider = { movement, spaceIndex: 1 };
+    const reconciler = new PredictionReconciler(nextRules);
+    reconciler.record(step(1)); // space: 0
+    reconciler.reconcile(player, start, 0);
+    expect(player.position.equals(start)).toBe(true);
+  });
+
+  it('teleport() переносит без сглаживания', () => {
+    const player = new LocalPlayer(start);
+    player.correctTo(start.add(new Vector2(1, 0)));
+    player.yaw = 2;
+    player.teleport(new Vector2(50, 50), 1);
+    expect(player.renderPosition.equals(new Vector2(50, 50))).toBe(true);
+    expect(player.yaw).toBe(1);
   });
 });
 
@@ -85,6 +110,13 @@ describe('RemotePlayerTrack', () => {
     expect(track.sample(-10)!.position.equals(new Vector2(0, 0))).toBe(true);
     expect(track.sample(500)!.position.equals(new Vector2(10, 20))).toBe(true);
     expect(new RemotePlayerTrack().sample(0)).toBeNull();
+  });
+
+  it('clear() очищает историю', () => {
+    const local = new RemotePlayerTrack();
+    local.push(1, { position: new Vector2(1, 1), yaw: 0, pitch: 0 });
+    local.clear();
+    expect(local.sample(1)).toBeNull();
   });
 
   it('устаревшие снимки отбрасываются', () => {

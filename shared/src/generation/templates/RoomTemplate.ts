@@ -3,17 +3,21 @@ import type { AABB } from '../../math/AABB.ts';
 import { Vector2 } from '../../math/Vector2.ts';
 import type { SeededRandom } from '../../random/SeededRandom.ts';
 import type { CellRect } from '../CellRect.ts';
-import type { ChunkGrid } from '../ChunkGrid.ts';
 import type { Obstacle } from '../Obstacle.ts';
 import type { RoomKind } from '../RoomKind.ts';
+import type { SpaceGrid } from '../SpaceGrid.ts';
 
 /** Всё, что нужно шаблону, чтобы обставить комнату. */
 export interface RoomDecorationContext {
   readonly cells: CellRect;
   readonly bounds: AABB;
-  readonly grid: ChunkGrid;
+  readonly grid: SpaceGrid;
   readonly settings: WorldSettings;
   readonly rng: SeededRandom;
+  /** Номер пространства (0 — первое); влияет на редкость канистр. */
+  readonly spaceIndex: number;
+  /** Стартовая комната остаётся пустой, чтобы игроки не появились в мебели. */
+  readonly isStartRoom: boolean;
 }
 
 export interface RoomDecoration {
@@ -38,7 +42,7 @@ export abstract class RoomTemplate {
 
   public decorate(context: RoomDecorationContext): RoomDecoration {
     return {
-      obstacles: this.placeObstacles(context),
+      obstacles: context.isStartRoom ? [] : this.placeObstacles(context),
       oilSpawns: this.placeOil(context),
     };
   }
@@ -48,7 +52,7 @@ export abstract class RoomTemplate {
   /** Не больше одной канистры на комнату; шанс падает с глубиной. */
   protected placeOil(context: RoomDecorationContext): Vector2[] {
     const { oil } = context.settings;
-    const depthChance = oil.baseChance * Math.pow(oil.decayPerChunk, context.grid.chunkIndex);
+    const depthChance = oil.baseChance * Math.pow(oil.decayPerSpace, context.spaceIndex);
     const chance = Math.max(oil.minChance, depthChance) * this.oilChanceMultiplier;
     if (!context.rng.chance(chance)) {
       return [];

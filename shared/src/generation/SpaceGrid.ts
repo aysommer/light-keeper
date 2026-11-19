@@ -1,44 +1,28 @@
 import { AABB } from '../math/AABB.ts';
 import { Vector2 } from '../math/Vector2.ts';
-import type { WorldSettings } from '../config/GameConfig.ts';
 import type { CellRect } from './CellRect.ts';
 import type { GridEdge } from './GridEdge.ts';
 
-/** Геометрия сетки одного чанка: перевод клеток и рёбер в мировые координаты. */
-export class ChunkGrid {
-  public readonly originY: number;
-
+/** Геометрия сетки пространства: перевод клеток и рёбер в мировые координаты. */
+export class SpaceGrid {
   public constructor(
-    public readonly chunkIndex: number,
-    private readonly settings: WorldSettings,
-  ) {
-    this.originY = chunkIndex * this.length;
-  }
+    public readonly columns: number,
+    public readonly rows: number,
+    public readonly cellSize: number,
+  ) {}
 
-  public get columns(): number {
-    return this.settings.columns;
-  }
-
-  public get rows(): number {
-    return this.settings.rowsPerChunk;
-  }
-
-  public get cellSize(): number {
-    return this.settings.cellSize;
-  }
-
-  /** Ширина чанка (ось x). */
+  /** Ширина пространства (ось x), м. */
   public get width(): number {
-    return this.settings.columns * this.settings.cellSize;
+    return this.columns * this.cellSize;
   }
 
-  /** Длина чанка (ось y). */
+  /** Длина пространства (ось y), м. */
   public get length(): number {
-    return this.settings.rowsPerChunk * this.settings.cellSize;
+    return this.rows * this.cellSize;
   }
 
   public get bounds(): AABB {
-    return new AABB(0, this.originY, this.width, this.originY + this.length);
+    return new AABB(0, 0, this.width, this.length);
   }
 
   public contains(col: number, row: number): boolean {
@@ -47,7 +31,7 @@ export class ChunkGrid {
 
   /** Мировая точка узла сетки (угла клеток). */
   public cornerPoint(col: number, row: number): Vector2 {
-    return new Vector2(col * this.cellSize, this.originY + row * this.cellSize);
+    return new Vector2(col * this.cellSize, row * this.cellSize);
   }
 
   public cellBounds(col: number, row: number): AABB {

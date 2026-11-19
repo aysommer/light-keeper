@@ -4,9 +4,17 @@ import { LobbyError } from '../lobby/LobbyError.ts';
 import type { LobbyManager } from '../lobby/LobbyManager.ts';
 import type { ClientConnection } from './ClientConnection.ts';
 
+export interface DispatcherOptions {
+  /** Принимать отладочные команды (только в режиме разработки). */
+  readonly allowDebug: boolean;
+}
+
 /** Направляет сообщения клиентов в игровую логику. */
 export class MessageDispatcher {
-  public constructor(private readonly lobbies: LobbyManager) {}
+  public constructor(
+    private readonly lobbies: LobbyManager,
+    private readonly options: DispatcherOptions = { allowDebug: false },
+  ) {}
 
   public handle(connection: ClientConnection, message: ClientMessage): void {
     if (message.type === 'hello') {
@@ -68,6 +76,11 @@ export class MessageDispatcher {
         return;
       case 'ping':
         connection.send({ type: 'pong', sentAt: message.sentAt });
+        return;
+      case 'debug:next-space':
+        if (this.options.allowDebug) {
+          this.lobbies.lobbyOf(connection.id)?.match?.requestNextSpace();
+        }
         return;
       case 'input':
         // Команды, долетевшие после конца партии, просто отбрасываются.

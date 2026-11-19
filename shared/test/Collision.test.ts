@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   AABB,
-  ChunkGenerator,
   CollisionResolver,
   CollisionWorld,
   GameConfig,
   SeededRandom,
+  SpaceGenerator,
   Vector2,
-  WorldLayout,
 } from '../src/index.ts';
 
 const resolver = new CollisionResolver();
@@ -45,35 +44,47 @@ describe('CollisionResolver', () => {
 });
 
 describe('CollisionWorld', () => {
-  it('игрок не оказывается в стенах при случайном блуждании по миру', () => {
+  it('находит только ближайшие коллайдеры', () => {
+    const near = new AABB(1, 1, 2, 2);
+    const far = new AABB(40, 40, 41, 41);
+    const world = new CollisionWorld([near, far]);
+    expect(world.collidersNear(new Vector2(0, 0), 3)).toEqual([near]);
+  });
+
+  it('длинная стена находится из любой своей корзины и без повторов', () => {
+    const wall = new AABB(0, 10, 40, 10.2);
+    const world = new CollisionWorld([wall]);
+    expect(world.collidersNear(new Vector2(35, 9), 2)).toEqual([wall]);
+    expect(world.collidersNear(new Vector2(20, 9), 30)).toEqual([wall]);
+  });
+
+  it('игрок не оказывается в стенах и не выходит за пределы при случайном блуждании', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
-      const generator = new ChunkGenerator(seed);
-      const world = new CollisionWorld(new WorldLayout(generator));
+      const space = new SpaceGenerator(seed).generate(seed);
+      const world = CollisionWorld.fromSpace(space);
       const rng = new SeededRandom(seed);
-      let position = generator.startPositions()[0];
+      let position = space.startPositions[0];
       let direction = new Vector2(0, 1);
       for (let step = 0; step < 3000; step++) {
         if (rng.chance(0.05)) {
           const angle = rng.float(0, Math.PI * 2);
-          direction = new Vector2(Math.cos(angle), Math.sin(angle) + 0.3);
+          direction = new Vector2(Math.cos(angle), Math.sin(angle));
         }
-        position = world.move(position, direction.normalize().scale(0.12), radius);
+        position = world.move(position, direction.scale(0.12), radius);
         const near = world.collidersNear(position, 2);
         const stuck = near.some((box) => box.intersectsCircle(position, radius - 1e-3));
         expect(stuck, `seed ${seed}, шаг ${step}, позиция ${position}`).toBe(false);
-        expect(position.y).toBeGreaterThan(0);
-        expect(position.x).toBeGreaterThan(0);
-        expect(position.x).toBeLessThan(generator.worldWidth);
+        expect(space.bounds.containsPoint(position)).toBe(true);
       }
     }
   });
 
   it('проходит через дверной проём', () => {
-    const generator = new ChunkGenerator(10);
-    const world = new CollisionWorld(new WorldLayout(generator));
-    const exit = generator.generate(0).exitDoor.position;
-    const below = new Vector2(exit.x, exit.y - 1);
+    const space = new SpaceGenerator(10).generate(0);
+    const world = CollisionWorld.fromSpace(space);
+    const door = space.doors.find((d) => d.edge.orientation === 'horizontal')!;
+    const below = new Vector2(door.position.x, door.position.y - 1);
     const result = world.move(below, new Vector2(0, 2), GameConfig.player.radius);
-    expect(result.y).toBeGreaterThan(exit.y + 0.9);
+    expect(result.y).toBeGreaterThan(door.position.y + 0.9);
   });
 });

@@ -1,17 +1,18 @@
 import type { Scene } from 'three';
 import { Vector2 } from '@light-keeper/shared';
-import type { MatchPlayerInfo, MatchSnapshot, PlayerMovement } from '@light-keeper/shared';
+import type { MatchPlayerInfo, MatchSnapshot, SpacePhase } from '@light-keeper/shared';
 import { InputSender } from '../network/InputSender.ts';
 import type { NetworkClient } from '../network/NetworkClient.ts';
 import { PredictionReconciler } from '../network/PredictionReconciler.ts';
 import { ServerClock } from '../network/ServerClock.ts';
+import type { ActiveSpace } from './ActiveSpace.ts';
 import type { FirstPersonController } from './FirstPersonController.ts';
 import type { LocalPlayer } from './LocalPlayer.ts';
 import { RemotePlayerView } from './RemotePlayerView.ts';
 
 /**
  * Сетевая часть партии на клиенте: отправка ввода, согласование своей позиции
- * с сервером, интерполяция напарника, пинг.
+ * с сервером, интерполяция напарника, смена пространств, пинг.
  */
 export class NetworkSession {
   /** Насколько «в прошлом» рисуется напарник, мс (≈2 тика сервера). */
@@ -24,8 +25,8 @@ export class NetworkSession {
   private readonly remotes = new Map<string, RemotePlayerView>();
   private readonly unsubscribe: Array<() => void> = [];
   private sincePingMs = NetworkSession.PING_INTERVAL_MS;
-  private latestDistance = 0;
   private latestPingMs: number | null = null;
+  private currentPhase: SpacePhase = 'playing';
 
   public constructor(
     private readonly network: NetworkClient,
@@ -33,11 +34,11 @@ export class NetworkSession {
     players: readonly MatchPlayerInfo[],
     private readonly player: LocalPlayer,
     controller: FirstPersonController,
-    movement: PlayerMovement,
+    private readonly space: ActiveSpace,
     scene: Scene,
   ) {
     this.sender = new InputSender(network);
-    this.reconciler = new PredictionReconciler(movement);
+    this.reconciler = new PredictionReconciler(space);
     for (const info of players) {
       if (info.id !== playerId) {
         this.remotes.set(info.id, new RemotePlayerView(info.id, info.color, scene));
@@ -55,9 +56,8 @@ export class NetworkSession {
     );
   }
 
-  /** Пройденное командой расстояние по данным сервера, м. */
-  public get distance(): number {
-    return this.latestDistance;
+  public get phase(): SpacePhase {
+    return this.currentPhase;
   }
 
   public get pingMs(): number | null {
@@ -75,6 +75,11 @@ export class NetworkSession {
       }
     }
     return nearest;
+  }
+
+  /** Отладка: попросить сервер перейти в следующее пространство. */
+  public requestNextSpace(): void {
+    this.network.send({ type: 'debug:next-space' });
   }
 
   public update(deltaSeconds: number, time: number): void {
@@ -99,11 +104,21 @@ export class NetworkSession {
 
   private applySnapshot(snapshot: MatchSnapshot): void {
     this.clock.observe(snapshot.serverTime, performance.now());
-    this.latestDistance = snapshot.distance;
+    this.currentPhase = snapshot.phase;
+    const enteredNewSpace = snapshot.spaceIndex !== this.space.spaceIndex;
+    if (enteredNewSpace) {
+      this.space.enter(snapshot.spaceIndex);
+      this.reconciler.clear();
+      this.remotes.forEach((remote) => remote.track.clear());
+    }
     for (const state of snapshot.players) {
       const position = new Vector2(state.x, state.y);
       if (state.id === this.playerId) {
-        this.reconciler.reconcile(this.player, position, state.lastSeq);
+        if (enteredNewSpace) {
+          this.player.teleport(position, this.space.space.startYaw);
+        } else {
+          this.reconciler.reconcile(this.player, position, state.lastSeq);
+        }
         continue;
       }
       this.remotes

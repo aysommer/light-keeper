@@ -38,13 +38,17 @@ export interface PlayerSnapshot {
   readonly lastSeq: number;
 }
 
+/** Фаза пространства: игра идёт или идёт переход (затемнение) в следующее. */
+export type SpacePhase = 'playing' | 'transition';
+
 /** Снимок мира, который сервер рассылает каждый тик. */
 export interface MatchSnapshot {
   readonly tick: number;
   /** Время сервера с начала партии, мс. */
   readonly serverTime: number;
-  /** Пройденное командой расстояние, м. */
-  readonly distance: number;
+  /** Номер текущего пространства (0 — первое) = число пройденных пространств. */
+  readonly spaceIndex: number;
+  readonly phase: SpacePhase;
   readonly players: readonly PlayerSnapshot[];
 }
 
@@ -67,7 +71,9 @@ export type ClientMessage =
   | { readonly type: 'lobby:leave' }
   | { readonly type: 'lobby:ready'; readonly ready: boolean }
   | { readonly type: 'ping'; readonly sentAt: number }
-  | { readonly type: 'input'; readonly commands: readonly PlayerInput[] };
+  | { readonly type: 'input'; readonly commands: readonly PlayerInput[] }
+  /** Отладка: перейти в следующее пространство. Сервер принимает только в режиме разработки. */
+  | { readonly type: 'debug:next-space' };
 
 /** Сообщения сервер → клиент. */
 export type ServerMessage =

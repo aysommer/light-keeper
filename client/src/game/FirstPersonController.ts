@@ -1,8 +1,9 @@
-import { GameConfig, PlayerMovement } from '@light-keeper/shared';
+import { GameConfig, PlayerMovement, Vector2 } from '@light-keeper/shared';
 import type { PlayerInput, PlayerSettings } from '@light-keeper/shared';
 import type { PerspectiveCamera } from 'three';
 import type { InputController } from '../input/InputController.ts';
 import { SceneCoords } from '../scene/SceneCoords.ts';
+import type { MovementProvider } from './ActiveSpace.ts';
 import type { LocalPlayer } from './LocalPlayer.ts';
 
 /**
@@ -19,11 +20,13 @@ export class FirstPersonController {
   private bobPhase = 0;
   private bobOffset = 0;
   private commandListener: ((command: PlayerInput) => void) | null = null;
+  /** Во время перехода между пространствами ходить нельзя (осматриваться можно). */
+  public frozen = false;
 
   public constructor(
     private readonly player: LocalPlayer,
     private readonly input: InputController,
-    private readonly movement: PlayerMovement,
+    private readonly rules: MovementProvider,
     private readonly settings: PlayerSettings = GameConfig.player,
   ) {}
 
@@ -33,7 +36,7 @@ export class FirstPersonController {
 
   public update(deltaSeconds: number): void {
     this.updateLook();
-    const axis = this.input.movementAxis();
+    const axis = this.frozen ? Vector2.ZERO : this.input.movementAxis();
     const command: PlayerInput = {
       seq: this.nextSeq++,
       dt: Math.min(deltaSeconds, PlayerMovement.MAX_COMMAND_DT),
@@ -42,9 +45,10 @@ export class FirstPersonController {
       yaw: this.player.yaw,
       pitch: this.player.pitch,
       run: this.input.isPressed('ShiftLeft') || this.input.isPressed('ShiftRight'),
+      space: this.rules.spaceIndex,
     };
     this.player.isMoving = axis.lengthSquared() > 0;
-    this.player.moveTo(this.movement.apply(this.player.position, command));
+    this.player.moveTo(this.rules.movement.apply(this.player.position, command));
     this.player.updateSmoothing(deltaSeconds);
     this.commandListener?.(command);
     this.updateBob(deltaSeconds);

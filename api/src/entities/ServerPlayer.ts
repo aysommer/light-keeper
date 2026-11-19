@@ -41,6 +41,13 @@ export class ServerPlayer extends Entity {
     return this.queue.splice(0);
   }
 
+  /** Ставит игрока на старт пространства и поворачивает взглядом в заданную сторону. */
+  public placeAt(position: Vector2, yaw: number): void {
+    this.position = position;
+    this.yaw = yaw;
+    this.pitch = 0;
+  }
+
   public applyLook(command: PlayerInput): void {
     this.yaw = command.yaw;
     this.pitch = PlayerMovement.clampPitch(command.pitch);

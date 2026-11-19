@@ -1,29 +1,91 @@
-import { ChunkGenerator, CollisionWorld, WorldLayout } from '@light-keeper/shared';
+import {
+  CollisionWorld,
+  PLAYER_COLORS,
+  PlayerMovement,
+  SpaceGenerator,
+} from '@light-keeper/shared';
+import type { Space, SpacePhase } from '@light-keeper/shared';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
 
-/** Состояние мира одной партии: генератор, коллизии, игроки, прогресс. */
+/**
+ * Мир партии: текущее пространство, его коллизии, игроки и фаза
+ * (игра или переход в следующее пространство).
+ */
 export class MatchWorld {
-  public readonly generator: ChunkGenerator;
-  public readonly layout: WorldLayout;
-  public readonly collisions: CollisionWorld;
+  public readonly generator: SpaceGenerator;
   public readonly players = new Map<string, ServerPlayer>();
-  private readonly startY: number;
-  private farthestY: number;
+  private currentSpace: Space;
+  private currentMovement: PlayerMovement;
+  private currentPhase: SpacePhase = 'playing';
+  private transitionLeft = 0;
 
   public constructor(public readonly seed: number) {
-    this.generator = new ChunkGenerator(seed);
-    this.layout = new WorldLayout(this.generator, 12);
-    this.collisions = new CollisionWorld(this.layout);
-    this.startY = this.generator.startPositions()[0].y;
-    this.farthestY = this.startY;
+    this.generator = new SpaceGenerator(seed);
+    this.currentSpace = this.generator.generate(0);
+    this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
   }
 
-  /** Пройденное командой расстояние — по самому далеко продвинувшемуся игроку, м. */
-  public get distance(): number {
-    return Math.max(0, this.farthestY - this.startY);
+  public get space(): Space {
+    return this.currentSpace;
   }
 
-  public recordProgress(y: number): void {
-    this.farthestY = Math.max(this.farthestY, y);
+  /** Номер текущего пространства = число пройденных пространств. */
+  public get spaceIndex(): number {
+    return this.currentSpace.index;
+  }
+
+  public get movement(): PlayerMovement {
+    return this.currentMovement;
+  }
+
+  public get phase(): SpacePhase {
+    return this.currentPhase;
+  }
+
+  /** Сколько секунд осталось до конца перехода. */
+  public get transitionSecondsLeft(): number {
+    return this.transitionLeft;
+  }
+
+  public addPlayer(player: ServerPlayer): void {
+    this.players.set(player.id, player);
+    player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw);
+  }
+
+  /** Начинает переход в следующее пространство. Повторный вызов во время перехода игнорируется. */
+  public beginTransition(seconds: number): boolean {
+    if (this.currentPhase !== 'playing') {
+      return false;
+    }
+    this.currentPhase = 'transition';
+    this.transitionLeft = seconds;
+    return true;
+  }
+
+  /** Отсчитывает переход; по его окончании входит в следующее пространство. */
+  public advanceTransition(deltaSeconds: number): void {
+    if (this.currentPhase !== 'transition') {
+      return;
+    }
+    this.transitionLeft -= deltaSeconds;
+    if (this.transitionLeft <= 0) {
+      this.enterSpace(this.currentSpace.index + 1);
+    }
+  }
+
+  /** Новое пространство: генерация, коллизии, игроки на старт, ресурсы — заново. */
+  public enterSpace(index: number): void {
+    this.currentSpace = this.generator.generate(index);
+    this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
+    this.currentPhase = 'playing';
+    this.transitionLeft = 0;
+    this.players.forEach((player) =>
+      player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw),
+    );
+  }
+
+  private startPositionFor(player: ServerPlayer): ServerPlayer['position'] {
+    const starts = this.currentSpace.startPositions;
+    return starts[PLAYER_COLORS.indexOf(player.color)] ?? starts[0];
   }
 }

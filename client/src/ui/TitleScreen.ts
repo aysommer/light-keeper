@@ -6,10 +6,9 @@ import { StickmanIcon } from './StickmanIcon.ts';
 export interface TitleScreenActions {
   onCreateLobby(): void;
   onJoinLobby(code: string): void;
-  onStartSolo(): void;
 }
 
-/** Титульный экран: создать комнату, войти по коду или погулять одному. */
+/** Титульный экран: создать комнату или войти по коду. Игра только на двоих. */
 export class TitleScreen implements Screen {
   public readonly element: HTMLElement;
   private readonly error: HTMLElement;
@@ -34,7 +33,7 @@ export class TitleScreen implements Screen {
 
     const tagline = document.createElement('p');
     tagline.className = 'title-screen__tagline';
-    tagline.textContent = 'Не дай свету погаснуть.';
+    tagline.textContent = 'Игра на двоих. Найдите выход — вместе.';
 
     const create = this.button('Создать комнату', () => actions.onCreateLobby());
 
@@ -63,11 +62,9 @@ export class TitleScreen implements Screen {
       actions.onJoinLobby(code);
     });
 
-    const solo = this.button('Пройтись одному', () => actions.onStartSolo(), 'button--ghost-dark');
-
     const menu = document.createElement('div');
     menu.className = 'title-screen__menu';
-    menu.append(create, joinForm, solo);
+    menu.append(create, joinForm);
 
     this.error = document.createElement('p');
     this.error.className = 'title-screen__error';

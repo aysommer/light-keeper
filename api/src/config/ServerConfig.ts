@@ -6,12 +6,15 @@ export class ServerConfig {
   public constructor(
     public readonly port: number,
     public readonly host: string,
+    /** Принимать отладочные команды клиента (`LK_DEBUG=1`). Только для разработки. */
+    public readonly allowDebug = false,
   ) {}
 
   public static fromEnv(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     return new ServerConfig(
       ServerConfig.parsePort(env['PORT']),
       env['HOST'] ?? ServerConfig.DEFAULT_HOST,
+      env['LK_DEBUG'] === '1',
     );
   }
 

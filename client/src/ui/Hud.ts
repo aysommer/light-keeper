@@ -8,18 +8,18 @@ export class Hud {
   };
 
   public readonly element: HTMLElement;
-  private readonly distance: HTMLElement;
+  private readonly spaceLabel: HTMLElement;
   private readonly overlay: HTMLElement;
   private readonly network: HTMLElement;
-  private lastShownMeters = -1;
+  private lastShownSpace = -1;
   private lastNetworkText = '';
 
-  public constructor(seed: number, color: PlayerColor | null, onExit: () => void) {
+  public constructor(seed: number, color: PlayerColor, onExit: () => void) {
     this.element = document.createElement('div');
     this.element.className = 'hud';
 
-    this.distance = document.createElement('div');
-    this.distance.className = 'hud__distance';
+    this.spaceLabel = document.createElement('div');
+    this.spaceLabel.className = 'hud__space';
 
     const seedLabel = document.createElement('div');
     seedLabel.className = 'hud__seed';
@@ -51,25 +51,23 @@ export class Hud {
     hint.append(exit);
     this.overlay.append(hint);
 
-    this.element.append(this.distance, this.network, seedLabel, crosshair, this.overlay);
-    if (color) {
-      const chip = document.createElement('div');
-      chip.className = `hud__player hud__player--${color}`;
-      chip.textContent = Hud.COLOR_LABELS[color];
-      this.element.append(chip);
-    }
-    this.setDistance(0);
+    this.element.append(this.spaceLabel, this.network, seedLabel, crosshair, this.overlay);
+    const chip = document.createElement('div');
+    chip.className = `hud__player hud__player--${color}`;
+    chip.textContent = Hud.COLOR_LABELS[color];
+    this.element.append(chip);
+    this.setSpace(0);
   }
 
-  public setDistance(meters: number): void {
-    const rounded = Math.floor(meters);
-    if (rounded !== this.lastShownMeters) {
-      this.lastShownMeters = rounded;
-      this.distance.textContent = `${rounded} м`;
+  /** Номер текущего пространства (0 — первое); показываем с единицы. */
+  public setSpace(index: number): void {
+    if (index !== this.lastShownSpace) {
+      this.lastShownSpace = index;
+      this.spaceLabel.textContent = `Пространство ${index + 1}`;
     }
   }
 
-  /** Пинг и расстояние до напарника (только в сетевой игре). */
+  /** Пинг и расстояние до напарника. */
   public setNetworkInfo(pingMs: number | null, partnerMeters: number | null): void {
     const partner =
       partnerMeters === null ? 'напарник: —' : `напарник: ${partnerMeters.toFixed(0)} м`;

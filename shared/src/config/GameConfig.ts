@@ -1,11 +1,16 @@
 /** Параметры процедурной генерации мира. Все длины — в метрах. */
 export interface WorldSettings {
-  /** Сторона квадратной клетки сетки чанка. */
+  /** Сторона квадратной клетки сетки пространства. */
   readonly cellSize: number;
-  /** Клеток поперёк пути (ось x). */
-  readonly columns: number;
-  /** Клеток вдоль пути (ось y) в одном чанке. */
-  readonly rowsPerChunk: number;
+  /** Размер пространства в клетках (квадрат) в зависимости от номера. */
+  readonly space: {
+    /** Сторона первого пространства, клеток. */
+    readonly initialSize: number;
+    /** Каждые сколько пространств сторона растёт на 1 клетку. */
+    readonly growthEvery: number;
+    /** Максимальная сторона, клеток. */
+    readonly maxSize: number;
+  };
   readonly wallThickness: number;
   /** Высота стен и потолка. */
   readonly ceilingHeight: number;
@@ -24,12 +29,12 @@ export interface WorldSettings {
     readonly chancePerCell: number;
   };
   readonly oil: {
-    /** Вероятность канистры в комнате на старте. */
+    /** Вероятность канистры в комнате в первом пространстве. */
     readonly baseChance: number;
-    /** Нижняя граница вероятности на большой дистанции. */
+    /** Нижняя граница вероятности в далёких пространствах. */
     readonly minChance: number;
-    /** Множитель вероятности за каждый пройденный чанк. */
-    readonly decayPerChunk: number;
+    /** Множитель вероятности за каждое пройденное пространство. */
+    readonly decayPerSpace: number;
     /** Максимальное смещение канистры от центра клетки. */
     readonly jitter: number;
   };
@@ -46,12 +51,20 @@ export interface PlayerSettings {
   readonly runSpeed: number;
 }
 
+export interface MatchSettings {
+  /** Длительность перехода между пространствами (затемнение), с. */
+  readonly transitionSeconds: number;
+}
+
 /** Единая точка настроек баланса игры. */
 export class GameConfig {
   public static readonly world: WorldSettings = {
     cellSize: 4,
-    columns: 6,
-    rowsPerChunk: 5,
+    space: {
+      initialSize: 6,
+      growthEvery: 2,
+      maxSize: 12,
+    },
     wallThickness: 0.2,
     ceilingHeight: 3,
     doorWidth: 1.4,
@@ -67,7 +80,7 @@ export class GameConfig {
     oil: {
       baseChance: 0.2,
       minChance: 0.08,
-      decayPerChunk: 0.97,
+      decayPerSpace: 0.9,
       jitter: 0.6,
     },
   };
@@ -77,5 +90,9 @@ export class GameConfig {
     eyeHeight: 1.6,
     walkSpeed: 2.2,
     runSpeed: 3.8,
+  };
+
+  public static readonly match: MatchSettings = {
+    transitionSeconds: 1.5,
   };
 }

@@ -41,6 +41,11 @@ describe('ServerConfig.fromEnv', () => {
     expect(config.host).toBe('127.0.0.1');
   });
 
+  it('LK_DEBUG=1 включает отладочные команды', () => {
+    expect(ServerConfig.fromEnv({}).allowDebug).toBe(false);
+    expect(ServerConfig.fromEnv({ LK_DEBUG: '1' }).allowDebug).toBe(true);
+  });
+
   it('отклоняет некорректный PORT', () => {
     expect(() => ServerConfig.fromEnv({ PORT: 'abc' })).toThrow();
   });

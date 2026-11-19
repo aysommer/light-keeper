@@ -13,3 +13,6 @@ process.once('SIGTERM', () => void shutdown('SIGTERM'));
 
 const address = await app.start();
 console.log(`Light Keeper слушает http://${address.address}:${address.port}`);
+if (process.env['LK_DEBUG'] === '1') {
+  console.log('Отладочные команды включены (LK_DEBUG=1)');
+}

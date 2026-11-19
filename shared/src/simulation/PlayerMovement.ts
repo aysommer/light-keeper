@@ -28,6 +28,11 @@ export class PlayerMovement {
     return new Vector2(Math.cos(yaw), Math.sin(yaw));
   }
 
+  /** Поворот, при котором `forward(yaw)` смотрит вдоль `direction`. */
+  public static yawTowards(direction: Vector2): number {
+    return Math.atan2(-direction.x, direction.y);
+  }
+
   public static clampPitch(pitch: number): number {
     return Math.min(PlayerMovement.MAX_PITCH, Math.max(-PlayerMovement.MAX_PITCH, pitch));
   }

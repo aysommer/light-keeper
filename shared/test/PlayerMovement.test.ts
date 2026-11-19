@@ -1,21 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ChunkGenerator,
   CollisionWorld,
   GameConfig,
   MessageCodec,
   PlayerMovement,
-  WorldLayout,
+  SpaceGenerator,
+  Vector2,
 } from '../src/index.ts';
-import type { PlayerInput, Vector2 } from '../src/index.ts';
+import type { PlayerInput } from '../src/index.ts';
 
-const createMovement = (seed = 3): { movement: PlayerMovement; start: Vector2 } => {
-  const generator = new ChunkGenerator(seed);
-  return {
-    movement: new PlayerMovement(new CollisionWorld(new WorldLayout(generator))),
-    start: generator.startPositions()[0],
-  };
-};
+/** Движение без стен: проверяем само правило движения. */
+const createMovement = (): { movement: PlayerMovement; start: Vector2 } => ({
+  movement: new PlayerMovement(new CollisionWorld([])),
+  start: new Vector2(10, 10),
+});
 
 const input = (overrides: Partial<PlayerInput> = {}): PlayerInput => ({
   seq: 1,
@@ -25,6 +23,7 @@ const input = (overrides: Partial<PlayerInput> = {}): PlayerInput => ({
   yaw: 0,
   pitch: 0,
   run: false,
+  space: 0,
   ...overrides,
 });
 
@@ -57,10 +56,11 @@ describe('PlayerMovement', () => {
   });
 
   it('детерминизм: одинаковые команды на двух экземплярах дают одну позицию', () => {
-    const a = createMovement(9);
-    const b = createMovement(9);
-    let pa = a.start;
-    let pb = b.start;
+    const space = new SpaceGenerator(9).generate(1);
+    const a = { movement: new PlayerMovement(CollisionWorld.fromSpace(space)) };
+    const b = { movement: new PlayerMovement(CollisionWorld.fromSpace(space)) };
+    let pa = space.startPositions[0];
+    let pb = space.startPositions[0];
     for (let i = 0; i < 400; i++) {
       const command = input({
         seq: i,
@@ -98,6 +98,8 @@ describe('MessageCodec: input', () => {
     ['moveX вне диапазона', [input({ moveX: 3 })]],
     ['pitch вне диапазона', [input({ pitch: 4 })]],
     ['run не boolean', [{ ...input(), run: 1 }]],
+    ['без номера пространства', [{ ...input(), space: undefined }]],
+    ['дробный номер пространства', [input({ space: 1.5 })]],
     ['не массив', 'abc'],
   ])('отклоняет: %s', (_name, commands) => {
     expect(decode(commands)).toBeNull();

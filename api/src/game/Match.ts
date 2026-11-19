@@ -1,4 +1,4 @@
-import { PLAYER_COLORS, PlayerMovement } from '@light-keeper/shared';
+import { GameConfig } from '@light-keeper/shared';
 import type {
   MatchPlayerInfo,
   PlayerColor,
@@ -9,11 +9,14 @@ import { ServerPlayer } from '../entities/ServerPlayer.ts';
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
 import { MovementSystem } from '../systems/MovementSystem.ts';
 import type { System } from '../systems/System.ts';
+import { TransitionSystem } from '../systems/TransitionSystem.ts';
 import { MatchWorld } from './MatchWorld.ts';
 
 export interface MatchOptions {
   /** Частота симуляции и рассылки снимков, Гц. */
   readonly tickRate: number;
+  /** Длительность перехода между пространствами, с. */
+  readonly transitionSeconds?: number;
   readonly now?: () => number;
 }
 
@@ -44,15 +47,11 @@ export class Match {
   ) {
     this.now = options.now ?? (() => performance.now());
     this.world = new MatchWorld(seed);
-    const starts = this.world.generator.startPositions();
     for (const member of members) {
-      const start = starts[PLAYER_COLORS.indexOf(member.color)] ?? starts[0];
-      this.world.players.set(
-        member.participant.id,
-        new ServerPlayer(member.participant, member.color, start),
-      );
+      const start = this.world.space.startPositions[0];
+      this.world.addPlayer(new ServerPlayer(member.participant, member.color, start));
     }
-    this.systems = [new MovementSystem(new PlayerMovement(this.world.collisions))];
+    this.systems = [new MovementSystem(), new TransitionSystem()];
   }
 
   public get seed(): number {
@@ -86,6 +85,13 @@ export class Match {
     }
   }
 
+  /** Начать переход в следующее пространство (пока — отладочная команда; на этапе 6 — дверь). */
+  public requestNextSpace(): void {
+    this.world.beginTransition(
+      this.options.transitionSeconds ?? GameConfig.match.transitionSeconds,
+    );
+  }
+
   public receiveInput(playerId: string, commands: readonly PlayerInput[]): void {
     this.world.players.get(playerId)?.enqueue(commands);
   }
@@ -108,7 +114,8 @@ export class Match {
       snapshot: {
         tick: this.tick,
         serverTime: Math.round(now - this.startedAt),
-        distance: this.world.distance,
+        spaceIndex: this.world.spaceIndex,
+        phase: this.world.phase,
         players: [...this.world.players.values()].map((player) => player.snapshot()),
       },
     };

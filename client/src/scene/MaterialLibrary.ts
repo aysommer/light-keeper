@@ -1,11 +1,12 @@
 import { Color, MeshBasicMaterial, MeshStandardMaterial } from 'three';
 import type { Material } from 'three';
+import type { SpacePalette } from '@light-keeper/shared';
 import { TextureFactory } from './TextureFactory.ts';
 
 /** Состояние потолочной лампы-панели. */
 export type PanelState = 'on' | 'off' | 'flicker';
 
-/** Общие материалы сцены. Создаются один раз и переиспользуются всеми чанками. */
+/** Материалы одного пространства, окрашенные по его палитре. */
 export class MaterialLibrary {
   public static readonly WALL_TILE_METERS = 1;
   public static readonly FLOOR_TILE_METERS = 2;
@@ -15,15 +16,22 @@ export class MaterialLibrary {
   public readonly floor: MeshStandardMaterial;
   public readonly ceiling: MeshStandardMaterial;
   public readonly desk: MeshStandardMaterial;
+  /** Отделка: шпалера на однотонных обоях. */
+  public readonly trim: MeshStandardMaterial;
   private readonly panels: Record<PanelState, MeshBasicMaterial>;
   private readonly flickerOn = new Color('#fff6d8');
   private readonly flickerOff = new Color('#4a4636');
 
-  public constructor(textures: TextureFactory = new TextureFactory()) {
+  public constructor(palette: SpacePalette) {
+    const textures = new TextureFactory(palette);
     this.wall = new MeshStandardMaterial({ map: textures.createWallpaper(), roughness: 0.95 });
     this.floor = new MeshStandardMaterial({ map: textures.createCarpet(), roughness: 1 });
     this.ceiling = new MeshStandardMaterial({ map: textures.createCeiling(), roughness: 0.9 });
-    this.desk = new MeshStandardMaterial({ color: '#6e5a3c', roughness: 0.7 });
+    this.desk = new MeshStandardMaterial({
+      color: palette.trim.withLightness(palette.trim.lightness * 0.7).toHex(),
+      roughness: 0.7,
+    });
+    this.trim = new MeshStandardMaterial({ color: palette.trim.toHex(), roughness: 0.6 });
     this.panels = {
       on: new MeshBasicMaterial({ color: '#f3ead0' }),
       off: new MeshBasicMaterial({ color: '#4a4636' }),
@@ -47,6 +55,7 @@ export class MaterialLibrary {
       this.floor,
       this.ceiling,
       this.desk,
+      this.trim,
       ...Object.values(this.panels),
     ];
     for (const material of materials) {

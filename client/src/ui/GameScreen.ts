@@ -1,92 +1,100 @@
-import { ChunkGenerator, CollisionWorld, PlayerMovement, WorldLayout } from '@light-keeper/shared';
 import type { MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
 import { GameLoop } from '../core/GameLoop.ts';
+import { ActiveSpace } from '../game/ActiveSpace.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
 import { LocalPlayer } from '../game/LocalPlayer.ts';
 import { NetworkSession } from '../game/NetworkSession.ts';
 import { InputController } from '../input/InputController.ts';
 import type { NetworkClient } from '../network/NetworkClient.ts';
-import { ChunkMeshBuilder } from '../scene/ChunkMeshBuilder.ts';
 import { HandLampLight } from '../scene/HandLampLight.ts';
-import { MaterialLibrary } from '../scene/MaterialLibrary.ts';
 import { SceneManager } from '../scene/SceneManager.ts';
-import { WorldRenderer } from '../scene/WorldRenderer.ts';
 import { Hud } from './Hud.ts';
 import type { Screen } from './Screen.ts';
+import { TransitionOverlay } from './TransitionOverlay.ts';
 
-/** Данные сетевой партии. */
-export interface MatchConnection {
+export interface GameScreenOptions {
+  readonly seed: number;
   readonly network: NetworkClient;
   readonly playerId: string;
   readonly color: PlayerColor;
   readonly players: readonly MatchPlayerInfo[];
-}
-
-export interface GameScreenOptions {
-  readonly seed: number;
-  /** Сетевая партия; `null` — одиночная прогулка. */
-  readonly match: MatchConnection | null;
   readonly onExit: () => void;
 }
 
-/** Игровой экран: мир, игрок от первого лица и (в сетевой игре) напарник. */
+/** Игровой экран партии: пространство, игрок от первого лица, напарник, переходы. */
 export class GameScreen implements Screen {
+  /** Сколько держать надпись «Пространство N» после входа, с. */
+  private static readonly TITLE_HOLD_SECONDS = 1.2;
+
   public readonly element: HTMLElement;
   private readonly hud: Hud;
+  private readonly overlay = new TransitionOverlay();
   private readonly disposables: Array<{ dispose(): void }> = [];
   private loop: GameLoop | null = null;
 
   public constructor(private readonly options: GameScreenOptions) {
     this.element = document.createElement('div');
     this.element.className = 'game-screen';
-    this.hud = new Hud(options.seed, options.match?.color ?? null, options.onExit);
+    this.hud = new Hud(options.seed, options.color, options.onExit);
   }
 
   public mount(): void {
-    const { seed, match } = this.options;
+    const options = this.options;
     const sceneManager = this.own(new SceneManager(this.element));
-    this.element.append(this.hud.element);
+    // Затемнение — поверх HUD, чтобы подсказки не перекрывали надпись.
+    this.element.append(this.hud.element, this.overlay.element);
 
-    const generator = new ChunkGenerator(seed);
-    const world = new WorldLayout(generator, 12);
-    const movement = new PlayerMovement(new CollisionWorld(world));
-    const materials = this.own(new MaterialLibrary());
-    const worldRenderer = this.own(
-      new WorldRenderer(sceneManager.scene, world, new ChunkMeshBuilder(materials, seed)),
-    );
+    const space = this.own(new ActiveSpace(options.seed, sceneManager.scene));
     const input = this.own(new InputController(sceneManager.canvas));
-    const [redStart, blueStart] = generator.startPositions();
-    const player = new LocalPlayer(match?.color === 'blue' ? blueStart : redStart);
-    const controller = new FirstPersonController(player, input, movement);
+    const [redStart, blueStart] = space.space.startPositions;
+    const player = new LocalPlayer(options.color === 'blue' ? blueStart : redStart);
+    player.yaw = space.space.startYaw;
+    const controller = new FirstPersonController(player, input, space);
     const lamp = this.own(new HandLampLight(sceneManager.camera));
-    const session = match
-      ? this.own(
-          new NetworkSession(
-            match.network,
-            match.playerId,
-            match.players,
-            player,
-            controller,
-            movement,
-            sceneManager.scene,
-          ),
-        )
-      : null;
+    const session = this.own(
+      new NetworkSession(
+        options.network,
+        options.playerId,
+        options.players,
+        player,
+        controller,
+        space,
+        sceneManager.scene,
+      ),
+    );
 
     input.onPointerLockChange((locked) => this.hud.setPointerLocked(locked));
     this.hud.setPointerLocked(false);
 
+    // Затемнение: во время перехода и ещё немного после входа в пространство.
+    let shownSpace = space.spaceIndex;
+    let titleUntil = GameScreen.TITLE_HOLD_SECONDS;
+    this.overlay.showEntering(shownSpace + 1);
+
     this.loop = new GameLoop((delta, time) => {
-      controller.update(delta);
-      session?.update(delta, time);
-      controller.applyToCamera(sceneManager.camera);
-      worldRenderer.update(player.position.y);
-      materials.update(time);
-      lamp.update(time);
-      this.hud.setDistance(session ? session.distance : player.distance);
-      if (session) {
-        this.hud.setNetworkInfo(session.pingMs, session.partnerDistance());
+      if (import.meta.env.DEV && input.consumePress('KeyN')) {
+        session.requestNextSpace();
       }
+      if (space.spaceIndex !== shownSpace) {
+        shownSpace = space.spaceIndex;
+        titleUntil = time + GameScreen.TITLE_HOLD_SECONDS;
+        this.overlay.showEntering(shownSpace + 1);
+      }
+      const inTransition = session.phase === 'transition';
+      if (inTransition) {
+        this.overlay.showEntering(shownSpace + 2);
+      } else if (time >= titleUntil) {
+        this.overlay.hide();
+      }
+      controller.frozen = inTransition;
+
+      controller.update(delta);
+      session.update(delta, time);
+      controller.applyToCamera(sceneManager.camera);
+      space.update(time);
+      lamp.update(time);
+      this.hud.setSpace(space.spaceIndex);
+      this.hud.setNetworkInfo(session.pingMs, session.partnerDistance());
       sceneManager.render();
     });
     this.loop.start();

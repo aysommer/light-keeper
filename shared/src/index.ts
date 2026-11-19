@@ -19,11 +19,12 @@ export type {
   ServerMessage,
   ServerMessageOf,
   ServerMessageType,
+  SpacePhase,
 } from './protocol/Messages.ts';
 
 // Конфигурация
 export { GameConfig } from './config/GameConfig.ts';
-export type { PlayerSettings, WorldSettings } from './config/GameConfig.ts';
+export type { MatchSettings, PlayerSettings, WorldSettings } from './config/GameConfig.ts';
 
 // Математика и утилиты
 export { Vector2 } from './math/Vector2.ts';
@@ -33,10 +34,9 @@ export { SeedHasher } from './random/SeedHasher.ts';
 export { DisjointSet } from './util/DisjointSet.ts';
 
 // Генерация мира
-export { ChunkGenerator } from './generation/ChunkGenerator.ts';
-export { WorldLayout } from './generation/WorldLayout.ts';
-export { Chunk } from './generation/Chunk.ts';
-export { ChunkGrid } from './generation/ChunkGrid.ts';
+export { SpaceGenerator } from './generation/SpaceGenerator.ts';
+export { Space } from './generation/Space.ts';
+export { SpaceGrid } from './generation/SpaceGrid.ts';
 export { Room } from './generation/Room.ts';
 export { Door } from './generation/Door.ts';
 export { Wall } from './generation/Wall.ts';
@@ -57,6 +57,11 @@ export { CorridorTemplate } from './generation/templates/CorridorTemplate.ts';
 export { HallTemplate } from './generation/templates/HallTemplate.ts';
 export { OfficeTemplate } from './generation/templates/OfficeTemplate.ts';
 export { RoomTemplateRegistry } from './generation/templates/RoomTemplateRegistry.ts';
+
+// Внешний вид
+export { HslColor } from './appearance/HslColor.ts';
+export { SpacePalette } from './appearance/SpacePalette.ts';
+export type { WallpaperPattern } from './appearance/SpacePalette.ts';
 
 // Физика
 export { CollisionResolver } from './physics/CollisionResolver.ts';

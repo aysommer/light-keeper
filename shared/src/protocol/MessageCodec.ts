@@ -64,6 +64,8 @@ export class MessageCodec {
           : null;
       case 'input':
         return this.decodeInput(data['commands']);
+      case 'debug:next-space':
+        return { type: 'debug:next-space' };
       default:
         return null;
     }
@@ -100,7 +102,7 @@ export class MessageCodec {
     if (typeof raw !== 'object' || raw === null) {
       return null;
     }
-    const { seq, dt, moveX, moveY, yaw, pitch, run } = raw as JsonObject;
+    const { seq, dt, moveX, moveY, yaw, pitch, run, space } = raw as JsonObject;
     const valid =
       Number.isInteger(seq) &&
       (seq as number) >= 0 &&
@@ -110,7 +112,10 @@ export class MessageCodec {
       this.inRange(moveY, -1, 1) &&
       this.inRange(yaw, -MessageCodec.MAX_ANGLE, MessageCodec.MAX_ANGLE) &&
       this.inRange(pitch, -Math.PI, Math.PI) &&
-      typeof run === 'boolean';
+      typeof run === 'boolean' &&
+      Number.isInteger(space) &&
+      (space as number) >= 0 &&
+      (space as number) < MessageCodec.MAX_SEQ;
     if (!valid) {
       return null;
     }
@@ -122,6 +127,7 @@ export class MessageCodec {
       yaw: yaw as number,
       pitch: pitch as number,
       run: run as boolean,
+      space: space as number,
     };
   }
 

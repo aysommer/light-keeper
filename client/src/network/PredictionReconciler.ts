@@ -1,4 +1,5 @@
-import type { PlayerInput, PlayerMovement, Vector2 } from '@light-keeper/shared';
+import type { PlayerInput, Vector2 } from '@light-keeper/shared';
+import type { MovementProvider } from '../game/ActiveSpace.ts';
 import type { LocalPlayer } from '../game/LocalPlayer.ts';
 
 /**
@@ -12,10 +13,15 @@ export class PredictionReconciler {
 
   private pending: PlayerInput[] = [];
 
-  public constructor(private readonly movement: PlayerMovement) {}
+  public constructor(private readonly rules: MovementProvider) {}
 
   public get pendingCount(): number {
     return this.pending.length;
+  }
+
+  /** Забыть неподтверждённые команды (после перехода в новое пространство). */
+  public clear(): void {
+    this.pending = [];
   }
 
   public record(command: PlayerInput): void {
@@ -29,7 +35,10 @@ export class PredictionReconciler {
     this.pending = this.pending.filter((command) => command.seq > lastSeq);
     let position = serverPosition;
     for (const command of this.pending) {
-      position = this.movement.apply(position, command);
+      // Команды из прошлого пространства на новой карте не переигрываем.
+      if (command.space === this.rules.spaceIndex) {
+        position = this.rules.movement.apply(position, command);
+      }
     }
     player.correctTo(position);
   }

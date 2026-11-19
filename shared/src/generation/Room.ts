@@ -7,7 +7,7 @@ import type { RoomKind } from './RoomKind.ts';
 /** Комната чанка. */
 export class Room {
   public constructor(
-    /** Уникальный во всём мире идентификатор: `<индекс чанка>:<индекс комнаты>`. */
+    /** Идентификатор комнаты в пространстве: `<номер пространства>:<индекс комнаты>`. */
     public readonly id: string,
     public readonly kind: RoomKind,
     public readonly cells: CellRect,

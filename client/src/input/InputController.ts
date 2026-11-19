@@ -12,11 +12,15 @@ export class InputController {
   private static readonly MAX_MOUSE_DELTA = 250;
 
   private readonly pressed = new Set<string>();
+  private readonly justPressed = new Set<string>();
   private mouseDeltaX = 0;
   private mouseDeltaY = 0;
   private readonly lockListeners = new Set<(locked: boolean) => void>();
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (!event.repeat) {
+      this.justPressed.add(event.code);
+    }
     this.pressed.add(event.code);
   };
   private readonly onKeyUp = (event: KeyboardEvent): void => {
@@ -24,6 +28,7 @@ export class InputController {
   };
   private readonly onBlur = (): void => {
     this.pressed.clear();
+    this.justPressed.clear();
   };
   private readonly onMouseMove = (event: MouseEvent): void => {
     const isSpike =
@@ -60,6 +65,11 @@ export class InputController {
 
   public isPressed(code: string): boolean {
     return this.pressed.has(code);
+  }
+
+  /** Была ли клавиша нажата с прошлого вызова (однократное срабатывание). */
+  public consumePress(code: string): boolean {
+    return this.justPressed.delete(code);
   }
 
   /** Ось движения: `x` — вправо, `y` — вперёд. Значения −1, 0, 1. */
