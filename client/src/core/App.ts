@@ -1,6 +1,7 @@
 import type { ClientMessage, LobbySnapshot, ServerMessageOf } from '@light-keeper/shared';
 import { ConnectionError, NetworkClient } from '../network/NetworkClient.ts';
 import { ErrorMessages } from '../ui/ErrorMessages.ts';
+import { GameOverScreen } from '../ui/GameOverScreen.ts';
 import { GameScreen } from '../ui/GameScreen.ts';
 import { LobbyScreen } from '../ui/LobbyScreen.ts';
 import type { Screen } from '../ui/Screen.ts';
@@ -20,6 +21,8 @@ export class App {
   private network: NetworkClient | null = null;
   private subscriptions: Array<() => void> = [];
   private pendingNotice: string | null = null;
+  /** Последнее состояние комнаты — чтобы вернуться в неё с экрана конца партии. */
+  private latestLobby: LobbySnapshot | null = null;
 
   public constructor(private readonly root: HTMLElement) {}
 
@@ -65,6 +68,11 @@ export class App {
       network.on('lobby:state', (message) => this.handleLobbyState(message.lobby)),
       network.on('lobby:left', () => this.showTitle()),
       network.on('match:start', (message) => this.showMatch(network, message)),
+      network.on('match:over', (message) =>
+        this.show(
+          new GameOverScreen(message.reason, message.spacesCleared, () => this.returnToLobby()),
+        ),
+      ),
       network.on('match:aborted', () => {
         this.pendingNotice = 'Напарник вышел из игры.';
       }),
@@ -76,11 +84,16 @@ export class App {
   }
 
   private handleLobbyState(snapshot: LobbySnapshot): void {
+    this.latestLobby = snapshot;
     const network = this.network;
     if (!network?.playerId) {
       return;
     }
     if (snapshot.status === 'in_game' && this.current instanceof GameScreen) {
+      return;
+    }
+    // На экране конца партии комната обновляется молча — игрок вернётся сам.
+    if (this.current instanceof GameOverScreen) {
       return;
     }
     let lobbyScreen: LobbyScreen;
@@ -98,6 +111,17 @@ export class App {
       lobbyScreen.showNotice(this.pendingNotice);
       this.pendingNotice = null;
     }
+  }
+
+  private returnToLobby(): void {
+    if (!this.latestLobby) {
+      this.showTitle();
+      return;
+    }
+    const snapshot = this.latestLobby;
+    this.current?.dispose();
+    this.current = null;
+    this.handleLobbyState(snapshot);
   }
 
   private handleServerError(text: string): void {
@@ -133,6 +157,7 @@ export class App {
   }
 
   private dropNetwork(): void {
+    this.latestLobby = null;
     this.subscriptions.forEach((unsubscribe) => unsubscribe());
     this.subscriptions = [];
     this.network?.disconnect();

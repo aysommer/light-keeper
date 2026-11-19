@@ -4,8 +4,9 @@ import {
   PlayerMovement,
   SpaceGenerator,
 } from '@light-keeper/shared';
-import type { Space, SpacePhase } from '@light-keeper/shared';
+import type { MatchOverReason, Space, SpacePhase } from '@light-keeper/shared';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
+import { ExitState } from './ExitState.ts';
 
 /**
  * Мир партии: текущее пространство, его коллизии, игроки и фаза
@@ -18,11 +19,14 @@ export class MatchWorld {
   private currentMovement: PlayerMovement;
   private currentPhase: SpacePhase = 'playing';
   private transitionLeft = 0;
+  private currentExit: ExitState;
+  private overReason: MatchOverReason | null = null;
 
   public constructor(public readonly seed: number) {
     this.generator = new SpaceGenerator(seed);
     this.currentSpace = this.generator.generate(0);
     this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
+    this.currentExit = new ExitState(this.currentSpace);
   }
 
   public get space(): Space {
@@ -40,6 +44,21 @@ export class MatchWorld {
 
   public get phase(): SpacePhase {
     return this.currentPhase;
+  }
+
+  /** Состояние двери и ключа текущего пространства. */
+  public get exit(): ExitState {
+    return this.currentExit;
+  }
+
+  /** Причина окончания партии; `null`, пока партия идёт. */
+  public get over(): MatchOverReason | null {
+    return this.overReason;
+  }
+
+  /** Закончить партию (например, не все успели войти в дверь). */
+  public finish(reason: MatchOverReason): void {
+    this.overReason ??= reason;
   }
 
   /** Сколько секунд осталось до конца перехода. */
@@ -77,6 +96,7 @@ export class MatchWorld {
   public enterSpace(index: number): void {
     this.currentSpace = this.generator.generate(index);
     this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
+    this.currentExit = new ExitState(this.currentSpace);
     this.currentPhase = 'playing';
     this.transitionLeft = 0;
     this.players.forEach((player) =>

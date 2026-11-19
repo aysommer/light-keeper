@@ -20,7 +20,7 @@ export class FirstPersonController {
   private bobPhase = 0;
   private bobOffset = 0;
   private commandListener: ((command: PlayerInput) => void) | null = null;
-  /** Во время перехода между пространствами ходить нельзя (осматриваться можно). */
+  /** Во время перехода и в тамбуре ходить нельзя (осматриваться можно). */
   public frozen = false;
 
   public constructor(
@@ -45,6 +45,8 @@ export class FirstPersonController {
       yaw: this.player.yaw,
       pitch: this.player.pitch,
       run: this.input.isPressed('ShiftLeft') || this.input.isPressed('ShiftRight'),
+      // Короткое нажатие может уложиться между кадрами — учитываем и его.
+      interact: this.input.consumePress('KeyE') || this.input.isPressed('KeyE'),
       space: this.rules.spaceIndex,
     };
     this.player.isMoving = axis.lengthSquared() > 0;

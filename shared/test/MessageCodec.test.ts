@@ -17,6 +17,11 @@ describe('MessageCodec.decodeClientMessage', () => {
     });
     expect(decode({ type: 'ping', sentAt: 123 })).toEqual({ type: 'ping', sentAt: 123 });
     expect(decode({ type: 'debug:next-space' })).toEqual({ type: 'debug:next-space' });
+    expect(decode({ type: 'debug:goto', target: 'key' })).toEqual({
+      type: 'debug:goto',
+      target: 'key',
+    });
+    expect(decode({ type: 'debug:goto', target: 'moon' })).toBeNull();
   });
 
   it('нормализует код комнаты', () => {

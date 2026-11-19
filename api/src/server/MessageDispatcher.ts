@@ -82,6 +82,11 @@ export class MessageDispatcher {
           this.lobbies.lobbyOf(connection.id)?.match?.requestNextSpace();
         }
         return;
+      case 'debug:goto':
+        if (this.options.allowDebug) {
+          this.lobbies.lobbyOf(connection.id)?.match?.debugGoto(connection.id, message.target);
+        }
+        return;
       case 'input':
         // Команды, долетевшие после конца партии, просто отбрасываются.
         this.lobbies.lobbyOf(connection.id)?.match?.receiveInput(connection.id, message.commands);

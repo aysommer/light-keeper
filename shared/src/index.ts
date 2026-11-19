@@ -8,11 +8,14 @@ export { PLAYER_COLORS } from './protocol/Messages.ts';
 export type {
   ClientMessage,
   ClientMessageType,
+  DebugGotoTarget,
   ErrorCode,
+  ExitSnapshot,
   LobbyPlayerInfo,
   LobbySnapshot,
   LobbyStatus,
   MatchPlayerInfo,
+  MatchOverReason,
   MatchSnapshot,
   PlayerSnapshot,
   PlayerColor,
@@ -24,7 +27,12 @@ export type {
 
 // Конфигурация
 export { GameConfig } from './config/GameConfig.ts';
-export type { MatchSettings, PlayerSettings, WorldSettings } from './config/GameConfig.ts';
+export type {
+  ExitSettings,
+  MatchSettings,
+  PlayerSettings,
+  WorldSettings,
+} from './config/GameConfig.ts';
 
 // Математика и утилиты
 export { Vector2 } from './math/Vector2.ts';
@@ -39,6 +47,11 @@ export { Space } from './generation/Space.ts';
 export { SpaceGrid } from './generation/SpaceGrid.ts';
 export { Room } from './generation/Room.ts';
 export { Door } from './generation/Door.ts';
+export { ExitDoor } from './generation/ExitDoor.ts';
+export type { ExitKind } from './generation/ExitDoor.ts';
+export { ExitPlanner } from './generation/ExitPlanner.ts';
+export type { ExitPlan } from './generation/ExitPlanner.ts';
+export { RoomGraph } from './generation/RoomGraph.ts';
 export { Wall } from './generation/Wall.ts';
 export { Obstacle } from './generation/Obstacle.ts';
 export type { ObstacleKind } from './generation/Obstacle.ts';

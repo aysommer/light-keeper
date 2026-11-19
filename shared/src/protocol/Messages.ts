@@ -36,7 +36,30 @@ export interface PlayerSnapshot {
   readonly pitch: number;
   /** Номер последней применённой команды ввода этого игрока. */
   readonly lastSeq: number;
+  /** Игрок уже вошёл в дверь и ждёт в тамбуре. */
+  readonly inTambour: boolean;
 }
+
+/** Состояние двери выхода и ключа в текущем пространстве. */
+export interface ExitSnapshot {
+  readonly open: boolean;
+  /** Скрытая дверь уже проявлена (для остальных типов всегда `true`). */
+  readonly revealed: boolean;
+  /** Кто открывает дверь прямо сейчас, иначе `null`. */
+  readonly openerId: string | null;
+  /** Прогресс открытия, 0–1. */
+  readonly openProgress: number;
+  /** Сколько секунд осталось войти, пока дверь открыта; иначе `null`. */
+  readonly secondsLeft: number | null;
+  /** У кого ключ; `null` — ключ лежит на месте или его нет. */
+  readonly keyHolderId: string | null;
+}
+
+/** Куда можно перенестись отладочной командой. */
+export type DebugGotoTarget = 'exit' | 'key';
+
+/** Почему партия закончилась. */
+export type MatchOverReason = 'door_timeout';
 
 /** Фаза пространства: игра идёт или идёт переход (затемнение) в следующее. */
 export type SpacePhase = 'playing' | 'transition';
@@ -49,6 +72,7 @@ export interface MatchSnapshot {
   /** Номер текущего пространства (0 — первое) = число пройденных пространств. */
   readonly spaceIndex: number;
   readonly phase: SpacePhase;
+  readonly exit: ExitSnapshot;
   readonly players: readonly PlayerSnapshot[];
 }
 
@@ -73,7 +97,9 @@ export type ClientMessage =
   | { readonly type: 'ping'; readonly sentAt: number }
   | { readonly type: 'input'; readonly commands: readonly PlayerInput[] }
   /** Отладка: перейти в следующее пространство. Сервер принимает только в режиме разработки. */
-  | { readonly type: 'debug:next-space' };
+  | { readonly type: 'debug:next-space' }
+  /** Отладка: перенестись к двери выхода или к ключу. Только в режиме разработки. */
+  | { readonly type: 'debug:goto'; readonly target: DebugGotoTarget };
 
 /** Сообщения сервер → клиент. */
 export type ServerMessage =
@@ -90,6 +116,12 @@ export type ServerMessage =
     }
   | { readonly type: 'match:snapshot'; readonly snapshot: MatchSnapshot }
   | { readonly type: 'match:aborted'; readonly reason: 'partner_left' }
+  | {
+      readonly type: 'match:over';
+      readonly reason: MatchOverReason;
+      /** Сколько пространств пройдено. */
+      readonly spacesCleared: number;
+    }
   | { readonly type: 'error'; readonly code: ErrorCode; readonly message: string }
   | { readonly type: 'pong'; readonly sentAt: number };
 

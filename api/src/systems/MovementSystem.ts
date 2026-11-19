@@ -5,7 +5,7 @@ import type { System } from './System.ts';
 /**
  * Применяет команды ввода игроков. Время команд ограничено бюджетом,
  * накопленным за реально прошедшее время, — ускорить игрока нельзя.
- * Во время перехода и для команд из прошлого пространства игрок не двигается,
+ * Во время перехода, в тамбуре и для команд из прошлого пространства игрок не двигается,
  * но команды подтверждаются — клиент перестаёт их переигрывать.
  */
 export class MovementSystem implements System {
@@ -14,11 +14,13 @@ export class MovementSystem implements System {
       player.budget.credit(deltaSeconds);
       for (const command of player.drainCommands()) {
         const dt = player.budget.spend(Math.min(command.dt, PlayerMovement.MAX_COMMAND_DT));
-        const canMove = world.phase === 'playing' && command.space === world.spaceIndex;
+        const canMove =
+          world.phase === 'playing' && command.space === world.spaceIndex && !player.inTambour;
         if (canMove) {
           player.position = world.movement.apply(player.position, { ...command, dt });
         }
         player.applyLook(command);
+        player.applyInteract(command.interact);
         player.lastSeq = command.seq;
       }
     }

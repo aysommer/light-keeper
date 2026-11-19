@@ -170,6 +170,21 @@ describe('LobbyManager', () => {
     expectLobbyError(() => manager.setReady(red, true), 'not_in_lobby');
   });
 
+  it('после конца партии комната снова ждёт готовности обоих', () => {
+    const lobby = manager.create(red);
+    manager.join(blue, lobby.code);
+    manager.setReady(red, true);
+    manager.setReady(blue, true);
+    vi.advanceTimersByTime(3000);
+    const match = lobby.match!;
+    match.world.finish('door_timeout');
+    match.step();
+    expect(red.last('match:over')).toMatchObject({ reason: 'door_timeout' });
+    expect(lobby.status).toBe('waiting');
+    expect(lobby.match).toBeNull();
+    expect(red.last('lobby:state')!.lobby.players.every((p) => !p.ready)).toBe(true);
+  });
+
   it('нулевой отсчёт стартует сразу', () => {
     const instant = createManager({ countdownSeconds: 0 });
     const lobby = instant.create(red);

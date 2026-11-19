@@ -19,6 +19,7 @@ const step = (seq: number): PlayerInput => ({
   yaw: 0,
   pitch: 0,
   run: false,
+  interact: false,
   space: 0,
 });
 

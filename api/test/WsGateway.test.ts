@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
-import { MessageCodec, PROTOCOL_VERSION } from '@light-keeper/shared';
+import { MessageCodec, PROTOCOL_VERSION, SpaceGenerator } from '@light-keeper/shared';
 import type {
   ClientMessage,
   ServerMessage,
@@ -146,6 +146,7 @@ describe('WsGateway (интеграция)', () => {
         yaw: 0,
         pitch: 0,
         run: false,
+        interact: false,
         space: 0,
       })),
     });
@@ -193,6 +194,15 @@ describe('WsGateway (интеграция)', () => {
     debugHost.send({ type: 'debug:next-space' });
     await debugGuest.waitFor('match:snapshot', (m) => m.snapshot.phase === 'transition');
     await debugGuest.waitFor('match:snapshot', (m) => m.snapshot.spaceIndex === 1);
+
+    // Перенос к двери: игрок оказывается в точке перед ней.
+    const front = new SpaceGenerator(777).generate(1).exit.frontPoint(0.6);
+    debugHost.send({ type: 'debug:goto', target: 'exit' });
+    await debugGuest.waitFor('match:snapshot', (m) =>
+      m.snapshot.players.some(
+        (p) => Math.abs(p.x - front.x) < 1e-9 && Math.abs(p.y - front.y) < 1e-9,
+      ),
+    );
   });
 
   it('обрыв соединения партнёра прерывает партию', async () => {

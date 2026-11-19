@@ -1,6 +1,12 @@
 import type { Scene } from 'three';
 import { Vector2 } from '@light-keeper/shared';
-import type { MatchPlayerInfo, MatchSnapshot, SpacePhase } from '@light-keeper/shared';
+import type {
+  DebugGotoTarget,
+  ExitSnapshot,
+  MatchPlayerInfo,
+  MatchSnapshot,
+  SpacePhase,
+} from '@light-keeper/shared';
 import { InputSender } from '../network/InputSender.ts';
 import type { NetworkClient } from '../network/NetworkClient.ts';
 import { PredictionReconciler } from '../network/PredictionReconciler.ts';
@@ -27,6 +33,8 @@ export class NetworkSession {
   private sincePingMs = NetworkSession.PING_INTERVAL_MS;
   private latestPingMs: number | null = null;
   private currentPhase: SpacePhase = 'playing';
+  private latestExit: ExitSnapshot | null = null;
+  private selfInTambour = false;
 
   public constructor(
     private readonly network: NetworkClient,
@@ -60,16 +68,26 @@ export class NetworkSession {
     return this.currentPhase;
   }
 
+  /** Последнее известное состояние двери и ключа. */
+  public get exit(): ExitSnapshot | null {
+    return this.latestExit;
+  }
+
+  /** Этот игрок уже в тамбуре. */
+  public get inTambour(): boolean {
+    return this.selfInTambour;
+  }
+
   public get pingMs(): number | null {
     return this.latestPingMs;
   }
 
-  /** Расстояние до ближайшего напарника, м; `null`, если его ещё не видно. */
+  /** Расстояние до ближайшего напарника, м; `null`, если его не видно (или он в тамбуре). */
   public partnerDistance(): number | null {
     let nearest: number | null = null;
     for (const remote of this.remotes.values()) {
       const state = remote.state;
-      if (state) {
+      if (state && !remote.inTambour) {
         const distance = state.position.distanceTo(this.player.position);
         nearest = nearest === null ? distance : Math.min(nearest, distance);
       }
@@ -80,6 +98,11 @@ export class NetworkSession {
   /** Отладка: попросить сервер перейти в следующее пространство. */
   public requestNextSpace(): void {
     this.network.send({ type: 'debug:next-space' });
+  }
+
+  /** Отладка: перенестись к двери (`exit`) или к ключу (`key`). */
+  public requestGoto(target: DebugGotoTarget): void {
+    this.network.send({ type: 'debug:goto', target });
   }
 
   public update(deltaSeconds: number, time: number): void {
@@ -105,6 +128,7 @@ export class NetworkSession {
   private applySnapshot(snapshot: MatchSnapshot): void {
     this.clock.observe(snapshot.serverTime, performance.now());
     this.currentPhase = snapshot.phase;
+    this.latestExit = snapshot.exit;
     const enteredNewSpace = snapshot.spaceIndex !== this.space.spaceIndex;
     if (enteredNewSpace) {
       this.space.enter(snapshot.spaceIndex);
@@ -114,6 +138,7 @@ export class NetworkSession {
     for (const state of snapshot.players) {
       const position = new Vector2(state.x, state.y);
       if (state.id === this.playerId) {
+        this.selfInTambour = state.inTambour;
         if (enteredNewSpace) {
           this.player.teleport(position, this.space.space.startYaw);
         } else {
@@ -121,9 +146,9 @@ export class NetworkSession {
         }
         continue;
       }
-      this.remotes
-        .get(state.id)
-        ?.track.push(snapshot.serverTime, { position, yaw: state.yaw, pitch: state.pitch });
+      const remote = this.remotes.get(state.id);
+      remote?.setInTambour(state.inTambour);
+      remote?.track.push(snapshot.serverTime, { position, yaw: state.yaw, pitch: state.pitch });
     }
   }
 }

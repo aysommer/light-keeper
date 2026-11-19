@@ -1,6 +1,8 @@
 import type { Scene } from 'three';
 import { CollisionWorld, PlayerMovement, SpaceGenerator } from '@light-keeper/shared';
-import type { Space } from '@light-keeper/shared';
+import type { ExitSnapshot, Space } from '@light-keeper/shared';
+import { ExitDoorView } from '../scene/ExitDoorView.ts';
+import { KeyView } from '../scene/KeyView.ts';
 import { SpaceMeshBuilder } from '../scene/SpaceMeshBuilder.ts';
 import type { SpaceView } from '../scene/SpaceView.ts';
 
@@ -20,6 +22,8 @@ export class ActiveSpace implements MovementProvider {
   private currentSpace: Space;
   private currentMovement: PlayerMovement;
   private view: SpaceView;
+  private door: ExitDoorView;
+  private key: KeyView | null;
 
   public constructor(
     matchSeed: number,
@@ -30,6 +34,8 @@ export class ActiveSpace implements MovementProvider {
     this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
     this.view = this.builder.build(this.currentSpace);
     scene.add(this.view.group);
+    this.door = this.createDoor();
+    this.key = this.createKey();
   }
 
   public get space(): Space {
@@ -48,18 +54,44 @@ export class ActiveSpace implements MovementProvider {
     if (index === this.currentSpace.index) {
       return;
     }
-    this.view.dispose();
+    this.disposeViews();
     this.currentSpace = this.generator.generate(index);
     this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
     this.view = this.builder.build(this.currentSpace);
     this.scene.add(this.view.group);
+    this.door = this.createDoor();
+    this.key = this.createKey();
   }
 
-  public update(time: number): void {
+  /** Анимация пространства, двери и ключа по последнему состоянию с сервера. */
+  public update(exit: ExitSnapshot | null, deltaSeconds: number, time: number): void {
     this.view.update(time);
+    this.door.update(exit, deltaSeconds);
+    this.key?.update(exit, time);
   }
 
   public dispose(): void {
+    this.disposeViews();
+  }
+
+  private createDoor(): ExitDoorView {
+    const door = new ExitDoorView(this.currentSpace.exit, this.view.materials);
+    this.scene.add(door.root);
+    return door;
+  }
+
+  private createKey(): KeyView | null {
+    if (!this.currentSpace.key) {
+      return null;
+    }
+    const key = new KeyView(this.currentSpace.key);
+    this.scene.add(key.root);
+    return key;
+  }
+
+  private disposeViews(): void {
+    this.key?.dispose();
+    this.door.dispose();
     this.view.dispose();
   }
 }

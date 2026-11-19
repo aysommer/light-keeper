@@ -7,6 +7,7 @@ import { SeededRandom } from '../random/SeededRandom.ts';
 import { SeedHasher } from '../random/SeedHasher.ts';
 import { Door } from './Door.ts';
 import { DoorPlanner } from './DoorPlanner.ts';
+import { ExitPlanner } from './ExitPlanner.ts';
 import { Room } from './Room.ts';
 import type { RoomLayout } from './RoomLayout.ts';
 import { RoomLayoutPlanner } from './RoomLayoutPlanner.ts';
@@ -78,6 +79,16 @@ export class SpaceGenerator {
     if (!startRoom) {
       throw new Error('Стартовая комната не найдена');
     }
+    const exitRng = rng.fork('exit');
+    const { exit, key } = new ExitPlanner().plan(
+      ExitPlanner.kindFor(index, exitRng),
+      grid,
+      layout,
+      rooms,
+      doors,
+      startRoom,
+      exitRng,
+    );
 
     return new Space(
       index,
@@ -91,6 +102,8 @@ export class SpaceGenerator {
       startRoom,
       [startCenter.sub(offset), startCenter.add(offset)],
       this.startYaw(startCenter, startRoom, doors),
+      exit,
+      key,
     );
   }
 

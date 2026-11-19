@@ -85,10 +85,21 @@ export class SpaceMeshBuilder {
   private buildPanels(space: Space, materials: MaterialLibrary): InstancedMesh[] {
     const byState: Record<PanelState, Matrix4[]> = { on: [], off: [], flicker: [] };
     const height = this.settings.ceilingHeight - 0.01;
+    // Подсказка обычной двери: лампа над ней всегда мерцает.
+    const doorFront = space.exit.frontPoint();
+    const hintCol = Math.floor(doorFront.x / space.grid.cellSize);
+    const hintRow = Math.floor(doorFront.y / space.grid.cellSize);
     for (let row = 0; row < space.grid.rows; row++) {
       for (let col = 0; col < space.grid.columns; col++) {
         const roll = SeedHasher.hash(space.seed, 'panel', col, row) / 2 ** 32;
-        const state: PanelState = roll < 0.6 ? 'off' : roll < 0.85 ? 'flicker' : 'on';
+        const isHint = space.exit.kind === 'plain' && col === hintCol && row === hintRow;
+        const state: PanelState = isHint
+          ? 'flicker'
+          : roll < 0.6
+            ? 'off'
+            : roll < 0.85
+              ? 'flicker'
+              : 'on';
         const center = space.grid.cellCenter(col, row);
         byState[state].push(
           new Matrix4().makeTranslation(center.x, height, SceneCoords.sceneZ(center.y)),

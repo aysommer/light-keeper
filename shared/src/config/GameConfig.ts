@@ -56,6 +56,25 @@ export interface MatchSettings {
   readonly transitionSeconds: number;
 }
 
+/** Правила двери выхода и ключа. */
+export interface ExitSettings {
+  /** Сколько удерживать `E`, чтобы открыть дверь, с. */
+  readonly openSeconds: number;
+  /** Сколько времени после открытия есть, чтобы войти обоим, с. */
+  readonly timerSeconds: number;
+  /** С какого расстояния (от точки перед дверью) можно открыть дверь и войти, м. */
+  readonly interactDistance: number;
+  /** С какого расстояния горящая лампа проявляет скрытую дверь, м. */
+  readonly revealDistance: number;
+  /** С какого расстояния игрок подбирает ключ, м. */
+  readonly keyPickupDistance: number;
+  /** Ширина и высота дверного полотна, м. */
+  readonly doorWidth: number;
+  readonly doorHeight: number;
+  /** Доля самых дальних комнат, из которых выбирается комната двери и ключа. */
+  readonly farthestShare: number;
+}
+
 /** Единая точка настроек баланса игры. */
 export class GameConfig {
   public static readonly world: WorldSettings = {
@@ -94,5 +113,16 @@ export class GameConfig {
 
   public static readonly match: MatchSettings = {
     transitionSeconds: 1.5,
+  };
+
+  public static readonly exit: ExitSettings = {
+    openSeconds: 3,
+    timerSeconds: 30,
+    interactDistance: 1.3,
+    revealDistance: 3,
+    keyPickupDistance: 0.9,
+    doorWidth: 1,
+    doorHeight: 2.1,
+    farthestShare: 0.3,
   };
 }

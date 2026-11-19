@@ -1,5 +1,6 @@
-import { GameConfig } from '@light-keeper/shared';
+import { GameConfig, Vector2 } from '@light-keeper/shared';
 import type {
+  DebugGotoTarget,
   MatchPlayerInfo,
   PlayerColor,
   PlayerInput,
@@ -7,6 +8,7 @@ import type {
 } from '@light-keeper/shared';
 import { ServerPlayer } from '../entities/ServerPlayer.ts';
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
+import { ExitSystem } from '../systems/ExitSystem.ts';
 import { MovementSystem } from '../systems/MovementSystem.ts';
 import type { System } from '../systems/System.ts';
 import { TransitionSystem } from '../systems/TransitionSystem.ts';
@@ -18,6 +20,8 @@ export interface MatchOptions {
   /** Длительность перехода между пространствами, с. */
   readonly transitionSeconds?: number;
   readonly now?: () => number;
+  /** Вызывается, когда партия закончилась по правилам игры. */
+  readonly onEnd?: () => void;
 }
 
 export interface MatchMember {
@@ -31,6 +35,8 @@ export interface MatchMember {
  */
 export class Match {
   public static readonly DEFAULT_OPTIONS: MatchOptions = { tickRate: 20 };
+  /** Отладочный перенос к ключу ставит игрока на 1.2 м правее ключа (внутри той же клетки). */
+  public static readonly KEY_GOTO_OFFSET = new Vector2(1.2, 0);
 
   public readonly world: MatchWorld;
   private readonly systems: System[];
@@ -39,6 +45,8 @@ export class Match {
   private tick = 0;
   private startedAt = 0;
   private lastTickAt = 0;
+  /** Партия закончилась: больше не симулируем и не рассылаем. */
+  private ended = false;
 
   public constructor(
     seed: number,
@@ -51,7 +59,13 @@ export class Match {
       const start = this.world.space.startPositions[0];
       this.world.addPlayer(new ServerPlayer(member.participant, member.color, start));
     }
-    this.systems = [new MovementSystem(), new TransitionSystem()];
+    this.systems = [
+      new MovementSystem(),
+      new ExitSystem(GameConfig.exit, {
+        transitionSeconds: options.transitionSeconds ?? GameConfig.match.transitionSeconds,
+      }),
+      new TransitionSystem(),
+    ];
   }
 
   public get seed(): number {
@@ -92,12 +106,27 @@ export class Match {
     );
   }
 
+  /** Отладка: перенести игрока к двери выхода или к ключу. */
+  public debugGoto(playerId: string, target: DebugGotoTarget): void {
+    const player = this.world.players.get(playerId);
+    const space = this.world.space;
+    // К ключу — в шаге от него, чтобы его было видно и подобрать можно было самому.
+    const destination =
+      target === 'exit' ? space.exit.frontPoint(0.6) : space.key?.add(Match.KEY_GOTO_OFFSET);
+    if (player && !player.inTambour && destination) {
+      player.position = destination;
+    }
+  }
+
   public receiveInput(playerId: string, commands: readonly PlayerInput[]): void {
     this.world.players.get(playerId)?.enqueue(commands);
   }
 
   /** Один тик симуляции (публичный — для тестов). */
   public step(): void {
+    if (this.ended) {
+      return;
+    }
     const now = this.now();
     const deltaSeconds = Math.max(0, (now - this.lastTickAt) / 1000);
     this.lastTickAt = now;
@@ -106,6 +135,13 @@ export class Match {
       system.update(this.world, deltaSeconds);
     }
     this.broadcastSnapshot(now);
+    const reason = this.world.over;
+    if (reason !== null) {
+      this.ended = true;
+      this.stop();
+      this.broadcast({ type: 'match:over', reason, spacesCleared: this.world.spaceIndex });
+      this.options.onEnd?.();
+    }
   }
 
   private broadcastSnapshot(now: number): void {
@@ -116,9 +152,14 @@ export class Match {
         serverTime: Math.round(now - this.startedAt),
         spaceIndex: this.world.spaceIndex,
         phase: this.world.phase,
+        exit: this.world.exit.snapshot(GameConfig.exit.openSeconds),
         players: [...this.world.players.values()].map((player) => player.snapshot()),
       },
     };
+    this.broadcast(message);
+  }
+
+  private broadcast(message: ServerMessage): void {
     this.world.players.forEach((player) => player.participant.send(message));
   }
 }

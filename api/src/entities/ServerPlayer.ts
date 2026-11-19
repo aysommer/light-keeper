@@ -12,6 +12,12 @@ export class ServerPlayer extends Entity {
   public yaw = 0;
   public pitch = 0;
   public lastSeq = -1;
+  /** Клавиша действия удерживается (по последней команде). */
+  public interacting = false;
+  /** Клавиша действия нажата заново в этом тике (фронт нажатия). */
+  public interactPressed = false;
+  /** Игрок вошёл в дверь и ждёт в тамбуре. */
+  public inTambour = false;
   public readonly budget = new InputBudget();
   private readonly queue: PlayerInput[] = [];
 
@@ -46,6 +52,16 @@ export class ServerPlayer extends Entity {
     this.position = position;
     this.yaw = yaw;
     this.pitch = 0;
+    this.inTambour = false;
+    this.interactPressed = false;
+  }
+
+  /** Учитывает клавишу действия из команды: удержание и фронт нажатия. */
+  public applyInteract(held: boolean): void {
+    if (held && !this.interacting) {
+      this.interactPressed = true;
+    }
+    this.interacting = held;
   }
 
   public applyLook(command: PlayerInput): void {
@@ -61,6 +77,7 @@ export class ServerPlayer extends Entity {
       yaw: this.yaw,
       pitch: this.pitch,
       lastSeq: this.lastSeq,
+      inTambour: this.inTambour,
     };
   }
 }

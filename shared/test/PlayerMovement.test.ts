@@ -23,6 +23,7 @@ const input = (overrides: Partial<PlayerInput> = {}): PlayerInput => ({
   yaw: 0,
   pitch: 0,
   run: false,
+  interact: false,
   space: 0,
   ...overrides,
 });
@@ -99,6 +100,7 @@ describe('MessageCodec: input', () => {
     ['pitch вне диапазона', [input({ pitch: 4 })]],
     ['run не boolean', [{ ...input(), run: 1 }]],
     ['без номера пространства', [{ ...input(), space: undefined }]],
+    ['interact не boolean', [{ ...input(), interact: 'yes' }]],
     ['дробный номер пространства', [input({ space: 1.5 })]],
     ['не массив', 'abc'],
   ])('отклоняет: %s', (_name, commands) => {

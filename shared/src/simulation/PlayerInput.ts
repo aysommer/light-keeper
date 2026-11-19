@@ -16,6 +16,8 @@ export interface PlayerInput {
   /** Наклон головы, рад. */
   readonly pitch: number;
   readonly run: boolean;
+  /** Зажата клавиша действия (`E`): открыть дверь, войти в неё. */
+  readonly interact: boolean;
   /** Номер пространства, в котором сформирована команда. Чужие команды сервер не двигает. */
   readonly space: number;
 }

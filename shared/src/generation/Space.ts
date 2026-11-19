@@ -2,6 +2,7 @@ import type { SpacePalette } from '../appearance/SpacePalette.ts';
 import type { AABB } from '../math/AABB.ts';
 import type { Vector2 } from '../math/Vector2.ts';
 import type { Door } from './Door.ts';
+import type { ExitDoor } from './ExitDoor.ts';
 import type { Obstacle } from './Obstacle.ts';
 import type { Room } from './Room.ts';
 import type { RoomLayout } from './RoomLayout.ts';
@@ -25,6 +26,10 @@ export class Space {
     public readonly startPositions: readonly [Vector2, Vector2],
     /** Направление взгляда на старте (yaw, рад): на ближайший выход из стартовой комнаты. */
     public readonly startYaw: number,
+    /** Спрятанная дверь выхода в следующее пространство. */
+    public readonly exit: ExitDoor,
+    /** Где лежит ключ (только для двери `locked`). */
+    public readonly key: Vector2 | null,
   ) {}
 
   public get bounds(): AABB {

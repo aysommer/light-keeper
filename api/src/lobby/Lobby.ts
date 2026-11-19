@@ -166,11 +166,10 @@ export class Lobby {
 
   private startMatch(): void {
     this.currentStatus = 'in_game';
-    const match = new Match(
-      this.options.createSeed(),
-      [...this.members.values()],
-      this.options.match ?? Match.DEFAULT_OPTIONS,
-    );
+    const match = new Match(this.options.createSeed(), [...this.members.values()], {
+      ...(this.options.match ?? Match.DEFAULT_OPTIONS),
+      onEnd: () => this.handleMatchEnd(),
+    });
     this.currentMatch = match;
     this.broadcastState();
     for (const member of this.members.values()) {
@@ -183,6 +182,14 @@ export class Lobby {
       });
     }
     match.start();
+  }
+
+  /** Партия закончилась по правилам: комната снова ждёт готовности обоих. */
+  private handleMatchEnd(): void {
+    this.currentMatch = null;
+    this.currentStatus = 'waiting';
+    this.members.forEach((member) => (member.ready = false));
+    this.broadcastState();
   }
 
   private stopMatch(): void {
