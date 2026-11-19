@@ -3,13 +3,16 @@ import type { MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
 import { GameLoop } from '../core/GameLoop.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
+import { HeldItems } from '../game/HeldItems.ts';
 import { InteractionPrompt } from '../game/InteractionPrompt.ts';
 import { LocalPlayer } from '../game/LocalPlayer.ts';
 import { NetworkSession } from '../game/NetworkSession.ts';
+import { PartnerBearing } from '../game/PartnerBearing.ts';
 import { InputController } from '../input/InputController.ts';
 import type { NetworkClient } from '../network/NetworkClient.ts';
 import { HandLampLight } from '../scene/HandLampLight.ts';
 import { SceneManager } from '../scene/SceneManager.ts';
+import { CompassView } from './CompassView.ts';
 import { ExitHud } from './ExitHud.ts';
 import { Hud } from './Hud.ts';
 import type { Screen } from './Screen.ts';
@@ -34,6 +37,8 @@ export class GameScreen implements Screen {
   private readonly hud: Hud;
   private readonly overlay = new TransitionOverlay();
   private readonly exitHud = new ExitHud();
+  private readonly compass = new CompassView();
+  private readonly held = new HeldItems();
   private readonly tambour = new TambourOverlay();
   private readonly prompt = new InteractionPrompt();
   private readonly disposables: Array<{ dispose(): void }> = [];
@@ -42,7 +47,7 @@ export class GameScreen implements Screen {
   public constructor(private readonly options: GameScreenOptions) {
     this.element = document.createElement('div');
     this.element.className = 'game-screen';
-    this.hud = new Hud(options.seed, options.color, options.onExit);
+    this.hud = new Hud(options.seed, options.onExit);
   }
 
   public mount(): void {
@@ -52,6 +57,7 @@ export class GameScreen implements Screen {
     this.element.append(
       this.hud.element,
       this.exitHud.element,
+      this.compass.element,
       this.tambour.element,
       this.overlay.element,
     );
@@ -117,9 +123,18 @@ export class GameScreen implements Screen {
         ),
       );
       this.tambour.update(session.inTambour && !inTransition, exit?.secondsLeft ?? null);
+      // Предмет в руке: 1 — лампа, 2 — компас (убранная лампа не светит).
+      for (const code of HeldItems.keyCodes) {
+        if (input.consumePress(code)) this.held.selectByKey(code);
+      }
+      const compassInHand = this.held.current === 'compass' && !session.inTambour;
+      lamp.setEnabled(this.held.current === 'lamp');
       lamp.update(time);
-      this.hud.setSpace(space.spaceIndex);
-      this.hud.setNetworkInfo(session.pingMs, session.partnerDistance());
+      const partner = session.partnerPosition();
+      this.compass.update(
+        compassInHand,
+        partner ? PartnerBearing.clockwiseFromForward(player.position, player.yaw, partner) : null,
+      );
       sceneManager.render();
     });
     this.loop.start();

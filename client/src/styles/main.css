@@ -161,16 +161,6 @@ body {
   color: #f3e7b0;
 }
 
-.hud__space {
-  position: absolute;
-  top: 16px;
-  left: 20px;
-  font-size: 28px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 2px 6px rgb(0 0 0 / 0.6);
-}
-
 .hud__seed {
   position: absolute;
   right: 16px;
@@ -375,34 +365,6 @@ kbd {
   gap: 12px;
 }
 
-.hud__player {
-  position: absolute;
-  top: 18px;
-  right: 20px;
-  padding: 4px 12px;
-  border-radius: 999px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.hud__player--red {
-  background: var(--player-red);
-}
-
-.hud__player--blue {
-  background: var(--player-blue);
-}
-
-.hud__network {
-  position: absolute;
-  top: 54px;
-  left: 20px;
-  font-size: 13px;
-  opacity: 0.75;
-  text-shadow: 0 1px 4px rgb(0 0 0 / 0.6);
-}
-
 /* Переход между пространствами */
 
 .transition-overlay {
@@ -499,7 +461,7 @@ kbd {
 
 .exit-hud__key {
   position: absolute;
-  top: 54px;
+  top: 18px;
   right: 20px;
   padding: 3px 10px;
   border-radius: 999px;
@@ -585,4 +547,87 @@ kbd {
 .game-over-screen .button {
   background: #f3e7b0;
   color: #1b1a14;
+}
+
+/* Компас */
+
+.compass {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  pointer-events: none;
+}
+
+.compass[hidden] {
+  display: none;
+}
+
+.compass__ring {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border: 3px solid #c9a227;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(40 32 12 / 0.9) 0%, rgb(15 12 4 / 0.92) 100%);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.6);
+}
+
+/* Метка «прямо по курсу» наверху циферблата. */
+.compass__mark {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 4px;
+  height: 10px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: rgb(243 231 176 / 0.7);
+}
+
+.compass__needle {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.08s linear;
+}
+
+.compass__needle::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  margin-left: -8px;
+  border-right: 8px solid transparent;
+  border-bottom: 38px solid #ff5a4d;
+  border-left: 8px solid transparent;
+}
+
+.compass__needle::after {
+  content: '';
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  margin-left: -6px;
+  border-top: 28px solid rgb(243 231 176 / 0.35);
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+}
+
+.compass__hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: #c9a227;
+}
+
+/* Напарник неизвестен (в тамбуре или ещё не виден): стрелки нет. */
+.compass--lost .compass__needle {
+  display: none;
 }

@@ -1,32 +1,18 @@
-import type { PlayerColor } from '@light-keeper/shared';
-
-/** Игровой интерфейс поверх 3D-сцены: дистанция, прицел, подсказка управления. */
+/**
+ * Минимальный интерфейс поверх 3D-сцены: прицел и пауза с подсказкой управления.
+ * Номер пространства показывается только при переходе (см. TransitionOverlay).
+ */
 export class Hud {
-  private static readonly COLOR_LABELS: Record<PlayerColor, string> = {
-    red: 'Ты — красный',
-    blue: 'Ты — голубой',
-  };
-
   public readonly element: HTMLElement;
-  private readonly spaceLabel: HTMLElement;
   private readonly overlay: HTMLElement;
-  private readonly network: HTMLElement;
-  private lastShownSpace = -1;
-  private lastNetworkText = '';
 
-  public constructor(seed: number, color: PlayerColor, onExit: () => void) {
+  public constructor(seed: number, onExit: () => void) {
     this.element = document.createElement('div');
     this.element.className = 'hud';
-
-    this.spaceLabel = document.createElement('div');
-    this.spaceLabel.className = 'hud__space';
 
     const seedLabel = document.createElement('div');
     seedLabel.className = 'hud__seed';
     seedLabel.textContent = `seed ${seed}`;
-
-    this.network = document.createElement('div');
-    this.network.className = 'hud__network';
 
     const crosshair = document.createElement('div');
     crosshair.className = 'hud__crosshair';
@@ -38,7 +24,8 @@ export class Hud {
     hint.innerHTML = `
       <p class="hud__hint-title">Кликни, чтобы осмотреться</p>
       <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> — идти · <kbd>Shift</kbd> — бежать ·
-        мышь — смотреть · <kbd>E</kbd> — дверь · <kbd>Esc</kbd> — пауза</p>
+        мышь — смотреть · <kbd>E</kbd> — дверь · <kbd>1</kbd> — лампа · <kbd>2</kbd> — компас ·
+        <kbd>Esc</kbd> — пауза</p>
     `;
     const exit = document.createElement('button');
     exit.type = 'button';
@@ -51,32 +38,7 @@ export class Hud {
     hint.append(exit);
     this.overlay.append(hint);
 
-    this.element.append(this.spaceLabel, this.network, seedLabel, crosshair, this.overlay);
-    const chip = document.createElement('div');
-    chip.className = `hud__player hud__player--${color}`;
-    chip.textContent = Hud.COLOR_LABELS[color];
-    this.element.append(chip);
-    this.setSpace(0);
-  }
-
-  /** Номер текущего пространства (0 — первое); показываем с единицы. */
-  public setSpace(index: number): void {
-    if (index !== this.lastShownSpace) {
-      this.lastShownSpace = index;
-      this.spaceLabel.textContent = `Пространство ${index + 1}`;
-    }
-  }
-
-  /** Пинг и расстояние до напарника. */
-  public setNetworkInfo(pingMs: number | null, partnerMeters: number | null): void {
-    const partner =
-      partnerMeters === null ? 'напарник: —' : `напарник: ${partnerMeters.toFixed(0)} м`;
-    const ping = pingMs === null ? '' : ` · пинг ${pingMs} мс`;
-    const text = partner + ping;
-    if (text !== this.lastNetworkText) {
-      this.lastNetworkText = text;
-      this.network.textContent = text;
-    }
+    this.element.append(seedLabel, crosshair, this.overlay);
   }
 
   public setPointerLocked(locked: boolean): void {

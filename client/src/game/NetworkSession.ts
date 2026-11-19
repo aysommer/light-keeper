@@ -18,20 +18,17 @@ import { RemotePlayerView } from './RemotePlayerView.ts';
 
 /**
  * Сетевая часть партии на клиенте: отправка ввода, согласование своей позиции
- * с сервером, интерполяция напарника, смена пространств, пинг.
+ * с сервером, интерполяция напарника, смена пространств.
  */
 export class NetworkSession {
   /** Насколько «в прошлом» рисуется напарник, мс (≈2 тика сервера). */
   private static readonly INTERPOLATION_DELAY_MS = 100;
-  private static readonly PING_INTERVAL_MS = 2000;
 
   private readonly sender: InputSender;
   private readonly reconciler: PredictionReconciler;
   private readonly clock = new ServerClock();
   private readonly remotes = new Map<string, RemotePlayerView>();
   private readonly unsubscribe: Array<() => void> = [];
-  private sincePingMs = NetworkSession.PING_INTERVAL_MS;
-  private latestPingMs: number | null = null;
   private currentPhase: SpacePhase = 'playing';
   private latestExit: ExitSnapshot | null = null;
   private selfInTambour = false;
@@ -58,9 +55,6 @@ export class NetworkSession {
     });
     this.unsubscribe.push(
       network.on('match:snapshot', (message) => this.applySnapshot(message.snapshot)),
-      network.on('pong', (message) => {
-        this.latestPingMs = Math.round(performance.now() - message.sentAt);
-      }),
     );
   }
 
@@ -78,21 +72,14 @@ export class NetworkSession {
     return this.selfInTambour;
   }
 
-  public get pingMs(): number | null {
-    return this.latestPingMs;
-  }
-
-  /** Расстояние до ближайшего напарника, м; `null`, если его не видно (или он в тамбуре). */
-  public partnerDistance(): number | null {
-    let nearest: number | null = null;
+  /** Где сейчас напарник; `null`, если он неизвестен или уже в тамбуре. */
+  public partnerPosition(): Vector2 | null {
     for (const remote of this.remotes.values()) {
-      const state = remote.state;
-      if (state && !remote.inTambour) {
-        const distance = state.position.distanceTo(this.player.position);
-        nearest = nearest === null ? distance : Math.min(nearest, distance);
+      if (remote.state && !remote.inTambour) {
+        return remote.state.position;
       }
     }
-    return nearest;
+    return null;
   }
 
   /** Отладка: попросить сервер перейти в следующее пространство. */
@@ -111,11 +98,6 @@ export class NetworkSession {
     if (serverNow !== null) {
       const renderTime = serverNow - NetworkSession.INTERPOLATION_DELAY_MS;
       this.remotes.forEach((remote) => remote.update(renderTime, time));
-    }
-    this.sincePingMs += deltaSeconds * 1000;
-    if (this.sincePingMs >= NetworkSession.PING_INTERVAL_MS) {
-      this.sincePingMs = 0;
-      this.network.send({ type: 'ping', sentAt: performance.now() });
     }
   }
 

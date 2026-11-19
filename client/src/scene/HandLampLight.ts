@@ -15,6 +15,11 @@ export class HandLampLight {
     camera.add(this.light);
   }
 
+  /** Лампа в руке (включена) или убрана — тогда свет от неё не идёт. */
+  public setEnabled(enabled: boolean): void {
+    this.light.visible = enabled;
+  }
+
   /** Лёгкое дрожание пламени. */
   public update(time: number): void {
     const flicker = Math.sin(time * 11) * 0.04 + Math.sin(time * 27.7) * 0.03;
