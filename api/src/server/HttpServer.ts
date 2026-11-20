@@ -2,7 +2,8 @@ import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { PROTOCOL_VERSION } from '@light-keeper/shared';
-import type { HealthResponse } from '@light-keeper/shared';
+import type { HealthResponse, RecordsResponse } from '@light-keeper/shared';
+import type { RecordBook } from '../records/RecordBook.ts';
 import type { ServerConfig } from '../config/ServerConfig.ts';
 
 type RouteHandler = (request: IncomingMessage, response: ServerResponse) => void;
@@ -16,7 +17,10 @@ export class HttpServer {
   private readonly routes = new Map<string, RouteHandler>();
   private readonly startedAt = Date.now();
 
-  public constructor(private readonly config: ServerConfig) {
+  public constructor(
+    private readonly config: ServerConfig,
+    private readonly records: RecordBook | null = null,
+  ) {
     this.server = createServer((request, response) => this.handle(request, response));
     this.registerRoutes();
   }
@@ -48,6 +52,10 @@ export class HttpServer {
   }
 
   private registerRoutes(): void {
+    this.routes.set('GET /records', (_request, response) => {
+      const body: RecordsResponse = { records: this.records?.top ?? [] };
+      this.sendJson(response, 200, body);
+    });
     this.routes.set('GET /health', (_request, response) => {
       const body: HealthResponse = {
         status: 'ok',

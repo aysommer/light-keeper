@@ -2,12 +2,15 @@
 export class ServerConfig {
   public static readonly DEFAULT_PORT = 3000;
   public static readonly DEFAULT_HOST = '0.0.0.0';
+  public static readonly DEFAULT_RECORDS_FILE = 'data/records.json';
 
   public constructor(
     public readonly port: number,
     public readonly host: string,
     /** Принимать отладочные команды клиента (`LK_DEBUG=1`). Только для разработки. */
     public readonly allowDebug = false,
+    /** Файл таблицы рекордов; `null` — хранить только в памяти. */
+    public readonly recordsFile: string | null = null,
   ) {}
 
   public static fromEnv(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -15,6 +18,7 @@ export class ServerConfig {
       ServerConfig.parsePort(env['PORT']),
       env['HOST'] ?? ServerConfig.DEFAULT_HOST,
       env['LK_DEBUG'] === '1',
+      env['RECORDS_FILE'] || ServerConfig.DEFAULT_RECORDS_FILE,
     );
   }
 

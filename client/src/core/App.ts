@@ -34,6 +34,7 @@ export class App {
     this.dropNetwork();
     const title: TitleScreen = new TitleScreen(
       new ServerStatusIndicator(this.api),
+      this.api,
       {
         onCreateLobby: () => void this.enterLobby(title, { type: 'lobby:create' }),
         onJoinLobby: (code) => void this.enterLobby(title, { type: 'lobby:join', code }),
@@ -68,11 +69,7 @@ export class App {
       network.on('lobby:state', (message) => this.handleLobbyState(message.lobby)),
       network.on('lobby:left', () => this.showTitle()),
       network.on('match:start', (message) => this.showMatch(network, message)),
-      network.on('match:over', (message) =>
-        this.show(
-          new GameOverScreen(message.reason, message.spacesCleared, () => this.returnToLobby()),
-        ),
-      ),
+      network.on('match:over', (message) => this.showGameOver(network, message)),
       network.on('match:aborted', () => {
         this.pendingNotice = 'Напарник вышел из игры.';
       }),
@@ -92,8 +89,9 @@ export class App {
     if (snapshot.status === 'in_game' && this.current instanceof GameScreen) {
       return;
     }
-    // На экране конца партии комната обновляется молча — игрок вернётся сам.
+    // На экране конца партии показываем, готов ли напарник сыграть ещё раз.
     if (this.current instanceof GameOverScreen) {
+      this.current.updateLobby(snapshot);
       return;
     }
     let lobbyScreen: LobbyScreen;
@@ -110,6 +108,21 @@ export class App {
     if (this.pendingNotice) {
       lobbyScreen.showNotice(this.pendingNotice);
       this.pendingNotice = null;
+    }
+  }
+
+  private showGameOver(network: NetworkClient, over: ServerMessageOf<'match:over'>): void {
+    if (!network.playerId) {
+      return;
+    }
+    const screen = new GameOverScreen(network.playerId, over, {
+      onPlayAgain: () => network.send({ type: 'lobby:ready', ready: true }),
+      onBackToRoom: () => this.returnToLobby(),
+      onExit: () => this.showTitle(),
+    });
+    this.show(screen);
+    if (this.latestLobby) {
+      screen.updateLobby(this.latestLobby);
     }
   }
 

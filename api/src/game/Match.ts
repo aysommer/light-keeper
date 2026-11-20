@@ -8,6 +8,7 @@ import type {
   ServerMessage,
 } from '@light-keeper/shared';
 import { ServerPlayer } from '../entities/ServerPlayer.ts';
+import type { RecordBook } from '../records/RecordBook.ts';
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
 import { ExchangeSystem } from '../systems/ExchangeSystem.ts';
 import { ExitSystem } from '../systems/ExitSystem.ts';
@@ -27,6 +28,8 @@ export interface MatchOptions {
   readonly now?: () => number;
   /** Вызывается, когда партия закончилась по правилам игры. */
   readonly onEnd?: () => void;
+  /** Таблица рекордов, куда записывается результат партии. */
+  readonly records?: RecordBook;
 }
 
 export interface MatchMember {
@@ -193,7 +196,17 @@ export class Match {
     if (reason !== null) {
       this.ended = true;
       this.stop();
-      this.broadcast({ type: 'match:over', reason, spacesCleared: this.world.spaceIndex });
+      const spacesCleared = this.world.spaceIndex;
+      const elapsedSeconds = Math.round((now - this.startedAt) / 100) / 10;
+      const place = this.options.records?.submit(spacesCleared, elapsedSeconds) ?? null;
+      this.broadcast({
+        type: 'match:over',
+        reason,
+        spacesCleared,
+        elapsedSeconds,
+        place,
+        records: this.options.records?.top ?? [],
+      });
       this.options.onEnd?.();
     }
   }

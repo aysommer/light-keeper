@@ -172,3 +172,31 @@ describe('GhostSystem: тамбур и новое пространство', () 
     expect(ctx.population().nextSpawnIn).toBeGreaterThan(settings.minIntervalSeconds - 1);
   });
 });
+
+describe('Конец партии и рекорды', () => {
+  it('в match:over — время партии, место и таблица рекордов', async () => {
+    const { RecordBook } = await import('../src/records/RecordBook.ts');
+    const { MemoryRecordStore } = await import('../src/records/RecordStore.ts');
+    const records = new RecordBook(new MemoryRecordStore());
+    let now = 0;
+    const red = new FakeParticipant('red');
+    const match = new Match(
+      4242,
+      [
+        { participant: red, color: 'red' },
+        { participant: new FakeParticipant('blue'), color: 'blue' },
+      ],
+      { tickRate: 20, now: () => now, records },
+    );
+    match.start();
+    match.stop();
+    match.world.enterSpace(2); // как будто прошли два пространства
+    now = 95_000;
+    match.world.finish('ghost_caught');
+    match.step();
+    const over = red.last('match:over')!;
+    expect(over).toMatchObject({ reason: 'ghost_caught', spacesCleared: 2, place: 1 });
+    expect(over.elapsedSeconds).toBeCloseTo(95);
+    expect(over.records).toHaveLength(1);
+  });
+});

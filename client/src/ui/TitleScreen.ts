@@ -1,4 +1,6 @@
 import { LobbyCode } from '@light-keeper/shared';
+import type { ApiClient } from '../core/ApiClient.ts';
+import { RecordsTable } from './RecordsTable.ts';
 import type { Screen } from './Screen.ts';
 import type { ServerStatusIndicator } from './ServerStatusIndicator.ts';
 import { StickmanIcon } from './StickmanIcon.ts';
@@ -14,9 +16,11 @@ export class TitleScreen implements Screen {
   private readonly error: HTMLElement;
   private readonly buttons: HTMLButtonElement[] = [];
   private readonly codeInput: HTMLInputElement;
+  private readonly records = new RecordsTable();
 
   public constructor(
     private readonly statusIndicator: ServerStatusIndicator,
+    private readonly api: ApiClient,
     actions: TitleScreenActions,
     initialError: string | null = null,
   ) {
@@ -70,12 +74,25 @@ export class TitleScreen implements Screen {
     this.error.className = 'title-screen__error';
     this.error.setAttribute('role', 'alert');
 
-    this.element.append(heroes, name, tagline, menu, this.error, statusIndicator.element);
+    this.records.element.classList.add('records--title');
+    this.element.append(
+      heroes,
+      name,
+      tagline,
+      menu,
+      this.error,
+      statusIndicator.element,
+      this.records.element,
+    );
     this.showError(initialError);
   }
 
   public mount(): void {
     void this.statusIndicator.refresh();
+    this.api
+      .getRecords()
+      .then((records) => this.records.update(records, null))
+      .catch(() => (this.records.element.hidden = true));
   }
 
   public dispose(): void {}

@@ -1,4 +1,5 @@
 import type { HeldItem } from '../simulation/HeldItem.ts';
+import type { RecordEntry } from './Records.ts';
 import type { PlayerInput } from '../simulation/PlayerInput.ts';
 
 /** Цвет персонажа-стикмена. Первый вошедший — красный, второй — голубой. */
@@ -177,6 +178,12 @@ export type ServerMessage =
       readonly reason: MatchOverReason;
       /** Сколько пространств пройдено. */
       readonly spacesCleared: number;
+      /** Общее время партии, с. */
+      readonly elapsedSeconds: number;
+      /** Место этой пары в таблице рекордов (с 1); `null` — не попала. */
+      readonly place: number | null;
+      /** Таблица рекордов после этой партии. */
+      readonly records: readonly RecordEntry[];
     }
   | { readonly type: 'error'; readonly code: ErrorCode; readonly message: string }
   | { readonly type: 'pong'; readonly sentAt: number };

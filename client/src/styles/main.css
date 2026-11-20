@@ -531,12 +531,7 @@ kbd {
   opacity: 0.75;
 }
 
-.game-over-screen__score {
-  margin: 8px 0 16px;
-  font-size: 22px;
-}
-
-.game-over-screen .button {
+.game-over-screen .button:not(.button--ghost-light) {
   background: #f3e7b0;
   color: #1b1a14;
 }
@@ -786,4 +781,131 @@ kbd {
   .scare-overlay__grain {
     animation: none;
   }
+}
+
+/* Рекорды и итог партии */
+
+.button--ghost-light {
+  background: transparent;
+  border: 2px solid rgb(243 231 176 / 0.6);
+  color: #f3e7b0;
+}
+
+.records {
+  width: min(460px, 100%);
+}
+
+.records[hidden] {
+  display: none;
+}
+
+.records__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.records__empty {
+  margin: 0;
+  opacity: 0.6;
+  font-size: 14px;
+}
+
+.records__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.records__table th,
+.records__table td {
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.records__table th {
+  font-weight: 600;
+  opacity: 0.6;
+  border-bottom: 1px solid currentcolor;
+}
+
+.records__table tbody tr:nth-child(odd) {
+  background: rgb(127 127 127 / 0.08);
+}
+
+.records__row--mine {
+  outline: 2px solid #c9a227;
+  outline-offset: -2px;
+  font-weight: 700;
+}
+
+.records--title {
+  margin-top: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgb(27 26 20 / 0.08);
+}
+
+.game-over-screen {
+  overflow-y: auto;
+  justify-content: flex-start;
+  padding-top: max(16px, 8vh);
+}
+
+.game-over-screen__stats {
+  display: flex;
+  gap: 32px;
+}
+
+.game-over-screen__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.game-over-screen__stat-label {
+  font-size: 13px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.game-over-screen__stat-value {
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-over-screen__badge {
+  margin: 4px 0 0;
+  opacity: 0.85;
+}
+
+.game-over-screen__badge--record {
+  color: #ffd25e;
+  font-size: 22px;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.game-over-screen__status {
+  margin: 0;
+  min-height: 1.4em;
+  color: #9fd7a8;
+}
+
+.game-over-screen__status[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+.game-over-screen__controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
 }

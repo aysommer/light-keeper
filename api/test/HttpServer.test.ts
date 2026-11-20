@@ -22,6 +22,12 @@ describe('HttpServer', () => {
     expect(ProtocolGuard.isHealthResponse(await response.json())).toBe(true);
   });
 
+  it('GET /records возвращает таблицу рекордов', async () => {
+    const response = await fetch(`${baseUrl}/records`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ records: [] });
+  });
+
   it('неизвестный маршрут возвращает 404', async () => {
     const response = await fetch(`${baseUrl}/nope`);
     expect(response.status).toBe(404);
@@ -39,6 +45,12 @@ describe('ServerConfig.fromEnv', () => {
     const config = ServerConfig.fromEnv({ PORT: '4000', HOST: '127.0.0.1' });
     expect(config.port).toBe(4000);
     expect(config.host).toBe('127.0.0.1');
+  });
+
+  it('RECORDS_FILE задаёт файл рекордов, по умолчанию — data/records.json', () => {
+    expect(ServerConfig.fromEnv({}).recordsFile).toBe('data/records.json');
+    expect(ServerConfig.fromEnv({ RECORDS_FILE: '/x/r.json' }).recordsFile).toBe('/x/r.json');
+    expect(new ServerConfig(0, 'h').recordsFile).toBeNull();
   });
 
   it('LK_DEBUG=1 включает отладочные команды', () => {

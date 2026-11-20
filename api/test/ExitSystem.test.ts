@@ -188,11 +188,13 @@ describe('ExitSystem: тамбур и таймер', () => {
     ctx.tick();
     ctx.tick({ red: true }); // красный в тамбуре, голубой далеко
     for (let i = 0; i < ctx.ticksFor(GameConfig.exit.timerSeconds) + 2; i++) ctx.tick();
-    expect(ctx.red.last('match:over')).toEqual({
+    expect(ctx.red.last('match:over')).toMatchObject({
       type: 'match:over',
       reason: 'door_timeout',
       spacesCleared: 0,
+      place: null,
     });
+    expect(ctx.red.last('match:over')!.elapsedSeconds).toBeGreaterThan(30);
     expect(ctx.blue.last('match:over')).toBeDefined();
     expect(ctx.ended()).toBe(1);
   });

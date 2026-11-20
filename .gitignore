@@ -10,3 +10,6 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Таблица рекордов сервера (локальный запуск)
+api/data/
