@@ -148,6 +148,7 @@ describe('WsGateway (интеграция)', () => {
         run: false,
         interact: false,
         item: 'lamp',
+        refuel: false,
         space: 0,
       })),
     });

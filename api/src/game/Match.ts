@@ -12,6 +12,7 @@ import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
 import { ExchangeSystem } from '../systems/ExchangeSystem.ts';
 import { ExitSystem } from '../systems/ExitSystem.ts';
 import { LampSystem } from '../systems/LampSystem.ts';
+import { OilSystem } from '../systems/OilSystem.ts';
 import { MovementSystem } from '../systems/MovementSystem.ts';
 import type { System } from '../systems/System.ts';
 import { TransitionSystem } from '../systems/TransitionSystem.ts';
@@ -65,6 +66,7 @@ export class Match {
     this.systems = [
       new MovementSystem(),
       new LampSystem(),
+      new OilSystem(),
       new ExchangeSystem(),
       new ExitSystem(GameConfig.exit, {
         transitionSeconds: options.transitionSeconds ?? GameConfig.match.transitionSeconds,
@@ -115,9 +117,13 @@ export class Match {
   public debugGoto(playerId: string, target: DebugGotoTarget): void {
     const player = this.world.players.get(playerId);
     const space = this.world.space;
-    // К ключу — в шаге от него, чтобы его было видно и подобрать можно было самому.
+    // К ключу и канистре — в шаге от них, чтобы их было видно и подобрать можно было самому.
     const destination =
-      target === 'exit' ? space.exit.frontPoint(0.6) : space.key?.add(Match.KEY_GOTO_OFFSET);
+      target === 'exit'
+        ? space.exit.frontPoint(0.6)
+        : target === 'key'
+          ? space.key?.add(Match.KEY_GOTO_OFFSET)
+          : this.nearestCanister(player?.position)?.add(Match.KEY_GOTO_OFFSET);
     if (player && !player.inTambour && destination) {
       player.position = destination;
     }
@@ -134,6 +140,17 @@ export class Match {
     } else {
       lamp.oil = Math.min(lamp.oil, 12);
     }
+  }
+
+  /** Ближайшая ещё не подобранная канистра. */
+  private nearestCanister(from: Vector2 | undefined): Vector2 | undefined {
+    if (!from) return undefined;
+    let best: Vector2 | undefined;
+    this.world.space.oilSpawns.forEach((spawn, index) => {
+      if (this.world.oil.isTaken(index)) return;
+      if (!best || spawn.distanceTo(from) < best.distanceTo(from)) best = spawn;
+    });
+    return best;
   }
 
   public receiveInput(playerId: string, commands: readonly PlayerInput[]): void {
@@ -172,6 +189,7 @@ export class Match {
         phase: this.world.phase,
         exit: this.world.exit.snapshot(GameConfig.exit.openSeconds),
         exchange: this.world.exchange.snapshot(),
+        oilTaken: this.world.oil.snapshot(),
         players: [...this.world.players.values()].map((player) => player.snapshot()),
       },
     };

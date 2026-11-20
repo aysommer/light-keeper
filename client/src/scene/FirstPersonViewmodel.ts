@@ -31,6 +31,8 @@ export interface ViewmodelMotion {
   readonly lamp: LampSnapshot | null;
   /** Насколько рука протянута при обмене лампами, 0–1. */
   readonly reach: number;
+  /** Идёт заправка — фонарь опущен и наклонён. */
+  readonly refueling: boolean;
 }
 
 /**
@@ -63,6 +65,7 @@ export class FirstPersonViewmodel {
   private swingForward = 0;
   private swingForwardVelocity = 0;
   private walkAmount = 0;
+  private refuelAmount = 0;
 
   public constructor(
     private readonly scene: Scene,
@@ -132,12 +135,13 @@ export class FirstPersonViewmodel {
     const bobY = -Math.abs(Math.cos(motion.bobPhase)) * 0.014 * this.walkAmount;
     const breathe = Math.sin(time * 1.6) * 0.004;
     const lowered = (1 - this.easeOut(shown.raise)) * FirstPersonViewmodel.LOWERED_OFFSET;
+    this.refuelAmount += ((motion.refueling ? 1 : 0) - this.refuelAmount) * follow;
     // При обмене рука с лампой уходит вперёд-влево, к напарнику, и возвращается.
     const reachX = -motion.reach * 0.12;
     const reachZ = -motion.reach * 0.22;
     this.root.position.set(
       this.swayX + bobX + reachX,
-      this.swayY + bobY + breathe - lowered + motion.reach * 0.06,
+      this.swayY + bobY + breathe - lowered + motion.reach * 0.06 - this.refuelAmount * 0.07,
       reachZ,
     );
 
@@ -156,7 +160,7 @@ export class FirstPersonViewmodel {
       forwardTarget,
       dt,
     );
-    this.lampPivot.rotation.set(this.swingForward, 0, this.swingSide);
+    this.lampPivot.rotation.set(this.swingForward, 0, this.swingSide + this.refuelAmount * 0.35);
 
     const brightness = motion.lamp ? LampRules.brightness(motion.lamp) : 1;
     this.level = LampFlame.level(time, brightness);

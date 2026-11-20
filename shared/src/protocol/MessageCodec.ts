@@ -73,7 +73,7 @@ export class MessageCodec {
           ? { type: 'debug:lamp', preset: data['preset'] }
           : null;
       case 'debug:goto':
-        return data['target'] === 'exit' || data['target'] === 'key'
+        return data['target'] === 'exit' || data['target'] === 'key' || data['target'] === 'oil'
           ? { type: 'debug:goto', target: data['target'] }
           : null;
       default:
@@ -112,7 +112,8 @@ export class MessageCodec {
     if (typeof raw !== 'object' || raw === null) {
       return null;
     }
-    const { seq, dt, moveX, moveY, yaw, pitch, run, interact, item, space } = raw as JsonObject;
+    const { seq, dt, moveX, moveY, yaw, pitch, run, interact, item, refuel, space } =
+      raw as JsonObject;
     const valid =
       Number.isInteger(seq) &&
       (seq as number) >= 0 &&
@@ -125,6 +126,7 @@ export class MessageCodec {
       typeof run === 'boolean' &&
       typeof interact === 'boolean' &&
       (item === 'lamp' || item === 'compass') &&
+      typeof refuel === 'boolean' &&
       Number.isInteger(space) &&
       (space as number) >= 0 &&
       (space as number) < MessageCodec.MAX_SEQ;
@@ -141,6 +143,7 @@ export class MessageCodec {
       run: run as boolean,
       interact: interact as boolean,
       item: item as HeldItem,
+      refuel: refuel as boolean,
       space: space as number,
     };
   }

@@ -54,6 +54,10 @@ export interface PlayerSnapshot {
   /** Что игрок держит в руке. */
   readonly item: HeldItem;
   readonly lamp: LampSnapshot;
+  /** Сколько канистр с маслом несёт. */
+  readonly canisters: number;
+  /** Прогресс заправки лампы, 0–1. */
+  readonly refuelProgress: number;
 }
 
 /** Состояние двери выхода и ключа в текущем пространстве. */
@@ -75,7 +79,7 @@ export interface ExitSnapshot {
 export type DebugLampPreset = 'hot' | 'low-oil';
 
 /** Куда можно перенестись отладочной командой. */
-export type DebugGotoTarget = 'exit' | 'key';
+export type DebugGotoTarget = 'exit' | 'key' | 'oil';
 
 /** Обмен лампами: кто предложил и сколько обменов уже было в пространстве. */
 export interface ExchangeSnapshot {
@@ -101,6 +105,8 @@ export interface MatchSnapshot {
   readonly phase: SpacePhase;
   readonly exit: ExitSnapshot;
   readonly exchange: ExchangeSnapshot;
+  /** Номера уже подобранных канистр пространства (индексы в `Space.oilSpawns`). */
+  readonly oilTaken: readonly number[];
   readonly players: readonly PlayerSnapshot[];
 }
 

@@ -1,6 +1,7 @@
 import type { Scene } from 'three';
 import { CollisionWorld, PlayerMovement, SpaceGenerator } from '@light-keeper/shared';
 import type { ExitSnapshot, Space } from '@light-keeper/shared';
+import { CanisterField } from '../scene/CanisterField.ts';
 import { ExitDoorView } from '../scene/ExitDoorView.ts';
 import { KeyView } from '../scene/KeyView.ts';
 import { SpaceMeshBuilder } from '../scene/SpaceMeshBuilder.ts';
@@ -25,6 +26,7 @@ export class ActiveSpace implements MovementProvider {
   private view: SpaceView;
   private door: ExitDoorView;
   private key: KeyView | null;
+  private canisters: CanisterField;
 
   public constructor(
     matchSeed: number,
@@ -38,6 +40,7 @@ export class ActiveSpace implements MovementProvider {
     scene.add(this.view.group);
     this.door = this.createDoor();
     this.key = this.createKey();
+    this.canisters = new CanisterField(scene, this.currentSpace.oilSpawns);
   }
 
   public get space(): Space {
@@ -69,13 +72,20 @@ export class ActiveSpace implements MovementProvider {
     this.scene.add(this.view.group);
     this.door = this.createDoor();
     this.key = this.createKey();
+    this.canisters = new CanisterField(this.scene, this.currentSpace.oilSpawns);
   }
 
-  /** Анимация пространства, двери и ключа по последнему состоянию с сервера. */
-  public update(exit: ExitSnapshot | null, deltaSeconds: number, time: number): void {
+  /** Анимация пространства, двери, ключа и канистр по последнему состоянию с сервера. */
+  public update(
+    exit: ExitSnapshot | null,
+    oilTaken: readonly number[] | null,
+    deltaSeconds: number,
+    time: number,
+  ): void {
     this.view.update(time);
     this.door.update(exit, deltaSeconds);
     this.key?.update(exit, time);
+    this.canisters.update(oilTaken);
   }
 
   public dispose(): void {
@@ -98,6 +108,7 @@ export class ActiveSpace implements MovementProvider {
   }
 
   private disposeViews(): void {
+    this.canisters.dispose();
     this.key?.dispose();
     this.door.dispose();
     this.view.dispose();

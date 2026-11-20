@@ -21,6 +21,7 @@ const step = (seq: number): PlayerInput => ({
   run: false,
   interact: false,
   item: 'lamp',
+  refuel: false,
   space: 0,
 });
 

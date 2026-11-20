@@ -679,3 +679,69 @@ kbd {
 .lamp-hud__hint[hidden] {
   display: none;
 }
+
+/* Масло: канистры и заправка */
+
+.lamp-hud__ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  transform: rotate(-90deg);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.lamp-hud__ring--visible {
+  opacity: 1;
+}
+
+.lamp-hud__ring circle {
+  fill: none;
+  stroke-width: 4;
+}
+
+.lamp-hud__ring-track {
+  stroke: rgb(255 190 90 / 0.25);
+}
+
+.lamp-hud__ring-progress {
+  stroke: #ffb347;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.05s linear;
+}
+
+.lamp-hud__canisters {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  display: flex;
+  gap: 8px;
+}
+
+.lamp-hud__canisters[hidden] {
+  display: none;
+}
+
+/* Значок канистры: корпус с латунной крышкой. */
+.lamp-hud__canister {
+  position: relative;
+  width: 18px;
+  height: 24px;
+  border-radius: 3px;
+  background: #8c2a1e;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.6);
+}
+
+.lamp-hud__canister::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: #c9a227;
+}

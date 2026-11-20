@@ -37,6 +37,9 @@ export class NetworkSession {
   private selfInTambour = false;
   private selfLamp: LampSnapshot | null = null;
   private latestExchange: ExchangeSnapshot | null = null;
+  private latestOilTaken: readonly number[] | null = null;
+  private selfCanisters = 0;
+  private selfRefuel = 0;
 
   public constructor(
     private readonly network: NetworkClient,
@@ -75,6 +78,21 @@ export class NetworkSession {
   /** Обмен лампами: предложение и счётчик обменов. */
   public get exchange(): ExchangeSnapshot | null {
     return this.latestExchange;
+  }
+
+  /** Номера подобранных канистр текущего пространства. */
+  public get oilTaken(): readonly number[] | null {
+    return this.latestOilTaken;
+  }
+
+  /** Сколько канистр несёт этот игрок. */
+  public get ownCanisters(): number {
+    return this.selfCanisters;
+  }
+
+  /** Прогресс заправки своей лампы, 0–1. */
+  public get ownRefuelProgress(): number {
+    return this.selfRefuel;
   }
 
   /** Состояние своей лампы по данным сервера. */
@@ -132,6 +150,7 @@ export class NetworkSession {
     this.currentPhase = snapshot.phase;
     this.latestExit = snapshot.exit;
     this.latestExchange = snapshot.exchange;
+    this.latestOilTaken = snapshot.oilTaken;
     const enteredNewSpace = snapshot.spaceIndex !== this.space.spaceIndex;
     if (enteredNewSpace) {
       this.space.enter(snapshot.spaceIndex);
@@ -143,6 +162,8 @@ export class NetworkSession {
       if (state.id === this.playerId) {
         this.selfInTambour = state.inTambour;
         this.selfLamp = state.lamp;
+        this.selfCanisters = state.canisters;
+        this.selfRefuel = state.refuelProgress;
         if (enteredNewSpace) {
           this.player.teleport(position, this.space.space.startYaw);
         } else {

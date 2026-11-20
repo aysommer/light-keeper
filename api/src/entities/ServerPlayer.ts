@@ -1,4 +1,4 @@
-import { PlayerMovement } from '@light-keeper/shared';
+import { GameConfig, PlayerMovement } from '@light-keeper/shared';
 import type {
   HeldItem,
   PlayerColor,
@@ -29,6 +29,14 @@ export class ServerPlayer extends Entity {
   public aimingAtPartner = false;
   /** Предмет в руке (по последней команде). */
   public item: HeldItem = 'lamp';
+  /** Зажата клавиша заправки (по последней команде). */
+  public refueling = false;
+  /** Игрок идёт (по последней команде) — заправляться можно только стоя. */
+  public moving = false;
+  /** Сколько канистр несёт. */
+  public canisters = 0;
+  /** Сколько секунд уже идёт заправка. */
+  public refuelSeconds = 0;
   /** Лампа в руках игрока; при обмене лампы переходят из рук в руки. */
   public lamp = new Lamp();
   public readonly budget = new InputBudget();
@@ -67,6 +75,8 @@ export class ServerPlayer extends Entity {
     this.pitch = 0;
     this.inTambour = false;
     this.interactPressed = false;
+    this.canisters = 0;
+    this.refuelSeconds = 0;
   }
 
   /** Лампа в руке (а не убрана ради компаса и не в тамбуре). */
@@ -103,6 +113,8 @@ export class ServerPlayer extends Entity {
       inTambour: this.inTambour,
       item: this.item,
       lamp: this.lamp.snapshot(),
+      canisters: this.canisters,
+      refuelProgress: Math.min(1, this.refuelSeconds / GameConfig.canister.refuelSeconds),
     };
   }
 }

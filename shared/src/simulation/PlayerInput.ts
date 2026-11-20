@@ -22,6 +22,8 @@ export interface PlayerInput {
   readonly interact: boolean;
   /** Что игрок держит в руке. */
   readonly item: HeldItem;
+  /** Зажата клавиша заправки (`R`). */
+  readonly refuel: boolean;
   /** Номер пространства, в котором сформирована команда. Чужие команды сервер не двигает. */
   readonly space: number;
 }

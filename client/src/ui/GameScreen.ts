@@ -129,7 +129,7 @@ export class GameScreen implements Screen {
       controller.update(delta);
       session.update(delta, time);
       controller.applyToCamera(sceneManager.camera);
-      space.update(session.exit, delta, time);
+      space.update(session.exit, session.oilTaken, delta, time);
       const exit = session.exit;
       const partnerPosition = session.partnerPosition();
       // Смотришь на напарника рядом — подсказка об обмене важнее подсказки двери.
@@ -169,6 +169,7 @@ export class GameScreen implements Screen {
         wanted: this.held.current,
         lamp: session.ownLamp,
         reach: this.handOver.update(delta, session.exchange?.count ?? null),
+        refueling: session.ownRefuelProgress > 0,
       });
       previousYaw = player.yaw;
       previousPitch = player.pitch;
@@ -176,7 +177,14 @@ export class GameScreen implements Screen {
       const ownLamp = session.ownLamp;
       this.lampHud.update(
         session.inTambour ? 0 : (ownLamp?.heat ?? 0),
-        this.lampHint.resolve(ownLamp, this.held.current, session.inTambour),
+        this.lampHint.resolve(ownLamp, this.held.current, session.inTambour, {
+          canisters: session.ownCanisters,
+          refueling: session.ownRefuelProgress > 0,
+        }),
+      );
+      this.lampHud.updateOil(
+        session.inTambour ? 0 : session.ownCanisters,
+        session.ownRefuelProgress,
       );
       const compassInHand = this.held.current === 'compass' && !session.inTambour;
       this.compass.update(
@@ -192,7 +200,8 @@ export class GameScreen implements Screen {
 
   /**
    * Клавиши отладки (только `npm run dev`): N — следующее пространство, T — к двери,
-   * K — к ключу (в шаге от него), H — нагреть лампу, L — почти слить масло.
+   * K — к ключу (в шаге от него), O — к ближайшей канистре, H — нагреть лампу,
+   * L — почти слить масло.
    */
   private handleDebugKeys(
     input: InputController,
@@ -214,6 +223,12 @@ export class GameScreen implements Screen {
     }
     if (input.consumePress('KeyL')) {
       session.requestLamp('low-oil');
+    }
+    if (input.consumePress('KeyO')) {
+      session.requestGoto('oil');
+      // Сервер ставит в шаге правее канистры — смотрим налево и вниз, на неё.
+      player.yaw = PlayerMovement.yawTowards(new Vector2(-1, 0));
+      player.pitch = -0.6;
     }
     if (input.consumePress('KeyK')) {
       session.requestGoto('key');

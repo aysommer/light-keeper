@@ -63,6 +63,19 @@ describe('LampHint', () => {
     expect(hint.resolve(lamp({ oil: 0, lit: false }), 'compass', false)).toBe('Масло кончилось');
   });
 
+  it('с канистрой подсказка зовёт заправиться; во время заправки — «Заправка…»', () => {
+    const supply = { canisters: 1, refueling: false };
+    expect(hint.resolve(lamp({ oil: lowOil - 1 }), 'lamp', false, supply)).toBe(
+      'Масло на исходе — удерживай R',
+    );
+    expect(hint.resolve(lamp({ oil: 0, lit: false }), 'lamp', false, supply)).toBe(
+      'Масло кончилось — удерживай R',
+    );
+    expect(hint.resolve(lamp({ oil: 50 }), 'lamp', false, { canisters: 1, refueling: true })).toBe(
+      'Заправка…',
+    );
+  });
+
   it('в тамбуре подсказок нет', () => {
     expect(hint.resolve(lamp({ heat: 99 }), 'lamp', true)).toBeNull();
   });

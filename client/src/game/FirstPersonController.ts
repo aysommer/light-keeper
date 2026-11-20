@@ -51,6 +51,7 @@ export class FirstPersonController {
       // Короткое нажатие может уложиться между кадрами — учитываем и его.
       interact: this.input.consumePress('KeyE') || this.input.isPressed('KeyE'),
       item: this.item,
+      refuel: this.input.isPressed('KeyR'),
       space: this.rules.spaceIndex,
     };
     this.player.isMoving = axis.lengthSquared() > 0;

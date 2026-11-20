@@ -61,6 +61,7 @@ const setup = (spaceIndex = 0) => {
         run: false,
         interact: interact[id] ?? false,
         item: 'lamp',
+        refuel: false,
         space: space().index,
       };
       match.receiveInput(id, [command]);
@@ -173,6 +174,7 @@ describe('ExitSystem: тамбур и таймер', () => {
         run: true,
         interact: false,
         item: 'lamp',
+        refuel: false,
         space: 0,
       },
     ]);

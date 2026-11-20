@@ -31,6 +31,7 @@ export type {
 // Конфигурация
 export { GameConfig } from './config/GameConfig.ts';
 export type {
+  CanisterSettings,
   ExchangeSettings,
   ExitSettings,
   LampSettings,

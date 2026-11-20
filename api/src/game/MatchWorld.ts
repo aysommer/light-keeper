@@ -8,6 +8,7 @@ import type { MatchOverReason, Space, SpacePhase } from '@light-keeper/shared';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
 import { ExchangeState } from './ExchangeState.ts';
 import { ExitState } from './ExitState.ts';
+import { OilState } from './OilState.ts';
 
 /**
  * Мир партии: текущее пространство, его коллизии, игроки и фаза
@@ -24,6 +25,7 @@ export class MatchWorld {
   private currentPhase: SpacePhase = 'playing';
   private transitionLeft = 0;
   private currentExit: ExitState;
+  private currentOil = new OilState();
   private overReason: MatchOverReason | null = null;
 
   public constructor(public readonly seed: number) {
@@ -54,6 +56,11 @@ export class MatchWorld {
 
   public get phase(): SpacePhase {
     return this.currentPhase;
+  }
+
+  /** Какие канистры текущего пространства уже подобраны. */
+  public get oil(): OilState {
+    return this.currentOil;
   }
 
   /** Состояние двери и ключа текущего пространства. */
@@ -108,6 +115,7 @@ export class MatchWorld {
     this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
     this.currentMovement = new PlayerMovement(this.currentCollisions);
     this.currentExit = new ExitState(this.currentSpace);
+    this.currentOil = new OilState();
     this.exchange.clearOffer();
     this.currentPhase = 'playing';
     this.transitionLeft = 0;

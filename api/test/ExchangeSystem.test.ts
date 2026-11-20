@@ -51,6 +51,7 @@ const setup = () => {
         run: false,
         interact: interact[id] ?? false,
         item: 'lamp',
+        refuel: false,
         space: match.world.spaceIndex,
       };
       match.receiveInput(id, [command]);

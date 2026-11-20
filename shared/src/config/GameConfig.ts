@@ -82,6 +82,20 @@ export interface LampSettings {
   readonly lowOil: number;
 }
 
+/** Канистры с маслом: подбор и заправка лампы. */
+export interface CanisterSettings {
+  /** С какого расстояния игрок подбирает канистру, м. */
+  readonly pickupDistance: number;
+  /** Сколько канистр можно нести. */
+  readonly maxCarried: number;
+  /** Сколько удерживать клавишу заправки, стоя на месте, с. */
+  readonly refuelSeconds: number;
+  /** Сколько масла (%) даёт одна канистра. */
+  readonly amount: number;
+  /** Лампу с таким уровнем масла (%) и выше заправлять не нужно. */
+  readonly fullAt: number;
+}
+
 /** Правила обмена лампами («горячая картошка»). */
 export interface ExchangeSettings {
   /** Наибольшее расстояние между игроками для обмена, м. */
@@ -167,6 +181,14 @@ export class GameConfig {
     dimBelowOil: 35,
     minBrightness: 0.25,
     lowOil: 20,
+  };
+
+  public static readonly canister: CanisterSettings = {
+    pickupDistance: 0.9,
+    maxCarried: 2,
+    refuelSeconds: 1.5,
+    amount: 50,
+    fullAt: 95,
   };
 
   public static readonly exchange: ExchangeSettings = {
