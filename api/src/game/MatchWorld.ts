@@ -6,6 +6,7 @@ import {
 } from '@light-keeper/shared';
 import type { MatchOverReason, Space, SpacePhase } from '@light-keeper/shared';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
+import { ExchangeState } from './ExchangeState.ts';
 import { ExitState } from './ExitState.ts';
 
 /**
@@ -17,6 +18,9 @@ export class MatchWorld {
   public readonly players = new Map<string, ServerPlayer>();
   private currentSpace: Space;
   private currentMovement: PlayerMovement;
+  private currentCollisions: CollisionWorld;
+  /** Обмен лампами (счётчик обменов — на всю партию). */
+  public readonly exchange = new ExchangeState();
   private currentPhase: SpacePhase = 'playing';
   private transitionLeft = 0;
   private currentExit: ExitState;
@@ -25,7 +29,8 @@ export class MatchWorld {
   public constructor(public readonly seed: number) {
     this.generator = new SpaceGenerator(seed);
     this.currentSpace = this.generator.generate(0);
-    this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
+    this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
+    this.currentMovement = new PlayerMovement(this.currentCollisions);
     this.currentExit = new ExitState(this.currentSpace);
   }
 
@@ -40,6 +45,11 @@ export class MatchWorld {
 
   public get movement(): PlayerMovement {
     return this.currentMovement;
+  }
+
+  /** Коллизии текущего пространства (для прямой видимости). */
+  public get collisions(): CollisionWorld {
+    return this.currentCollisions;
   }
 
   public get phase(): SpacePhase {
@@ -95,8 +105,10 @@ export class MatchWorld {
   /** Новое пространство: генерация, коллизии, игроки на старт, ресурсы — заново. */
   public enterSpace(index: number): void {
     this.currentSpace = this.generator.generate(index);
-    this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
+    this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
+    this.currentMovement = new PlayerMovement(this.currentCollisions);
     this.currentExit = new ExitState(this.currentSpace);
+    this.exchange.clearOffer();
     this.currentPhase = 'playing';
     this.transitionLeft = 0;
     this.players.forEach((player) => {

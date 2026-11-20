@@ -11,6 +11,7 @@ export type {
   DebugGotoTarget,
   DebugLampPreset,
   ErrorCode,
+  ExchangeSnapshot,
   ExitSnapshot,
   LampSnapshot,
   LobbyPlayerInfo,
@@ -30,6 +31,7 @@ export type {
 // Конфигурация
 export { GameConfig } from './config/GameConfig.ts';
 export type {
+  ExchangeSettings,
   ExitSettings,
   LampSettings,
   MatchSettings,
@@ -88,6 +90,7 @@ export { PlayerMovement } from './simulation/PlayerMovement.ts';
 export type { PlayerInput } from './simulation/PlayerInput.ts';
 export { HELD_ITEMS } from './simulation/HeldItem.ts';
 export { LampRules } from './simulation/LampRules.ts';
+export { ExchangeRules } from './simulation/ExchangeRules.ts';
 export type { LampLightState } from './simulation/LampRules.ts';
 export type { HeldItem } from './simulation/HeldItem.ts';
 

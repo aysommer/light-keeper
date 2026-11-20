@@ -21,6 +21,7 @@ export class ActiveSpace implements MovementProvider {
   private readonly builder = new SpaceMeshBuilder();
   private currentSpace: Space;
   private currentMovement: PlayerMovement;
+  private currentCollisions: CollisionWorld;
   private view: SpaceView;
   private door: ExitDoorView;
   private key: KeyView | null;
@@ -31,7 +32,8 @@ export class ActiveSpace implements MovementProvider {
   ) {
     this.generator = new SpaceGenerator(matchSeed);
     this.currentSpace = this.generator.generate(0);
-    this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
+    this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
+    this.currentMovement = new PlayerMovement(this.currentCollisions);
     this.view = this.builder.build(this.currentSpace);
     scene.add(this.view.group);
     this.door = this.createDoor();
@@ -46,6 +48,11 @@ export class ActiveSpace implements MovementProvider {
     return this.currentSpace.index;
   }
 
+  /** Коллизии текущего пространства (для прямой видимости при обмене). */
+  public get collisions(): CollisionWorld {
+    return this.currentCollisions;
+  }
+
   public get movement(): PlayerMovement {
     return this.currentMovement;
   }
@@ -56,7 +63,8 @@ export class ActiveSpace implements MovementProvider {
     }
     this.disposeViews();
     this.currentSpace = this.generator.generate(index);
-    this.currentMovement = new PlayerMovement(CollisionWorld.fromSpace(this.currentSpace));
+    this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
+    this.currentMovement = new PlayerMovement(this.currentCollisions);
     this.view = this.builder.build(this.currentSpace);
     this.scene.add(this.view.group);
     this.door = this.createDoor();

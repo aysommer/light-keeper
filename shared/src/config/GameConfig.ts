@@ -82,6 +82,20 @@ export interface LampSettings {
   readonly lowOil: number;
 }
 
+/** Правила обмена лампами («горячая картошка»). */
+export interface ExchangeSettings {
+  /** Наибольшее расстояние между игроками для обмена, м. */
+  readonly distance: number;
+  /** Наибольший угол между взглядом и направлением на напарника, градусы. */
+  readonly maxAngleDegrees: number;
+  /** Сколько секунд ждёт предложение обмена ответного нажатия напарника. */
+  readonly offerSeconds: number;
+  /** Пауза после обмена, с. */
+  readonly cooldownSeconds: number;
+  /** На сколько процентов остывает каждая лампа при обмене. */
+  readonly heatRelief: number;
+}
+
 /** Правила двери выхода и ключа. */
 export interface ExitSettings {
   /** Сколько удерживать `E`, чтобы открыть дверь, с. */
@@ -153,6 +167,14 @@ export class GameConfig {
     dimBelowOil: 35,
     minBrightness: 0.25,
     lowOil: 20,
+  };
+
+  public static readonly exchange: ExchangeSettings = {
+    distance: 2,
+    maxAngleDegrees: 35,
+    offerSeconds: 3,
+    cooldownSeconds: 2,
+    heatRelief: 25,
   };
 
   public static readonly exit: ExitSettings = {

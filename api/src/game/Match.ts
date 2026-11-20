@@ -9,6 +9,7 @@ import type {
 } from '@light-keeper/shared';
 import { ServerPlayer } from '../entities/ServerPlayer.ts';
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
+import { ExchangeSystem } from '../systems/ExchangeSystem.ts';
 import { ExitSystem } from '../systems/ExitSystem.ts';
 import { LampSystem } from '../systems/LampSystem.ts';
 import { MovementSystem } from '../systems/MovementSystem.ts';
@@ -64,6 +65,7 @@ export class Match {
     this.systems = [
       new MovementSystem(),
       new LampSystem(),
+      new ExchangeSystem(),
       new ExitSystem(GameConfig.exit, {
         transitionSeconds: options.transitionSeconds ?? GameConfig.match.transitionSeconds,
       }),
@@ -169,6 +171,7 @@ export class Match {
         spaceIndex: this.world.spaceIndex,
         phase: this.world.phase,
         exit: this.world.exit.snapshot(GameConfig.exit.openSeconds),
+        exchange: this.world.exchange.snapshot(),
         players: [...this.world.players.values()].map((player) => player.snapshot()),
       },
     };

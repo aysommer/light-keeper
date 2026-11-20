@@ -29,6 +29,8 @@ export interface ViewmodelMotion {
   readonly wanted: HeldItem;
   /** Состояние своей лампы (по данным сервера). */
   readonly lamp: LampSnapshot | null;
+  /** Насколько рука протянута при обмене лампами, 0–1. */
+  readonly reach: number;
 }
 
 /**
@@ -130,7 +132,14 @@ export class FirstPersonViewmodel {
     const bobY = -Math.abs(Math.cos(motion.bobPhase)) * 0.014 * this.walkAmount;
     const breathe = Math.sin(time * 1.6) * 0.004;
     const lowered = (1 - this.easeOut(shown.raise)) * FirstPersonViewmodel.LOWERED_OFFSET;
-    this.root.position.set(this.swayX + bobX, this.swayY + bobY + breathe - lowered, 0);
+    // При обмене рука с лампой уходит вперёд-влево, к напарнику, и возвращается.
+    const reachX = -motion.reach * 0.12;
+    const reachZ = -motion.reach * 0.22;
+    this.root.position.set(
+      this.swayX + bobX + reachX,
+      this.swayY + bobY + breathe - lowered + motion.reach * 0.06,
+      reachZ,
+    );
 
     // Фонарь — маятник: раскачивается от поворотов и шагов.
     const sideTarget = -this.swayX * 6;

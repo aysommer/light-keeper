@@ -25,9 +25,11 @@ export class ServerPlayer extends Entity {
   public interactPressed = false;
   /** Игрок вошёл в дверь и ждёт в тамбуре. */
   public inTambour = false;
+  /** Смотрит на напарника рядом — клавиша действия означает обмен, а не дверь. */
+  public aimingAtPartner = false;
   /** Предмет в руке (по последней команде). */
   public item: HeldItem = 'lamp';
-  /** Лампа игрока. На этапе обмена лампы будут переходить из рук в руки. */
+  /** Лампа в руках игрока; при обмене лампы переходят из рук в руки. */
   public lamp = new Lamp();
   public readonly budget = new InputBudget();
   private readonly queue: PlayerInput[] = [];

@@ -77,6 +77,14 @@ export type DebugLampPreset = 'hot' | 'low-oil';
 /** Куда можно перенестись отладочной командой. */
 export type DebugGotoTarget = 'exit' | 'key';
 
+/** Обмен лампами: кто предложил и сколько обменов уже было в пространстве. */
+export interface ExchangeSnapshot {
+  /** Кто сейчас предлагает обмен (ждёт ответного нажатия `E`), иначе `null`. */
+  readonly offerFromId: string | null;
+  /** Счётчик обменов в партии — клиент по его росту показывает передачу лампы. */
+  readonly count: number;
+}
+
 /** Почему партия закончилась. */
 export type MatchOverReason = 'door_timeout';
 
@@ -92,6 +100,7 @@ export interface MatchSnapshot {
   readonly spaceIndex: number;
   readonly phase: SpacePhase;
   readonly exit: ExitSnapshot;
+  readonly exchange: ExchangeSnapshot;
   readonly players: readonly PlayerSnapshot[];
 }
 

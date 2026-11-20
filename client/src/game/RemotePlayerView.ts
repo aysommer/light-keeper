@@ -4,6 +4,7 @@ import type { RemotePlayerState } from '../network/RemotePlayerTrack.ts';
 import { RemotePlayerTrack } from '../network/RemotePlayerTrack.ts';
 import { SceneCoords } from '../scene/SceneCoords.ts';
 import { StickmanModel } from '../scene/StickmanModel.ts';
+import { HandOverMotion } from './HandOverMotion.ts';
 import { MotionEstimator } from './MotionEstimator.ts';
 
 /** Напарник на сцене: стикмен, плавно следующий за снимками сервера. */
@@ -16,6 +17,8 @@ export class RemotePlayerView {
   private lamp: LampSnapshot | null = null;
   private readonly motion = new MotionEstimator();
   private lastTime: number | null = null;
+  private readonly handOver = new HandOverMotion();
+  private exchangeCount: number | null = null;
 
   public constructor(
     public readonly id: string,
@@ -47,6 +50,11 @@ export class RemotePlayerView {
     this.lamp = lamp;
   }
 
+  /** Счётчик обменов из снимка — по его росту напарник «протягивает» лампу. */
+  public setExchangeCount(count: number): void {
+    this.exchangeCount = count;
+  }
+
   /** Напарника перенесли (новое пространство): не принимать перенос за бег. */
   public resetMotion(): void {
     this.track.clear();
@@ -65,7 +73,14 @@ export class RemotePlayerView {
     this.model.root.position.copy(SceneCoords.toScene(state.position));
     this.model.root.rotation.set(0, state.yaw, 0);
     this.motion.update(state.position, deltaSeconds);
-    this.model.update(deltaSeconds, time, this.motion.signedSpeed(state.yaw), this.item, this.lamp);
+    this.model.update(
+      deltaSeconds,
+      time,
+      this.motion.signedSpeed(state.yaw),
+      this.item,
+      this.lamp,
+      this.handOver.update(deltaSeconds, this.exchangeCount),
+    );
   }
 
   public dispose(): void {

@@ -47,7 +47,7 @@ describe('LampHint', () => {
 
   it('перегрев близко — убрать лампу; перегрелась — остывает', () => {
     expect(hint.resolve(lamp({ heat: warningHeat }), 'lamp', false)).toBe(
-      'Лампа перегревается — убери её (2)',
+      'Лампа перегревается — передай напарнику (E) или убери (2)',
     );
     expect(hint.resolve(lamp({ heat: 100, lit: false, overheated: true }), 'lamp', false)).toBe(
       'Лампа перегрелась и остывает',

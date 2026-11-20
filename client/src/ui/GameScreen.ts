@@ -4,6 +4,8 @@ import { GameLoop } from '../core/GameLoop.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
 import { HeldItems } from '../game/HeldItems.ts';
+import { ExchangePrompt } from '../game/ExchangePrompt.ts';
+import { HandOverMotion } from '../game/HandOverMotion.ts';
 import { InteractionPrompt } from '../game/InteractionPrompt.ts';
 import { LampHint } from '../game/LampHint.ts';
 import { LocalPlayer } from '../game/LocalPlayer.ts';
@@ -46,6 +48,8 @@ export class GameScreen implements Screen {
   private readonly held = new HeldItems();
   private readonly tambour = new TambourOverlay();
   private readonly prompt = new InteractionPrompt();
+  private readonly exchangePrompt = new ExchangePrompt();
+  private readonly handOver = new HandOverMotion();
   private readonly disposables: Array<{ dispose(): void }> = [];
   private loop: GameLoop | null = null;
 
@@ -127,16 +131,28 @@ export class GameScreen implements Screen {
       controller.applyToCamera(sceneManager.camera);
       space.update(session.exit, delta, time);
       const exit = session.exit;
+      const partnerPosition = session.partnerPosition();
+      // Смотришь на напарника рядом — подсказка об обмене важнее подсказки двери.
+      const exchangeHint = this.exchangePrompt.resolve(
+        session.exchange,
+        options.playerId,
+        player.position,
+        player.yaw,
+        partnerPosition ? { position: partnerPosition } : null,
+        space.collisions,
+        session.inTambour,
+      );
       this.exitHud.update(
         exit,
         options.playerId,
-        this.prompt.resolve(
-          space.space,
-          exit,
-          options.playerId,
-          player.position,
-          session.inTambour,
-        ),
+        exchangeHint ??
+          this.prompt.resolve(
+            space.space,
+            exit,
+            options.playerId,
+            player.position,
+            session.inTambour,
+          ),
       );
       this.tambour.update(session.inTambour && !inTransition, exit?.secondsLeft ?? null);
       // Рука с фонарём от первого лица; лампа светит в мир, только пока фонарь поднят.
@@ -152,6 +168,7 @@ export class GameScreen implements Screen {
         pitchDelta: player.pitch - previousPitch,
         wanted: this.held.current,
         lamp: session.ownLamp,
+        reach: this.handOver.update(delta, session.exchange?.count ?? null),
       });
       previousYaw = player.yaw;
       previousPitch = player.pitch;
@@ -162,10 +179,11 @@ export class GameScreen implements Screen {
         this.lampHint.resolve(ownLamp, this.held.current, session.inTambour),
       );
       const compassInHand = this.held.current === 'compass' && !session.inTambour;
-      const partner = session.partnerPosition();
       this.compass.update(
         compassInHand,
-        partner ? PartnerBearing.clockwiseFromForward(player.position, player.yaw, partner) : null,
+        partnerPosition
+          ? PartnerBearing.clockwiseFromForward(player.position, player.yaw, partnerPosition)
+          : null,
       );
       sceneManager.render();
     });

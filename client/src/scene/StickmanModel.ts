@@ -53,6 +53,7 @@ export class StickmanModel {
    * @param signedSpeed скорость, м/с (отрицательная — пятится)
    * @param item что в руке
    * @param lamp состояние его лампы (из снимка сервера)
+   * @param reach насколько рука протянута при обмене лампами, 0–1
    */
   public update(
     deltaSeconds: number,
@@ -60,8 +61,14 @@ export class StickmanModel {
     signedSpeed: number,
     item: HeldItem,
     lamp: LampSnapshot | null,
+    reach = 0,
   ): void {
-    const pose = this.animator.update(deltaSeconds, signedSpeed, item);
+    const animated = this.animator.update(deltaSeconds, signedSpeed, item);
+    const pose = {
+      ...animated,
+      rightShoulder: animated.rightShoulder + reach * 1.1,
+      rightElbow: animated.rightElbow * (1 - reach * 0.7),
+    };
     this.rig.applyPose(pose);
     this.lampSwing.rotation.x = pose.lampSwing;
 

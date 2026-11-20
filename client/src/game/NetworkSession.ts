@@ -3,6 +3,7 @@ import { Vector2 } from '@light-keeper/shared';
 import type {
   DebugGotoTarget,
   DebugLampPreset,
+  ExchangeSnapshot,
   ExitSnapshot,
   LampSnapshot,
   MatchPlayerInfo,
@@ -35,6 +36,7 @@ export class NetworkSession {
   private latestExit: ExitSnapshot | null = null;
   private selfInTambour = false;
   private selfLamp: LampSnapshot | null = null;
+  private latestExchange: ExchangeSnapshot | null = null;
 
   public constructor(
     private readonly network: NetworkClient,
@@ -68,6 +70,11 @@ export class NetworkSession {
   /** Последнее известное состояние двери и ключа. */
   public get exit(): ExitSnapshot | null {
     return this.latestExit;
+  }
+
+  /** Обмен лампами: предложение и счётчик обменов. */
+  public get exchange(): ExchangeSnapshot | null {
+    return this.latestExchange;
   }
 
   /** Состояние своей лампы по данным сервера. */
@@ -124,6 +131,7 @@ export class NetworkSession {
     this.clock.observe(snapshot.serverTime, performance.now());
     this.currentPhase = snapshot.phase;
     this.latestExit = snapshot.exit;
+    this.latestExchange = snapshot.exchange;
     const enteredNewSpace = snapshot.spaceIndex !== this.space.spaceIndex;
     if (enteredNewSpace) {
       this.space.enter(snapshot.spaceIndex);
@@ -145,6 +153,7 @@ export class NetworkSession {
       const remote = this.remotes.get(state.id);
       remote?.setInTambour(state.inTambour);
       remote?.setHands(state.item, state.lamp);
+      remote?.setExchangeCount(snapshot.exchange.count);
       remote?.track.push(snapshot.serverTime, { position, yaw: state.yaw, pitch: state.pitch });
     }
   }

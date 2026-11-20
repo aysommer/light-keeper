@@ -19,7 +19,7 @@ export class LampHint {
       return null;
     }
     if (lamp.heat >= this.settings.warningHeat) {
-      return 'Лампа перегревается — убери её (2)';
+      return 'Лампа перегревается — передай напарнику (E) или убери (2)';
     }
     if (lamp.oil < this.settings.lowOil) {
       return 'Масло на исходе';

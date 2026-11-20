@@ -74,6 +74,7 @@ export class ExitSystem implements System {
     const canOpen = (player: ServerPlayer): boolean =>
       exit.revealed &&
       player.interacting &&
+      !player.aimingAtPartner &&
       this.isNearDoor(world, player) &&
       (world.space.exit.kind !== 'locked' || exit.keyHolderId === player.id);
 
@@ -105,7 +106,7 @@ export class ExitSystem implements System {
     deltaSeconds: number,
   ): void {
     for (const player of active) {
-      if (player.interactPressed && this.isNearDoor(world, player)) {
+      if (player.interactPressed && !player.aimingAtPartner && this.isNearDoor(world, player)) {
         player.inTambour = true;
       }
     }

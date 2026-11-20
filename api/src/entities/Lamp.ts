@@ -51,6 +51,15 @@ export class Lamp {
     this.holdSeconds = Math.max(0, this.holdSeconds - 2 * dt);
   }
 
+  /** Лампу передали из рук в руки: «привычка» сбрасывается, лампа остывает. */
+  public handOver(heatRelief: number): void {
+    this.holdSeconds = 0;
+    this.heat = Math.max(0, this.heat - heatRelief);
+    if (this.overheated && this.heat <= this.settings.relightHeat) {
+      this.overheated = false;
+    }
+  }
+
   /** Новое пространство: масло полное, лампа холодная. */
   public refill(): void {
     this.oil = 100;
