@@ -7,6 +7,7 @@ import {
   SphereGeometry,
   Vector2 as Point,
 } from 'three';
+import { Blinker } from '../game/Blinker.ts';
 
 /**
  * Привидение: белая полупрозрачная «простыня» с двумя тёмно-серыми глазами,
@@ -16,6 +17,7 @@ import {
 export class GhostModel {
   private static readonly OPACITY = 0.55;
   private static readonly FLOAT_HEIGHT = 0.12;
+  private static readonly EYE_HEIGHT = 0.045;
 
   public readonly root = new Group();
   private readonly sheet: Mesh;
@@ -38,6 +40,8 @@ export class GhostModel {
     opacity: 1,
   });
   private readonly phase = Math.random() * Math.PI * 2;
+  private readonly eyes: Mesh[] = [];
+  private readonly blinker = new Blinker();
   private fade = 1;
 
   public constructor() {
@@ -60,10 +64,11 @@ export class GhostModel {
     // Глаза — вытянутые тёмно-серые овалы на «лице» (локальная ось +Z).
     for (const side of [-1, 1]) {
       const eye = new Mesh(this.eyeGeometry, this.eyeMaterial);
-      eye.scale.set(0.03, 0.045, 0.012);
+      eye.scale.set(0.03, GhostModel.EYE_HEIGHT, 0.012);
       eye.position.set(side * 0.07, 1.64, 0.185);
       eye.rotation.y = side * 0.35;
       this.sheet.add(eye);
+      this.eyes.push(eye);
     }
   }
 
@@ -91,6 +96,9 @@ export class GhostModel {
     this.material.opacity = GhostModel.OPACITY * this.fade;
     this.material.emissiveIntensity = 0.45 * this.fade;
     this.eyeMaterial.opacity = this.fade;
+    // Моргание: глаза сплющиваются по вертикали почти в линию.
+    const open = this.blinker.update(deltaSeconds);
+    this.eyes.forEach((eye) => (eye.scale.y = GhostModel.EYE_HEIGHT * Math.max(0.06, open)));
   }
 
   public dispose(): void {
