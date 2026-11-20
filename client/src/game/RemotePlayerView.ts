@@ -1,9 +1,10 @@
 import type { Scene } from 'three';
-import type { PlayerColor } from '@light-keeper/shared';
+import type { HeldItem, PlayerColor } from '@light-keeper/shared';
 import type { RemotePlayerState } from '../network/RemotePlayerTrack.ts';
 import { RemotePlayerTrack } from '../network/RemotePlayerTrack.ts';
 import { SceneCoords } from '../scene/SceneCoords.ts';
 import { StickmanModel } from '../scene/StickmanModel.ts';
+import { MotionEstimator } from './MotionEstimator.ts';
 
 /** Напарник на сцене: стикмен, плавно следующий за снимками сервера. */
 export class RemotePlayerView {
@@ -11,6 +12,9 @@ export class RemotePlayerView {
   private readonly model: StickmanModel;
   private current: RemotePlayerState | null = null;
   private hiddenInTambour = false;
+  private item: HeldItem = 'lamp';
+  private readonly motion = new MotionEstimator();
+  private lastTime: number | null = null;
 
   public constructor(
     public readonly id: string,
@@ -36,7 +40,20 @@ export class RemotePlayerView {
     this.hiddenInTambour = inTambour;
   }
 
+  /** Что напарник держит в руке (из снимка сервера). */
+  public setItem(item: HeldItem): void {
+    this.item = item;
+  }
+
+  /** Напарника перенесли (новое пространство): не принимать перенос за бег. */
+  public resetMotion(): void {
+    this.track.clear();
+    this.motion.reset();
+  }
+
   public update(renderTime: number, time: number): void {
+    const deltaSeconds = this.lastTime === null ? 0 : time - this.lastTime;
+    this.lastTime = time;
     const state = this.track.sample(renderTime);
     this.current = state;
     if (!state) {
@@ -45,7 +62,8 @@ export class RemotePlayerView {
     this.model.root.visible = !this.hiddenInTambour;
     this.model.root.position.copy(SceneCoords.toScene(state.position));
     this.model.root.rotation.set(0, state.yaw, 0);
-    this.model.setLampFlicker(time);
+    this.motion.update(state.position, deltaSeconds);
+    this.model.update(deltaSeconds, time, this.motion.signedSpeed(state.yaw), this.item);
   }
 
   public dispose(): void {

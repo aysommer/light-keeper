@@ -21,6 +21,7 @@ export class MovementSystem implements System {
         }
         player.applyLook(command);
         player.applyInteract(command.interact);
+        player.item = command.item;
         player.lastSeq = command.seq;
       }
     }

@@ -1,3 +1,4 @@
+import type { HeldItem } from '../simulation/HeldItem.ts';
 import type { PlayerInput } from '../simulation/PlayerInput.ts';
 
 /** Цвет персонажа-стикмена. Первый вошедший — красный, второй — голубой. */
@@ -38,6 +39,8 @@ export interface PlayerSnapshot {
   readonly lastSeq: number;
   /** Игрок уже вошёл в дверь и ждёт в тамбуре. */
   readonly inTambour: boolean;
+  /** Что игрок держит в руке. */
+  readonly item: HeldItem;
 }
 
 /** Состояние двери выхода и ключа в текущем пространстве. */

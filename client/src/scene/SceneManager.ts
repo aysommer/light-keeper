@@ -15,6 +15,13 @@ export class SceneManager {
 
   public readonly scene = new Scene();
   public readonly camera = new PerspectiveCamera(75, 1, 0.05, 60);
+  /**
+   * Сцена «вида от первого лица» (рука с фонарём). Рисуется вторым проходом
+   * поверх мира с очищенным буфером глубины — рука не утопает в стенах.
+   * Её камера неподвижна: предметы задаются прямо в координатах взгляда.
+   */
+  public readonly viewmodelScene = new Scene();
+  public readonly viewmodelCamera = new PerspectiveCamera(70, 1, 0.01, 5);
   public readonly renderer: WebGLRenderer;
   private readonly resizeObserver: ResizeObserver;
 
@@ -43,7 +50,12 @@ export class SceneManager {
   }
 
   public render(): void {
+    this.renderer.autoClear = true;
     this.renderer.render(this.scene, this.camera);
+    this.renderer.autoClear = false;
+    this.renderer.clearDepth();
+    this.renderer.render(this.viewmodelScene, this.viewmodelCamera);
+    this.renderer.autoClear = true;
   }
 
   public dispose(): void {
@@ -56,7 +68,9 @@ export class SceneManager {
     const width = Math.max(1, this.container.clientWidth);
     const height = Math.max(1, this.container.clientHeight);
     this.renderer.setSize(width, height, false);
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
+    for (const camera of [this.camera, this.viewmodelCamera]) {
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
   }
 }

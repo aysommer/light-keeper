@@ -83,6 +83,8 @@ export { CollisionWorld } from './physics/CollisionWorld.ts';
 // Симуляция
 export { PlayerMovement } from './simulation/PlayerMovement.ts';
 export type { PlayerInput } from './simulation/PlayerInput.ts';
+export { HELD_ITEMS } from './simulation/HeldItem.ts';
+export type { HeldItem } from './simulation/HeldItem.ts';
 
 // Навигация
 export { OccupancyGrid, ReachableSet } from './navigation/OccupancyGrid.ts';

@@ -1,4 +1,5 @@
 import { LobbyCode } from './LobbyCode.ts';
+import type { HeldItem } from '../simulation/HeldItem.ts';
 import type { PlayerInput } from '../simulation/PlayerInput.ts';
 import type { ClientMessage, ServerMessage, ServerMessageType } from './Messages.ts';
 
@@ -107,7 +108,7 @@ export class MessageCodec {
     if (typeof raw !== 'object' || raw === null) {
       return null;
     }
-    const { seq, dt, moveX, moveY, yaw, pitch, run, interact, space } = raw as JsonObject;
+    const { seq, dt, moveX, moveY, yaw, pitch, run, interact, item, space } = raw as JsonObject;
     const valid =
       Number.isInteger(seq) &&
       (seq as number) >= 0 &&
@@ -119,6 +120,7 @@ export class MessageCodec {
       this.inRange(pitch, -Math.PI, Math.PI) &&
       typeof run === 'boolean' &&
       typeof interact === 'boolean' &&
+      (item === 'lamp' || item === 'compass') &&
       Number.isInteger(space) &&
       (space as number) >= 0 &&
       (space as number) < MessageCodec.MAX_SEQ;
@@ -134,6 +136,7 @@ export class MessageCodec {
       pitch: pitch as number,
       run: run as boolean,
       interact: interact as boolean,
+      item: item as HeldItem,
       space: space as number,
     };
   }

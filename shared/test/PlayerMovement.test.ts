@@ -24,6 +24,7 @@ const input = (overrides: Partial<PlayerInput> = {}): PlayerInput => ({
   pitch: 0,
   run: false,
   interact: false,
+  item: 'lamp',
   space: 0,
   ...overrides,
 });
@@ -101,6 +102,7 @@ describe('MessageCodec: input', () => {
     ['run не boolean', [{ ...input(), run: 1 }]],
     ['без номера пространства', [{ ...input(), space: undefined }]],
     ['interact не boolean', [{ ...input(), interact: 'yes' }]],
+    ['неизвестный предмет', [{ ...input(), item: 'sword' }]],
     ['дробный номер пространства', [input({ space: 1.5 })]],
     ['не массив', 'abc'],
   ])('отклоняет: %s', (_name, commands) => {

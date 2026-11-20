@@ -1,5 +1,6 @@
-/** Предмет в руке игрока. */
-export type HeldItem = 'lamp' | 'compass';
+import type { HeldItem } from '@light-keeper/shared';
+
+export type { HeldItem };
 
 /** Что игрок держит в руках: клавиша 1 — лампа, клавиша 2 — компас. */
 export class HeldItems {

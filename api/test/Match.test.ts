@@ -27,6 +27,7 @@ const forward = (seq: number, overrides: Partial<PlayerInput> = {}): PlayerInput
   pitch: 0,
   run: false,
   interact: false,
+  item: 'lamp',
   space: 0,
   ...overrides,
 });

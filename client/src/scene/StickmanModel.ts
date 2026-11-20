@@ -1,99 +1,76 @@
-import {
-  CylinderGeometry,
-  Group,
-  Mesh,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
-  PointLight,
-  Quaternion,
-  SphereGeometry,
-  Vector3,
-} from 'three';
-import type { BufferGeometry, Material } from 'three';
-import type { PlayerColor } from '@light-keeper/shared';
+import { CylinderGeometry, Group, Mesh, MeshStandardMaterial, PointLight } from 'three';
+import type { HeldItem, PlayerColor } from '@light-keeper/shared';
+import { StickmanAnimator } from '../game/StickmanAnimator.ts';
+import { LanternModel } from './LanternModel.ts';
+import { StickmanRig } from './StickmanRig.ts';
 
 /**
- * Трёхмерный стикмен из примитивов: шар-голова и тонкие цилиндры-конечности.
- * В правой руке — лампа с источником света. Модель смотрит в −Z (как камера с yaw = 0).
- * Анимация ходьбы появится на этапе 5.
+ * Стикмен напарника: шарнирный скелет с процедурной анимацией шага и бега.
+ * В правой руке — горящий фонарь (освещает мир) или компас (фонарь убран).
  */
 export class StickmanModel {
   public static readonly COLORS: Record<PlayerColor, string> = {
     red: '#d63a3a',
     blue: '#2e9bd6',
   };
-  private static readonly LIMB_RADIUS = 0.045;
+  private static readonly LAMP_INTENSITY = 6;
 
-  public readonly root = new Group();
-  private readonly geometries: BufferGeometry[] = [];
-  private readonly materials: Material[] = [];
+  public readonly root: Group;
+  private readonly rig: StickmanRig;
+  private readonly animator = new StickmanAnimator();
+  private readonly bodyMaterial: MeshStandardMaterial;
+  private readonly lampSwing = new Group();
+  private readonly lantern = new LanternModel();
   private readonly lampLight: PointLight;
+  private readonly compass: Mesh;
+  private readonly compassMaterial = new MeshStandardMaterial({
+    color: '#c9a227',
+    metalness: 0.8,
+    roughness: 0.35,
+  });
 
   public constructor(color: PlayerColor) {
-    const body = new MeshStandardMaterial({
-      color: StickmanModel.COLORS[color],
-      roughness: 0.6,
-      emissive: StickmanModel.COLORS[color],
-      emissiveIntensity: 0.15,
-    });
-    this.materials.push(body);
+    this.bodyMaterial = StickmanRig.bodyMaterial(StickmanModel.COLORS[color]);
+    this.rig = new StickmanRig(this.bodyMaterial);
+    this.root = this.rig.root;
 
-    const head = new SphereGeometry(0.16, 20, 14);
-    this.geometries.push(head);
-    const headMesh = new Mesh(head, body);
-    headMesh.position.set(0, 1.62, 0);
-    this.root.add(headMesh);
+    this.rig.rightHand.add(this.lampSwing);
+    this.lampSwing.add(this.lantern.root);
+    this.lampLight = new PointLight('#ffcf8a', StickmanModel.LAMP_INTENSITY, 14, 1.6);
+    this.lampLight.position.y = LanternModel.GLASS_CENTER_Y;
+    this.lampSwing.add(this.lampLight);
 
-    const hip = new Vector3(0, 0.92, 0);
-    const neck = new Vector3(0, 1.46, 0);
-    const shoulder = new Vector3(0, 1.36, 0);
-    const rightHand = new Vector3(0.32, 0.98, -0.12);
-    this.limb(body, hip, neck);
-    this.limb(body, shoulder, new Vector3(-0.3, 1.0, 0.05));
-    this.limb(body, shoulder, rightHand);
-    this.limb(body, hip, new Vector3(-0.16, 0.02, 0));
-    this.limb(body, hip, new Vector3(0.16, 0.02, 0));
-
-    const lampGlass = new SphereGeometry(0.07, 16, 12);
-    const lampMaterial = new MeshBasicMaterial({ color: '#fff1c4' });
-    this.geometries.push(lampGlass);
-    this.materials.push(lampMaterial);
-    const lamp = new Mesh(lampGlass, lampMaterial);
-    lamp.position.copy(rightHand).add(new Vector3(0, -0.12, 0));
-    this.root.add(lamp);
-
-    this.lampLight = new PointLight('#ffcf8a', 6, 14, 1.6);
-    this.lampLight.position.copy(lamp.position);
-    this.root.add(this.lampLight);
+    // Компас в руке — плоский латунный диск.
+    this.compass = new Mesh(new CylinderGeometry(0.05, 0.05, 0.015, 20), this.compassMaterial);
+    this.compass.position.set(0, -0.02, -0.03);
+    this.compass.rotation.x = Math.PI / 2;
+    this.rig.rightHand.add(this.compass);
   }
 
-  public setLampFlicker(time: number): void {
-    this.lampLight.intensity =
-      6 * (1 + Math.sin(time * 13.1) * 0.04 + Math.sin(time * 31.7) * 0.03);
+  /**
+   * @param signedSpeed скорость, м/с (отрицательная — пятится)
+   * @param item что в руке
+   */
+  public update(deltaSeconds: number, time: number, signedSpeed: number, item: HeldItem): void {
+    const pose = this.animator.update(deltaSeconds, signedSpeed, item);
+    this.rig.applyPose(pose);
+    this.lampSwing.rotation.x = pose.lampSwing;
+
+    const lampInHand = item === 'lamp';
+    this.lantern.root.visible = lampInHand;
+    this.lampLight.visible = lampInHand;
+    this.compass.visible = !lampInHand;
+    const flicker = 1 + Math.sin(time * 13.1) * 0.04 + Math.sin(time * 31.7) * 0.03;
+    this.lampLight.intensity = StickmanModel.LAMP_INTENSITY * flicker;
+    this.lantern.setLit(lampInHand, flicker);
   }
 
   public dispose(): void {
-    this.root.removeFromParent();
-    this.geometries.forEach((geometry) => geometry.dispose());
-    this.materials.forEach((material) => material.dispose());
+    this.rig.dispose();
+    this.lantern.dispose();
     this.lampLight.dispose();
-  }
-
-  /** Цилиндр-конечность между двумя точками. */
-  private limb(material: Material, from: Vector3, to: Vector3): void {
-    const direction = to.clone().sub(from);
-    const geometry = new CylinderGeometry(
-      StickmanModel.LIMB_RADIUS,
-      StickmanModel.LIMB_RADIUS,
-      direction.length(),
-      10,
-    );
-    this.geometries.push(geometry);
-    const mesh = new Mesh(geometry, material);
-    mesh.position.copy(from).add(to).multiplyScalar(0.5);
-    mesh.quaternion.copy(
-      new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize()),
-    );
-    this.root.add(mesh);
+    this.compass.geometry.dispose();
+    this.compassMaterial.dispose();
+    this.bodyMaterial.dispose();
   }
 }

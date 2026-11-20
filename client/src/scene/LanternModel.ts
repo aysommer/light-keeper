@@ -1,0 +1,62 @@
+import {
+  ConeGeometry,
+  CylinderGeometry,
+  Group,
+  Mesh,
+  MeshStandardMaterial,
+  TorusGeometry,
+} from 'three';
+import type { BufferGeometry } from 'three';
+
+/**
+ * Масляный фонарь: основание, светящееся стекло, крышка и кольцо-ручка.
+ * Точка подвеса (верх кольца) — в начале координат, фонарь висит вниз.
+ */
+export class LanternModel {
+  /** Центр стекла относительно точки подвеса — сюда ставится источник света. */
+  public static readonly GLASS_CENTER_Y = -0.15;
+
+  public readonly root = new Group();
+  private readonly geometries: BufferGeometry[] = [];
+  private readonly metal = new MeshStandardMaterial({
+    color: '#2d2a24',
+    metalness: 0.6,
+    roughness: 0.45,
+  });
+  private readonly glass = new MeshStandardMaterial({
+    color: '#3a3328',
+    emissive: '#ffcf7a',
+    emissiveIntensity: 1.6,
+    roughness: 0.2,
+  });
+
+  public constructor() {
+    const handle = this.mesh(new TorusGeometry(0.035, 0.006, 8, 20), this.metal);
+    handle.position.y = -0.035;
+    const cap = this.mesh(new ConeGeometry(0.055, 0.04, 16), this.metal);
+    cap.position.y = -0.085;
+    const glass = this.mesh(new CylinderGeometry(0.042, 0.045, 0.11, 16), this.glass);
+    glass.position.y = LanternModel.GLASS_CENTER_Y;
+    const base = this.mesh(new CylinderGeometry(0.055, 0.055, 0.02, 16), this.metal);
+    base.position.y = -0.215;
+  }
+
+  /** Горит ли фонарь; `flicker` — множитель яркости пламени (≈1). */
+  public setLit(lit: boolean, flicker = 1): void {
+    this.glass.emissiveIntensity = lit ? 1.6 * flicker : 0;
+  }
+
+  public dispose(): void {
+    this.root.removeFromParent();
+    this.geometries.forEach((geometry) => geometry.dispose());
+    this.metal.dispose();
+    this.glass.dispose();
+  }
+
+  private mesh(geometry: BufferGeometry, material: MeshStandardMaterial): Mesh {
+    this.geometries.push(geometry);
+    const mesh = new Mesh(geometry, material);
+    this.root.add(mesh);
+    return mesh;
+  }
+}

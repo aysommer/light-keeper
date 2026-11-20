@@ -10,6 +10,7 @@ import { NetworkSession } from '../game/NetworkSession.ts';
 import { PartnerBearing } from '../game/PartnerBearing.ts';
 import { InputController } from '../input/InputController.ts';
 import type { NetworkClient } from '../network/NetworkClient.ts';
+import { FirstPersonViewmodel } from '../scene/FirstPersonViewmodel.ts';
 import { HandLampLight } from '../scene/HandLampLight.ts';
 import { SceneManager } from '../scene/SceneManager.ts';
 import { CompassView } from './CompassView.ts';
@@ -69,6 +70,11 @@ export class GameScreen implements Screen {
     player.yaw = space.space.startYaw;
     const controller = new FirstPersonController(player, input, space);
     const lamp = this.own(new HandLampLight(sceneManager.camera));
+    const viewmodel = this.own(
+      new FirstPersonViewmodel(sceneManager.viewmodelScene, options.color),
+    );
+    let previousYaw = player.yaw;
+    let previousPitch = player.pitch;
     const session = this.own(
       new NetworkSession(
         options.network,
@@ -106,6 +112,11 @@ export class GameScreen implements Screen {
       }
       controller.frozen = inTransition || session.inTambour;
 
+      // Предмет в руке: 1 — лампа, 2 — компас. Уходит на сервер вместе с командой.
+      for (const code of HeldItems.keyCodes) {
+        if (input.consumePress(code)) this.held.selectByKey(code);
+      }
+      controller.item = this.held.current;
       controller.update(delta);
       session.update(delta, time);
       controller.applyToCamera(sceneManager.camera);
@@ -123,13 +134,24 @@ export class GameScreen implements Screen {
         ),
       );
       this.tambour.update(session.inTambour && !inTransition, exit?.secondsLeft ?? null);
-      // Предмет в руке: 1 — лампа, 2 — компас (убранная лампа не светит).
-      for (const code of HeldItems.keyCodes) {
-        if (input.consumePress(code)) this.held.selectByKey(code);
-      }
-      const compassInHand = this.held.current === 'compass' && !session.inTambour;
-      lamp.setEnabled(this.held.current === 'lamp');
+      // Рука с фонарём от первого лица; лампа светит в мир, только пока фонарь поднят.
+      const yawDelta = Math.atan2(
+        Math.sin(player.yaw - previousYaw),
+        Math.cos(player.yaw - previousYaw),
+      );
+      viewmodel.update(delta, time, {
+        bobPhase: controller.bobPhase,
+        moving: player.isMoving,
+        running: controller.isRunning,
+        yawDelta,
+        pitchDelta: player.pitch - previousPitch,
+        wanted: this.held.current,
+      });
+      previousYaw = player.yaw;
+      previousPitch = player.pitch;
+      lamp.setEnabled(viewmodel.lampRaised);
       lamp.update(time);
+      const compassInHand = this.held.current === 'compass' && !session.inTambour;
       const partner = session.partnerPosition();
       this.compass.update(
         compassInHand,

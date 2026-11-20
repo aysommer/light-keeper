@@ -1,3 +1,5 @@
+import type { HeldItem } from './HeldItem.ts';
+
 /**
  * Команда ввода игрока за один кадр клиента. Сервер и клиент применяют её
  * одинаково (см. PlayerMovement), поэтому клиент может предсказывать движение.
@@ -18,6 +20,8 @@ export interface PlayerInput {
   readonly run: boolean;
   /** Зажата клавиша действия (`E`): открыть дверь, войти в неё. */
   readonly interact: boolean;
+  /** Что игрок держит в руке. */
+  readonly item: HeldItem;
   /** Номер пространства, в котором сформирована команда. Чужие команды сервер не двигает. */
   readonly space: number;
 }

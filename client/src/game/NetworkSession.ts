@@ -115,7 +115,7 @@ export class NetworkSession {
     if (enteredNewSpace) {
       this.space.enter(snapshot.spaceIndex);
       this.reconciler.clear();
-      this.remotes.forEach((remote) => remote.track.clear());
+      this.remotes.forEach((remote) => remote.resetMotion());
     }
     for (const state of snapshot.players) {
       const position = new Vector2(state.x, state.y);
@@ -130,6 +130,7 @@ export class NetworkSession {
       }
       const remote = this.remotes.get(state.id);
       remote?.setInTambour(state.inTambour);
+      remote?.setItem(state.item);
       remote?.track.push(snapshot.serverTime, { position, yaw: state.yaw, pitch: state.pitch });
     }
   }

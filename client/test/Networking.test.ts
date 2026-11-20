@@ -20,6 +20,7 @@ const step = (seq: number): PlayerInput => ({
   pitch: 0,
   run: false,
   interact: false,
+  item: 'lamp',
   space: 0,
 });
 

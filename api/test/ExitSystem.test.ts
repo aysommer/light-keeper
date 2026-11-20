@@ -60,6 +60,7 @@ const setup = (spaceIndex = 0) => {
         pitch: 0,
         run: false,
         interact: interact[id] ?? false,
+        item: 'lamp',
         space: space().index,
       };
       match.receiveInput(id, [command]);
@@ -171,6 +172,7 @@ describe('ExitSystem: тамбур и таймер', () => {
         pitch: 0,
         run: true,
         interact: false,
+        item: 'lamp',
         space: 0,
       },
     ]);

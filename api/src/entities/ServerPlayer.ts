@@ -1,5 +1,11 @@
 import { PlayerMovement } from '@light-keeper/shared';
-import type { PlayerColor, PlayerInput, PlayerSnapshot, Vector2 } from '@light-keeper/shared';
+import type {
+  HeldItem,
+  PlayerColor,
+  PlayerInput,
+  PlayerSnapshot,
+  Vector2,
+} from '@light-keeper/shared';
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
 import { InputBudget } from '../game/InputBudget.ts';
 import { Entity } from './Entity.ts';
@@ -18,6 +24,8 @@ export class ServerPlayer extends Entity {
   public interactPressed = false;
   /** Игрок вошёл в дверь и ждёт в тамбуре. */
   public inTambour = false;
+  /** Предмет в руке (по последней команде). */
+  public item: HeldItem = 'lamp';
   public readonly budget = new InputBudget();
   private readonly queue: PlayerInput[] = [];
 
@@ -78,6 +86,7 @@ export class ServerPlayer extends Entity {
       pitch: this.pitch,
       lastSeq: this.lastSeq,
       inTambour: this.inTambour,
+      item: this.item,
     };
   }
 }
