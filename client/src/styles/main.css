@@ -996,7 +996,6 @@ kbd {
   display: grid;
   grid-template-columns: auto 1fr;
   column-gap: 12px;
-  row-gap: 2px;
   align-items: center;
   cursor: pointer;
 }
@@ -1012,13 +1011,6 @@ kbd {
 .settings__label {
   font-size: 17px;
   font-weight: 700;
-}
-
-.settings__hint {
-  grid-column: 2;
-  font-size: 13px;
-  line-height: 1.4;
-  opacity: 0.7;
 }
 
 .settings__close {

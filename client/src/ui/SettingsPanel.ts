@@ -2,19 +2,13 @@ import type { GraphicsOptions, GraphicsSettings } from '../core/GraphicsSettings
 
 interface Toggle {
   readonly key: keyof GraphicsOptions;
+  /** Короткое название, без пояснений. */
   readonly label: string;
-  readonly hint: string;
 }
 
 /** Окно настроек графики: галочки применяются сразу. */
 export class SettingsPanel {
-  private static readonly TOGGLES: readonly Toggle[] = [
-    {
-      key: 'antialias',
-      label: 'Сглаживание краёв',
-      hint: 'Убирает «лесенку» на краях стен и фигур. Чуть больше нагрузка на видеокарту.',
-    },
-  ];
+  private static readonly TOGGLES: readonly Toggle[] = [{ key: 'antialias', label: 'Сглаживание' }];
 
   public readonly element: HTMLElement;
   private readonly inputs = new Map<keyof GraphicsOptions, HTMLInputElement>();
@@ -50,10 +44,7 @@ export class SettingsPanel {
       const text = document.createElement('span');
       text.className = 'settings__label';
       text.textContent = toggle.label;
-      const hint = document.createElement('span');
-      hint.className = 'settings__hint';
-      hint.textContent = toggle.hint;
-      label.append(input, text, hint);
+      label.append(input, text);
       box.append(label);
       this.inputs.set(toggle.key, input);
     }
