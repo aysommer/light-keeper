@@ -198,8 +198,15 @@ body {
 }
 
 .hud__hint .button {
-  margin-top: 8px;
   pointer-events: auto;
+}
+
+.hud__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 kbd {
@@ -939,4 +946,81 @@ kbd {
 
 .hud__sound[hidden] {
   display: none;
+}
+
+/* Окно настроек */
+
+.settings {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(10 8 4 / 0.6);
+  color: #f3e7b0;
+  text-align: left;
+  pointer-events: auto;
+}
+
+.settings[hidden] {
+  display: none;
+}
+
+.settings__box {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(420px, 100%);
+  padding: 24px;
+  border: 1px solid rgb(243 231 176 / 0.35);
+  border-radius: 12px;
+  background: #1f1b10;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.5);
+}
+
+.settings__title {
+  margin: 0;
+  font-size: 24px;
+}
+
+.settings__section {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.settings__toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.settings__toggle input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: #c9b458;
+  cursor: pointer;
+}
+
+.settings__label {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.settings__hint {
+  grid-column: 2;
+  font-size: 13px;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+
+.settings__close {
+  align-self: flex-end;
 }

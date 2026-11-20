@@ -8,6 +8,7 @@ import type { Screen } from '../ui/Screen.ts';
 import { ServerStatusIndicator } from '../ui/ServerStatusIndicator.ts';
 import { TitleScreen } from '../ui/TitleScreen.ts';
 import { ApiClient } from './ApiClient.ts';
+import { GraphicsSettings } from './GraphicsSettings.ts';
 
 /**
  * Корень клиентского приложения: переключает экраны и управляет сетевым подключением.
@@ -17,6 +18,7 @@ import { ApiClient } from './ApiClient.ts';
  */
 export class App {
   private readonly api = new ApiClient();
+  private readonly graphics = new GraphicsSettings();
   private current: Screen | null = null;
   private network: NetworkClient | null = null;
   private subscriptions: Array<() => void> = [];
@@ -40,6 +42,7 @@ export class App {
         onJoinLobby: (code) => void this.enterLobby(title, { type: 'lobby:join', code }),
       },
       error,
+      this.graphics,
     );
     this.show(title);
   }
@@ -157,6 +160,7 @@ export class App {
         playerId: network.playerId,
         color: start.you,
         players: start.players,
+        graphics: this.graphics,
         onExit: () => this.showTitle(),
       }),
     );

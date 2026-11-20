@@ -1,6 +1,8 @@
 import { LobbyCode } from '@light-keeper/shared';
 import type { ApiClient } from '../core/ApiClient.ts';
+import { GraphicsSettings } from '../core/GraphicsSettings.ts';
 import { RecordsTable } from './RecordsTable.ts';
+import { SettingsPanel } from './SettingsPanel.ts';
 import type { Screen } from './Screen.ts';
 import type { ServerStatusIndicator } from './ServerStatusIndicator.ts';
 import { StickmanIcon } from './StickmanIcon.ts';
@@ -15,6 +17,7 @@ export class TitleScreen implements Screen {
   public readonly element: HTMLElement;
   private readonly error: HTMLElement;
   private readonly buttons: HTMLButtonElement[] = [];
+  private readonly settings: SettingsPanel;
   private readonly codeInput: HTMLInputElement;
   private readonly records = new RecordsTable();
 
@@ -23,7 +26,9 @@ export class TitleScreen implements Screen {
     private readonly api: ApiClient,
     actions: TitleScreenActions,
     initialError: string | null = null,
+    graphics: GraphicsSettings = new GraphicsSettings(),
   ) {
+    this.settings = new SettingsPanel(graphics);
     this.element = document.createElement('main');
     this.element.className = 'title-screen';
 
@@ -68,7 +73,9 @@ export class TitleScreen implements Screen {
 
     const menu = document.createElement('div');
     menu.className = 'title-screen__menu';
-    menu.append(create, joinForm);
+    const settings = this.button('Настройки', () => this.settings.show(), 'button--ghost-dark');
+    settings.classList.add('title-screen__settings');
+    menu.append(create, joinForm, settings);
 
     this.error = document.createElement('p');
     this.error.className = 'title-screen__error';
@@ -83,6 +90,7 @@ export class TitleScreen implements Screen {
       this.error,
       statusIndicator.element,
       this.records.element,
+      this.settings.element,
     );
     this.showError(initialError);
   }
@@ -95,7 +103,9 @@ export class TitleScreen implements Screen {
       .catch(() => (this.records.element.hidden = true));
   }
 
-  public dispose(): void {}
+  public dispose(): void {
+    this.settings.dispose();
+  }
 
   public setBusy(busy: boolean): void {
     this.buttons.forEach((button) => (button.disabled = busy));

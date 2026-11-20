@@ -3,6 +3,7 @@ import type { MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
 import { AudioEngine } from '../audio/AudioEngine.ts';
 import { SoundDirector } from '../audio/SoundDirector.ts';
 import { GameLoop } from '../core/GameLoop.ts';
+import type { GraphicsSettings } from '../core/GraphicsSettings.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
 import { HeldItems } from '../game/HeldItems.ts';
@@ -24,6 +25,7 @@ import { CompassView } from './CompassView.ts';
 import { ExitHud } from './ExitHud.ts';
 import { Hud } from './Hud.ts';
 import { ScareOverlay } from './ScareOverlay.ts';
+import { SettingsPanel } from './SettingsPanel.ts';
 import { LampHud } from './LampHud.ts';
 import type { Screen } from './Screen.ts';
 import { TambourOverlay } from './TambourOverlay.ts';
@@ -35,6 +37,7 @@ export interface GameScreenOptions {
   readonly playerId: string;
   readonly color: PlayerColor;
   readonly players: readonly MatchPlayerInfo[];
+  readonly graphics: GraphicsSettings;
   readonly onExit: () => void;
 }
 
@@ -45,6 +48,7 @@ export class GameScreen implements Screen {
 
   public readonly element: HTMLElement;
   private readonly hud: Hud;
+  private readonly settings: SettingsPanel;
   private readonly overlay = new TransitionOverlay();
   private readonly exitHud = new ExitHud();
   private readonly compass = new CompassView();
@@ -64,12 +68,20 @@ export class GameScreen implements Screen {
   public constructor(private readonly options: GameScreenOptions) {
     this.element = document.createElement('div');
     this.element.className = 'game-screen';
-    this.hud = new Hud(options.onExit);
+    this.settings = new SettingsPanel(options.graphics);
+    this.hud = new Hud(options.onExit, () => this.settings.show());
   }
 
   public mount(): void {
     const options = this.options;
     const sceneManager = this.own(new SceneManager(this.element));
+    // Настройки графики применяются сразу, без перезагрузки; сети они не касаются.
+    sceneManager.setAntialias(options.graphics.options.antialias);
+    const unsubscribeGraphics = options.graphics.onChange((graphics) =>
+      sceneManager.setAntialias(graphics.antialias),
+    );
+    this.own({ dispose: unsubscribeGraphics });
+    this.own(this.settings);
     // Затемнение — поверх HUD, чтобы подсказки не перекрывали надпись.
     this.element.append(
       this.scareOverlay.element,
@@ -79,6 +91,7 @@ export class GameScreen implements Screen {
       this.compass.element,
       this.tambour.element,
       this.overlay.element,
+      this.settings.element,
     );
 
     const space = this.own(new ActiveSpace(options.seed, sceneManager.scene));
@@ -119,7 +132,10 @@ export class GameScreen implements Screen {
     });
     this.hud.setMuted(audio.muted);
 
-    input.onPointerLockChange((locked) => this.hud.setPointerLocked(locked));
+    input.onPointerLockChange((locked) => {
+      this.hud.setPointerLocked(locked);
+      if (locked) this.settings.hide();
+    });
     this.hud.setPointerLocked(false);
 
     // Затемнение: во время перехода и ещё немного после входа в пространство.

@@ -17,6 +17,7 @@ import { FilmShader } from './FilmShader.ts';
 /** Рендерер, сцена, камера и реакция на изменение размера окна. */
 export class SceneManager {
   private static readonly DARKNESS = '#14110a';
+  private static readonly MSAA_SAMPLES = 4;
 
   public readonly scene = new Scene();
   public readonly camera = new PerspectiveCamera(75, 1, 0.05, 60);
@@ -37,7 +38,9 @@ export class SceneManager {
   private readonly film: ShaderPass;
 
   public constructor(private readonly container: HTMLElement) {
-    this.renderer = new WebGLRenderer({ antialias: true });
+    // Сглаживание холста не нужно: картинка идёт через буферы пост-обработки,
+    // их сглаживание включается галочкой (setAntialias).
+    this.renderer = new WebGLRenderer({ antialias: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
@@ -68,6 +71,21 @@ export class SceneManager {
 
   public get canvas(): HTMLCanvasElement {
     return this.renderer.domElement;
+  }
+
+  /**
+   * Сглаживание краёв: мультисэмплинг промежуточных буферов цепочки отрисовки
+   * (сглаживание самого холста после пост-обработки не действует).
+   */
+  public setAntialias(enabled: boolean): void {
+    const samples = enabled ? SceneManager.MSAA_SAMPLES : 0;
+    for (const target of [this.composer.renderTarget1, this.composer.renderTarget2]) {
+      if (target.samples !== samples) {
+        target.samples = samples;
+        // Буфер пересоздастся на видеокарте с новым числом сэмплов при следующем кадре.
+        target.dispose();
+      }
+    }
   }
 
   /** @param time время, с (для зерна); @param scare испуг 0–1 */

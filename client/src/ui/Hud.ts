@@ -7,7 +7,7 @@ export class Hud {
   private readonly overlay: HTMLElement;
   private readonly sound: HTMLElement;
 
-  public constructor(onExit: () => void) {
+  public constructor(onExit: () => void, onSettings: () => void) {
     this.element = document.createElement('div');
     this.element.className = 'hud';
 
@@ -32,7 +32,18 @@ export class Hud {
       event.stopPropagation();
       onExit();
     });
-    hint.append(exit);
+    const settings = document.createElement('button');
+    settings.type = 'button';
+    settings.className = 'button button--ghost';
+    settings.textContent = 'Настройки';
+    settings.addEventListener('click', (event) => {
+      event.stopPropagation();
+      onSettings();
+    });
+    const buttons = document.createElement('div');
+    buttons.className = 'hud__buttons';
+    buttons.append(settings, exit);
+    hint.append(buttons);
     this.overlay.append(hint);
 
     this.sound = document.createElement('div');
