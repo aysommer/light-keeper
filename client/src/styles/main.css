@@ -631,3 +631,59 @@ kbd {
 .compass--lost .compass__needle {
   display: none;
 }
+
+/* Лампа: нагрев и подсказки */
+
+.lamp-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lamp-hud__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgb(255 110 30 / 0.35) 75%,
+    rgb(200 40 10 / 0.75) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.lamp-hud__vignette--pulse {
+  animation: lamp-heat-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes lamp-heat-pulse {
+  50% {
+    filter: brightness(1.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp-hud__vignette--pulse {
+    animation: none;
+  }
+}
+
+.lamp-hud__hint {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.5);
+  color: #ffd2a8;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.7);
+}
+
+.lamp-hud__hint[hidden] {
+  display: none;
+}

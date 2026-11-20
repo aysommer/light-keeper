@@ -2,7 +2,9 @@ import type { Scene } from 'three';
 import { Vector2 } from '@light-keeper/shared';
 import type {
   DebugGotoTarget,
+  DebugLampPreset,
   ExitSnapshot,
+  LampSnapshot,
   MatchPlayerInfo,
   MatchSnapshot,
   SpacePhase,
@@ -32,6 +34,7 @@ export class NetworkSession {
   private currentPhase: SpacePhase = 'playing';
   private latestExit: ExitSnapshot | null = null;
   private selfInTambour = false;
+  private selfLamp: LampSnapshot | null = null;
 
   public constructor(
     private readonly network: NetworkClient,
@@ -67,6 +70,11 @@ export class NetworkSession {
     return this.latestExit;
   }
 
+  /** Состояние своей лампы по данным сервера. */
+  public get ownLamp(): LampSnapshot | null {
+    return this.selfLamp;
+  }
+
   /** Этот игрок уже в тамбуре. */
   public get inTambour(): boolean {
     return this.selfInTambour;
@@ -85,6 +93,11 @@ export class NetworkSession {
   /** Отладка: попросить сервер перейти в следующее пространство. */
   public requestNextSpace(): void {
     this.network.send({ type: 'debug:next-space' });
+  }
+
+  /** Отладка: нагреть свою лампу или почти слить масло. */
+  public requestLamp(preset: DebugLampPreset): void {
+    this.network.send({ type: 'debug:lamp', preset });
   }
 
   /** Отладка: перенестись к двери (`exit`) или к ключу (`key`). */
@@ -121,6 +134,7 @@ export class NetworkSession {
       const position = new Vector2(state.x, state.y);
       if (state.id === this.playerId) {
         this.selfInTambour = state.inTambour;
+        this.selfLamp = state.lamp;
         if (enteredNewSpace) {
           this.player.teleport(position, this.space.space.startYaw);
         } else {
@@ -130,7 +144,7 @@ export class NetworkSession {
       }
       const remote = this.remotes.get(state.id);
       remote?.setInTambour(state.inTambour);
-      remote?.setItem(state.item);
+      remote?.setHands(state.item, state.lamp);
       remote?.track.push(snapshot.serverTime, { position, yaw: state.yaw, pitch: state.pitch });
     }
   }

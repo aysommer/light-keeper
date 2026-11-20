@@ -8,7 +8,9 @@ import {
   Vector3,
 } from 'three';
 import type { BufferGeometry, MeshStandardMaterial, Scene } from 'three';
-import type { HeldItem, PlayerColor } from '@light-keeper/shared';
+import { LampRules } from '@light-keeper/shared';
+import type { HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
+import { LampFlame } from '../game/LampFlame.ts';
 import { ItemSwitcher } from '../game/ItemSwitcher.ts';
 import { LanternModel } from './LanternModel.ts';
 import { StickmanModel } from './StickmanModel.ts';
@@ -25,6 +27,8 @@ export interface ViewmodelMotion {
   readonly pitchDelta: number;
   /** Какой предмет игрок хочет держать. */
   readonly wanted: HeldItem;
+  /** Состояние своей лампы (по данным сервера). */
+  readonly lamp: LampSnapshot | null;
 }
 
 /**
@@ -96,9 +100,11 @@ export class FirstPersonViewmodel {
     this.lampPivot.add(this.glow);
   }
 
-  /** Виден ли фонарь в руке и поднят ли он (тогда лампа светит в мир). */
-  public get lampRaised(): boolean {
-    return this.lantern.root.visible && this.root.visible;
+  private level = 0;
+
+  /** Уровень света своей лампы в мир: 0, если фонарь убран, опущен или не горит. */
+  public get lightLevel(): number {
+    return this.lantern.root.visible && this.root.visible ? this.level : 0;
   }
 
   public update(deltaSeconds: number, time: number, motion: ViewmodelMotion): void {
@@ -143,9 +149,10 @@ export class FirstPersonViewmodel {
     );
     this.lampPivot.rotation.set(this.swingForward, 0, this.swingSide);
 
-    const flicker = 1 + Math.sin(time * 11) * 0.04 + Math.sin(time * 27.7) * 0.03;
-    this.lantern.setLit(true, flicker);
-    this.glow.intensity = 1.2 * flicker;
+    const brightness = motion.lamp ? LampRules.brightness(motion.lamp) : 1;
+    this.level = LampFlame.level(time, brightness);
+    this.lantern.setGlow(this.level, LampFlame.heatGlow(motion.lamp?.heat ?? 0));
+    this.glow.intensity = 1.2 * this.level;
   }
 
   public dispose(): void {

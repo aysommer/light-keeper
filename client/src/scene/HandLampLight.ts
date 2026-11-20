@@ -2,8 +2,9 @@ import { PointLight } from 'three';
 import type { Camera } from 'three';
 
 /**
- * Свет лампы в руке игрока. Пока это временный источник света,
- * привязанный к камере; на этапе 6 его заменит настоящая лампа с маслом и нагревом.
+ * Свет своей лампы в мире. Источник привязан к камере чуть позади и сбоку
+ * (так он не уходит за стену, когда игрок стоит вплотную к ней).
+ * Яркость и дальность задаются уровнем света лампы.
  */
 export class HandLampLight {
   private readonly light: PointLight;
@@ -15,15 +16,11 @@ export class HandLampLight {
     camera.add(this.light);
   }
 
-  /** Лампа в руке (включена) или убрана — тогда свет от неё не идёт. */
-  public setEnabled(enabled: boolean): void {
-    this.light.visible = enabled;
-  }
-
-  /** Лёгкое дрожание пламени. */
-  public update(time: number): void {
-    const flicker = Math.sin(time * 11) * 0.04 + Math.sin(time * 27.7) * 0.03;
-    this.light.intensity = this.baseIntensity * (1 + flicker);
+  /** Уровень света 0…~1 (см. LampFlame.level); 0 — лампа убрана или не горит. */
+  public setLevel(level: number): void {
+    this.light.visible = level > 0;
+    this.light.intensity = this.baseIntensity * level;
+    this.light.distance = 5 + 11 * Math.min(1, level);
   }
 
   public dispose(): void {

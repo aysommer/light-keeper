@@ -9,8 +9,10 @@ export type {
   ClientMessage,
   ClientMessageType,
   DebugGotoTarget,
+  DebugLampPreset,
   ErrorCode,
   ExitSnapshot,
+  LampSnapshot,
   LobbyPlayerInfo,
   LobbySnapshot,
   LobbyStatus,
@@ -29,6 +31,7 @@ export type {
 export { GameConfig } from './config/GameConfig.ts';
 export type {
   ExitSettings,
+  LampSettings,
   MatchSettings,
   PlayerSettings,
   WorldSettings,
@@ -84,6 +87,8 @@ export { CollisionWorld } from './physics/CollisionWorld.ts';
 export { PlayerMovement } from './simulation/PlayerMovement.ts';
 export type { PlayerInput } from './simulation/PlayerInput.ts';
 export { HELD_ITEMS } from './simulation/HeldItem.ts';
+export { LampRules } from './simulation/LampRules.ts';
+export type { LampLightState } from './simulation/LampRules.ts';
 export type { HeldItem } from './simulation/HeldItem.ts';
 
 // Навигация

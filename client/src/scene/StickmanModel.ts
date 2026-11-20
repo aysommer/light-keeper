@@ -1,5 +1,7 @@
 import { CylinderGeometry, Group, Mesh, MeshStandardMaterial, PointLight } from 'three';
-import type { HeldItem, PlayerColor } from '@light-keeper/shared';
+import { LampRules } from '@light-keeper/shared';
+import type { HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
+import { LampFlame } from '../game/LampFlame.ts';
 import { StickmanAnimator } from '../game/StickmanAnimator.ts';
 import { LanternModel } from './LanternModel.ts';
 import { StickmanRig } from './StickmanRig.ts';
@@ -50,19 +52,28 @@ export class StickmanModel {
   /**
    * @param signedSpeed скорость, м/с (отрицательная — пятится)
    * @param item что в руке
+   * @param lamp состояние его лампы (из снимка сервера)
    */
-  public update(deltaSeconds: number, time: number, signedSpeed: number, item: HeldItem): void {
+  public update(
+    deltaSeconds: number,
+    time: number,
+    signedSpeed: number,
+    item: HeldItem,
+    lamp: LampSnapshot | null,
+  ): void {
     const pose = this.animator.update(deltaSeconds, signedSpeed, item);
     this.rig.applyPose(pose);
     this.lampSwing.rotation.x = pose.lampSwing;
 
     const lampInHand = item === 'lamp';
     this.lantern.root.visible = lampInHand;
-    this.lampLight.visible = lampInHand;
     this.compass.visible = !lampInHand;
-    const flicker = 1 + Math.sin(time * 13.1) * 0.04 + Math.sin(time * 31.7) * 0.03;
-    this.lampLight.intensity = StickmanModel.LAMP_INTENSITY * flicker;
-    this.lantern.setLit(lampInHand, flicker);
+    const brightness = lampInHand && lamp ? LampRules.brightness(lamp) : 0;
+    const level = LampFlame.level(time, brightness, 1.3);
+    this.lampLight.visible = level > 0;
+    this.lampLight.intensity = StickmanModel.LAMP_INTENSITY * level;
+    this.lampLight.distance = 5 + 9 * Math.min(1, level);
+    this.lantern.setGlow(level, LampFlame.heatGlow(lamp?.heat ?? 0));
   }
 
   public dispose(): void {

@@ -1,5 +1,5 @@
 import type { Scene } from 'three';
-import type { HeldItem, PlayerColor } from '@light-keeper/shared';
+import type { HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
 import type { RemotePlayerState } from '../network/RemotePlayerTrack.ts';
 import { RemotePlayerTrack } from '../network/RemotePlayerTrack.ts';
 import { SceneCoords } from '../scene/SceneCoords.ts';
@@ -13,6 +13,7 @@ export class RemotePlayerView {
   private current: RemotePlayerState | null = null;
   private hiddenInTambour = false;
   private item: HeldItem = 'lamp';
+  private lamp: LampSnapshot | null = null;
   private readonly motion = new MotionEstimator();
   private lastTime: number | null = null;
 
@@ -40,9 +41,10 @@ export class RemotePlayerView {
     this.hiddenInTambour = inTambour;
   }
 
-  /** Что напарник держит в руке (из снимка сервера). */
-  public setItem(item: HeldItem): void {
+  /** Что напарник держит в руке и в каком состоянии его лампа (из снимка сервера). */
+  public setHands(item: HeldItem, lamp: LampSnapshot): void {
     this.item = item;
+    this.lamp = lamp;
   }
 
   /** Напарника перенесли (новое пространство): не принимать перенос за бег. */
@@ -63,7 +65,7 @@ export class RemotePlayerView {
     this.model.root.position.copy(SceneCoords.toScene(state.position));
     this.model.root.rotation.set(0, state.yaw, 0);
     this.motion.update(state.position, deltaSeconds);
-    this.model.update(deltaSeconds, time, this.motion.signedSpeed(state.yaw), this.item);
+    this.model.update(deltaSeconds, time, this.motion.signedSpeed(state.yaw), this.item, this.lamp);
   }
 
   public dispose(): void {

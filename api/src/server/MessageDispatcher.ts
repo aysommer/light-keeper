@@ -82,6 +82,11 @@ export class MessageDispatcher {
           this.lobbies.lobbyOf(connection.id)?.match?.requestNextSpace();
         }
         return;
+      case 'debug:lamp':
+        if (this.options.allowDebug) {
+          this.lobbies.lobbyOf(connection.id)?.match?.debugLamp(connection.id, message.preset);
+        }
+        return;
       case 'debug:goto':
         if (this.options.allowDebug) {
           this.lobbies.lobbyOf(connection.id)?.match?.debugGoto(connection.id, message.target);

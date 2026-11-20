@@ -22,6 +22,11 @@ describe('MessageCodec.decodeClientMessage', () => {
       target: 'key',
     });
     expect(decode({ type: 'debug:goto', target: 'moon' })).toBeNull();
+    expect(decode({ type: 'debug:lamp', preset: 'hot' })).toEqual({
+      type: 'debug:lamp',
+      preset: 'hot',
+    });
+    expect(decode({ type: 'debug:lamp', preset: 'cold' })).toBeNull();
   });
 
   it('нормализует код комнаты', () => {

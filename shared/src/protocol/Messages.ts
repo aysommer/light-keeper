@@ -28,6 +28,18 @@ export interface MatchPlayerInfo {
   readonly color: PlayerColor;
 }
 
+/** Состояние лампы игрока в снимке мира. */
+export interface LampSnapshot {
+  /** Масло, %. */
+  readonly oil: number;
+  /** Нагрев, %. */
+  readonly heat: number;
+  /** Горит ли (есть масло и не перегрелась). */
+  readonly lit: boolean;
+  /** Перегрелась: погасла и остывает. */
+  readonly overheated: boolean;
+}
+
 /** Состояние игрока в снимке мира. */
 export interface PlayerSnapshot {
   readonly id: string;
@@ -41,6 +53,7 @@ export interface PlayerSnapshot {
   readonly inTambour: boolean;
   /** Что игрок держит в руке. */
   readonly item: HeldItem;
+  readonly lamp: LampSnapshot;
 }
 
 /** Состояние двери выхода и ключа в текущем пространстве. */
@@ -57,6 +70,9 @@ export interface ExitSnapshot {
   /** У кого ключ; `null` — ключ лежит на месте или его нет. */
   readonly keyHolderId: string | null;
 }
+
+/** Отладочные состояния лампы. */
+export type DebugLampPreset = 'hot' | 'low-oil';
 
 /** Куда можно перенестись отладочной командой. */
 export type DebugGotoTarget = 'exit' | 'key';
@@ -102,7 +118,9 @@ export type ClientMessage =
   /** Отладка: перейти в следующее пространство. Сервер принимает только в режиме разработки. */
   | { readonly type: 'debug:next-space' }
   /** Отладка: перенестись к двери выхода или к ключу. Только в режиме разработки. */
-  | { readonly type: 'debug:goto'; readonly target: DebugGotoTarget };
+  | { readonly type: 'debug:goto'; readonly target: DebugGotoTarget }
+  /** Отладка: нагреть свою лампу (`hot`) или почти слить масло (`low-oil`). Только в режиме разработки. */
+  | { readonly type: 'debug:lamp'; readonly preset: DebugLampPreset };
 
 /** Сообщения сервер → клиент. */
 export type ServerMessage =

@@ -99,9 +99,10 @@ export class MatchWorld {
     this.currentExit = new ExitState(this.currentSpace);
     this.currentPhase = 'playing';
     this.transitionLeft = 0;
-    this.players.forEach((player) =>
-      player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw),
-    );
+    this.players.forEach((player) => {
+      player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw);
+      player.lamp.refill();
+    });
   }
 
   private startPositionFor(player: ServerPlayer): ServerPlayer['position'] {

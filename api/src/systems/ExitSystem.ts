@@ -7,7 +7,7 @@ import type { System } from './System.ts';
 /**
  * Дверь выхода и ключ:
  * - игрок подбирает ключ, подойдя к нему;
- * - скрытая дверь проявляется, когда рядом игрок с лампой;
+ * - скрытая дверь проявляется, когда рядом игрок с горящей лампой в руке;
  * - удержание `E` у двери 3 с открывает её (запертую — только владелец ключа);
  *   отпустил или отошёл — прогресс сбрасывается;
  * - после открытия есть 30 с: игрок у двери нажимает `E` и попадает в тамбур;
@@ -56,10 +56,11 @@ export class ExitSystem implements System {
       return;
     }
     const front = world.space.exit.frontPoint();
-    // Лампы пока горят всегда; на этапе ламп сюда добавится проверка «лампа горит».
-    if (
-      active.some((player) => player.position.distanceTo(front) <= this.exitSettings.revealDistance)
-    ) {
+    const revealer = active.find(
+      (player) =>
+        player.lampShining && player.position.distanceTo(front) <= this.exitSettings.revealDistance,
+    );
+    if (revealer) {
       world.exit.revealed = true;
     }
   }

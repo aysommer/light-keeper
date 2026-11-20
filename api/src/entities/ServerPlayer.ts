@@ -9,6 +9,7 @@ import type {
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
 import { InputBudget } from '../game/InputBudget.ts';
 import { Entity } from './Entity.ts';
+import { Lamp } from './Lamp.ts';
 
 /** Игрок в партии: позиция, взгляд, очередь команд ввода. */
 export class ServerPlayer extends Entity {
@@ -26,6 +27,8 @@ export class ServerPlayer extends Entity {
   public inTambour = false;
   /** Предмет в руке (по последней команде). */
   public item: HeldItem = 'lamp';
+  /** Лампа игрока. На этапе обмена лампы будут переходить из рук в руки. */
+  public lamp = new Lamp();
   public readonly budget = new InputBudget();
   private readonly queue: PlayerInput[] = [];
 
@@ -64,6 +67,16 @@ export class ServerPlayer extends Entity {
     this.interactPressed = false;
   }
 
+  /** Лампа в руке (а не убрана ради компаса и не в тамбуре). */
+  public get lampInHand(): boolean {
+    return this.item === 'lamp' && !this.inTambour;
+  }
+
+  /** Лампа в руке и горит — светит в мир (проявляет скрытую дверь). */
+  public get lampShining(): boolean {
+    return this.lampInHand && this.lamp.lit;
+  }
+
   /** Учитывает клавишу действия из команды: удержание и фронт нажатия. */
   public applyInteract(held: boolean): void {
     if (held && !this.interacting) {
@@ -87,6 +100,7 @@ export class ServerPlayer extends Entity {
       lastSeq: this.lastSeq,
       inTambour: this.inTambour,
       item: this.item,
+      lamp: this.lamp.snapshot(),
     };
   }
 }

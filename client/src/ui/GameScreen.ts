@@ -5,6 +5,7 @@ import { ActiveSpace } from '../game/ActiveSpace.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
 import { HeldItems } from '../game/HeldItems.ts';
 import { InteractionPrompt } from '../game/InteractionPrompt.ts';
+import { LampHint } from '../game/LampHint.ts';
 import { LocalPlayer } from '../game/LocalPlayer.ts';
 import { NetworkSession } from '../game/NetworkSession.ts';
 import { PartnerBearing } from '../game/PartnerBearing.ts';
@@ -16,6 +17,7 @@ import { SceneManager } from '../scene/SceneManager.ts';
 import { CompassView } from './CompassView.ts';
 import { ExitHud } from './ExitHud.ts';
 import { Hud } from './Hud.ts';
+import { LampHud } from './LampHud.ts';
 import type { Screen } from './Screen.ts';
 import { TambourOverlay } from './TambourOverlay.ts';
 import { TransitionOverlay } from './TransitionOverlay.ts';
@@ -39,6 +41,8 @@ export class GameScreen implements Screen {
   private readonly overlay = new TransitionOverlay();
   private readonly exitHud = new ExitHud();
   private readonly compass = new CompassView();
+  private readonly lampHud = new LampHud();
+  private readonly lampHint = new LampHint();
   private readonly held = new HeldItems();
   private readonly tambour = new TambourOverlay();
   private readonly prompt = new InteractionPrompt();
@@ -56,6 +60,7 @@ export class GameScreen implements Screen {
     const sceneManager = this.own(new SceneManager(this.element));
     // Затемнение — поверх HUD, чтобы подсказки не перекрывали надпись.
     this.element.append(
+      this.lampHud.element,
       this.hud.element,
       this.exitHud.element,
       this.compass.element,
@@ -146,11 +151,16 @@ export class GameScreen implements Screen {
         yawDelta,
         pitchDelta: player.pitch - previousPitch,
         wanted: this.held.current,
+        lamp: session.ownLamp,
       });
       previousYaw = player.yaw;
       previousPitch = player.pitch;
-      lamp.setEnabled(viewmodel.lampRaised);
-      lamp.update(time);
+      lamp.setLevel(viewmodel.lightLevel);
+      const ownLamp = session.ownLamp;
+      this.lampHud.update(
+        session.inTambour ? 0 : (ownLamp?.heat ?? 0),
+        this.lampHint.resolve(ownLamp, this.held.current, session.inTambour),
+      );
       const compassInHand = this.held.current === 'compass' && !session.inTambour;
       const partner = session.partnerPosition();
       this.compass.update(
@@ -162,7 +172,10 @@ export class GameScreen implements Screen {
     this.loop.start();
   }
 
-  /** Клавиши отладки (только `npm run dev`): N — дальше, T — к двери, K — к ключу (в шаге от него). */
+  /**
+   * Клавиши отладки (только `npm run dev`): N — следующее пространство, T — к двери,
+   * K — к ключу (в шаге от него), H — нагреть лампу, L — почти слить масло.
+   */
   private handleDebugKeys(
     input: InputController,
     session: NetworkSession,
@@ -177,6 +190,12 @@ export class GameScreen implements Screen {
       // Повернуться лицом к двери (взгляд управляется клиентом).
       player.yaw = PlayerMovement.yawTowards(space.space.exit.normal.scale(-1));
       player.pitch = 0;
+    }
+    if (input.consumePress('KeyH')) {
+      session.requestLamp('hot');
+    }
+    if (input.consumePress('KeyL')) {
+      session.requestLamp('low-oil');
     }
     if (input.consumePress('KeyK')) {
       session.requestGoto('key');

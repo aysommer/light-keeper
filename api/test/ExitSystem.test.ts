@@ -231,6 +231,46 @@ describe('ExitSystem: ключ и скрытая дверь', () => {
     expect(ctx.exitState().revealed).toBe(true);
   });
 
+  it('скрытую дверь проявляет только горящая лампа в руке', () => {
+    const ctx = setup(indexWithKind('hidden'));
+    // С компасом в руке лампа убрана — дверь не проявится.
+    ctx.player('red').item = 'compass';
+    ctx.toDoor('red', 2);
+    ctx.match.step();
+    expect(ctx.player('red').lampShining).toBe(false);
+    expect(ctx.match.world.exit.revealed).toBe(false);
+    // Погасшая лампа тоже не проявит.
+    ctx.player('red').item = 'lamp';
+    ctx.player('red').lamp.oil = 0;
+    ctx.match.step();
+    expect(ctx.match.world.exit.revealed).toBe(false);
+    ctx.player('red').lamp.oil = 50;
+    ctx.match.step();
+    expect(ctx.match.world.exit.revealed).toBe(true);
+  });
+
+  it('новое пространство — лампы снова полные и холодные', () => {
+    const ctx = setup();
+    ctx.player('red').lamp.oil = 10;
+    ctx.player('red').lamp.heat = 90;
+    ctx.match.world.enterSpace(1);
+    expect(ctx.player('red').lamp.snapshot()).toEqual({
+      oil: 100,
+      heat: 0,
+      lit: true,
+      overheated: false,
+    });
+  });
+
+  it('снимок несёт состояние лампы и предмет в руке', () => {
+    const ctx = setup();
+    for (let i = 0; i < 40; i++) ctx.tick();
+    const red = ctx.red.last('match:snapshot')!.snapshot.players.find((p) => p.id === 'red')!;
+    expect(red.item).toBe('lamp');
+    expect(red.lamp.oil).toBeLessThan(100);
+    expect(red.lamp.heat).toBeGreaterThan(0);
+  });
+
   it('у обычной двери ключа нет и она видна сразу', () => {
     const ctx = setup();
     ctx.tick();

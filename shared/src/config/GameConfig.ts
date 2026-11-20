@@ -56,6 +56,32 @@ export interface MatchSettings {
   readonly transitionSeconds: number;
 }
 
+/** Правила лампы: масло и нагрев. Масло и нагрев — в процентах (0–100). */
+export interface LampSettings {
+  /** На сколько секунд горения хватает полной лампы. */
+  readonly oilSeconds: number;
+  /** Базовая скорость нагрева горящей лампы в руке, %/с. */
+  readonly heatBaseRate: number;
+  /** Множитель нагрева у только что взятой лампы. */
+  readonly heatMinFactor: number;
+  /** За сколько секунд непрерывного удержания множитель нагрева растёт на 1. */
+  readonly heatRampSeconds: number;
+  /** Остывание убранной (или погасшей) лампы, %/с. */
+  readonly stowedCoolRate: number;
+  /** Остывание перегревшейся лампы, %/с. */
+  readonly overheatCoolRate: number;
+  /** До какого нагрева должна остыть перегревшаяся лампа, чтобы снова загореться, %. */
+  readonly relightHeat: number;
+  /** С какого нагрева предупреждать о перегреве, %. */
+  readonly warningHeat: number;
+  /** Ниже этого уровня масла лампа тускнеет, %. */
+  readonly dimBelowOil: number;
+  /** Яркость лампы на последних каплях масла (доля от полной). */
+  readonly minBrightness: number;
+  /** Ниже этого уровня масла предупреждать, что оно на исходе, %. */
+  readonly lowOil: number;
+}
+
 /** Правила двери выхода и ключа. */
 export interface ExitSettings {
   /** Сколько удерживать `E`, чтобы открыть дверь, с. */
@@ -113,6 +139,20 @@ export class GameConfig {
 
   public static readonly match: MatchSettings = {
     transitionSeconds: 1.5,
+  };
+
+  public static readonly lamp: LampSettings = {
+    oilSeconds: 150,
+    heatBaseRate: 1.6,
+    heatMinFactor: 0.5,
+    heatRampSeconds: 20,
+    stowedCoolRate: 5,
+    overheatCoolRate: 8,
+    relightHeat: 30,
+    warningHeat: 75,
+    dimBelowOil: 35,
+    minBrightness: 0.25,
+    lowOil: 20,
   };
 
   public static readonly exit: ExitSettings = {

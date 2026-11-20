@@ -1,4 +1,5 @@
 import {
+  Color,
   ConeGeometry,
   CylinderGeometry,
   Group,
@@ -15,6 +16,10 @@ import type { BufferGeometry } from 'three';
 export class LanternModel {
   /** Центр стекла относительно точки подвеса — сюда ставится источник света. */
   public static readonly GLASS_CENTER_Y = -0.15;
+
+  private static readonly WARM = new Color('#ffcf7a');
+  private static readonly HOT = new Color('#ff4a1c');
+  private static readonly METAL_HOT = new Color('#ff3a10');
 
   public readonly root = new Group();
   private readonly geometries: BufferGeometry[] = [];
@@ -41,9 +46,16 @@ export class LanternModel {
     base.position.y = -0.215;
   }
 
-  /** Горит ли фонарь; `flicker` — множитель яркости пламени (≈1). */
-  public setLit(lit: boolean, flicker = 1): void {
-    this.glass.emissiveIntensity = lit ? 1.6 * flicker : 0;
+  /**
+   * Свечение фонаря.
+   * @param level уровень света 0…~1 (яркость с мерцанием; 0 — не горит)
+   * @param heatGlow заметность нагрева 0–1: стекло краснеет, металл раскаляется
+   */
+  public setGlow(level: number, heatGlow: number): void {
+    this.glass.emissive.copy(LanternModel.WARM).lerp(LanternModel.HOT, heatGlow ** 1.5);
+    this.glass.emissiveIntensity = 1.6 * level;
+    this.metal.emissive.copy(LanternModel.METAL_HOT);
+    this.metal.emissiveIntensity = heatGlow ** 2 * 0.8;
   }
 
   public dispose(): void {

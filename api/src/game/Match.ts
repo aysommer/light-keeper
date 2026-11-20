@@ -1,6 +1,7 @@
 import { GameConfig, Vector2 } from '@light-keeper/shared';
 import type {
   DebugGotoTarget,
+  DebugLampPreset,
   MatchPlayerInfo,
   PlayerColor,
   PlayerInput,
@@ -9,6 +10,7 @@ import type {
 import { ServerPlayer } from '../entities/ServerPlayer.ts';
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
 import { ExitSystem } from '../systems/ExitSystem.ts';
+import { LampSystem } from '../systems/LampSystem.ts';
 import { MovementSystem } from '../systems/MovementSystem.ts';
 import type { System } from '../systems/System.ts';
 import { TransitionSystem } from '../systems/TransitionSystem.ts';
@@ -61,6 +63,7 @@ export class Match {
     }
     this.systems = [
       new MovementSystem(),
+      new LampSystem(),
       new ExitSystem(GameConfig.exit, {
         transitionSeconds: options.transitionSeconds ?? GameConfig.match.transitionSeconds,
       }),
@@ -115,6 +118,19 @@ export class Match {
       target === 'exit' ? space.exit.frontPoint(0.6) : space.key?.add(Match.KEY_GOTO_OFFSET);
     if (player && !player.inTambour && destination) {
       player.position = destination;
+    }
+  }
+
+  /** Отладка: нагреть лампу игрока или почти слить из неё масло. */
+  public debugLamp(playerId: string, preset: DebugLampPreset): void {
+    const lamp = this.world.players.get(playerId)?.lamp;
+    if (!lamp) {
+      return;
+    }
+    if (preset === 'hot') {
+      lamp.heat = Math.max(lamp.heat, 85);
+    } else {
+      lamp.oil = Math.min(lamp.oil, 12);
     }
   }
 
