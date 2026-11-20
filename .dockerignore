@@ -1,0 +1,16 @@
+# Собирается внутри образа заново
+**/node_modules
+**/dist
+coverage
+*.log
+
+# Не нужно в образах
+.git
+.github
+.vscode
+.idea
+docs
+api/data
+.env
+.env.*
+!.env.example

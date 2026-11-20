@@ -6,10 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --clear-screen=false --include ../shared/src --env-file=.env.development src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --sourcemap --outfile=dist/index.js",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --sourcemap --outfile=dist/index.js \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
     "start": "node --enable-source-maps dist/index.js",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@light-keeper/shared": "*",

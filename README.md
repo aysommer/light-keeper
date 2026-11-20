@@ -28,7 +28,8 @@ npm install          # установка зависимостей всех па
 npm run dev          # api (http://localhost:3000) + client (http://localhost:5173)
 npm run build        # сборка api (esbuild) и client (vite)
 npm start            # запуск собранного api
-npm run check        # prettier + eslint + typecheck + тесты
+npm run check        # prettier + eslint + typecheck + тесты + дымовой тест сборки
+npm run smoke        # собрать сервер и проверить, что сборка запускается
 ```
 
 В dev-режиме Vite проксирует `/api/*` на игровой сервер (адрес задаётся
@@ -56,6 +57,25 @@ npm run check        # prettier + eslint + typecheck + тесты
   клиент берёт позицию сервера и переигрывает неподтверждённые команды.
   Расхождение гасится плавно.
 - **Напарник** рисуется с задержкой 100 мс — интерполяцией между снимками.
+
+## Запуск в Docker
+
+```bash
+docker compose up --build
+```
+
+Игра откроется на http://localhost:8080 (порт меняется переменной `LK_PORT`,
+например `LK_PORT=3001 docker compose up --build`).
+
+- **client** — nginx со сборкой клиента; проксирует `/api/*` (HTTP и WebSocket)
+  на сервер.
+- **api** — игровой сервер (Node.js, один собранный файл, запускается не от root).
+- Таблица рекордов хранится в томе `records` и переживает пересоздание
+  контейнеров (`docker compose down -v` удалит и её).
+- Отладочные команды в Docker выключены.
+
+Файлы: `docker-compose.yml`, `docker/api.Dockerfile`, `docker/client.Dockerfile`,
+`docker/nginx.conf`.
 
 ## Управление
 

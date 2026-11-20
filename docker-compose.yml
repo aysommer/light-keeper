@@ -1,0 +1,30 @@
+# Light Keeper: игровой сервер + клиент.
+#   docker compose up --build
+# Игра откроется на http://localhost:8080 (порт меняется переменной LK_PORT).
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      RECORDS_FILE: /data/records.json
+    volumes:
+      - records:/data
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
+    restart: unless-stopped
+    ports:
+      - '${LK_PORT:-8080}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  # Таблица рекордов
+  records:
