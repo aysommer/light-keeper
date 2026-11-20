@@ -43,14 +43,17 @@ export class GhostsView {
     }
   }
 
-  public update(renderTime: number, time: number, deltaSeconds: number): void {
+  /** @param viewer где стоит этот игрок — привидения смотрят на него */
+  public update(renderTime: number, time: number, deltaSeconds: number, viewer: Vector2): void {
     for (const entry of this.ghosts.values()) {
       const state = entry.track.sample(renderTime);
       if (!state) continue;
       entry.position = state.position;
       entry.model.root.visible = true;
       entry.model.root.position.copy(SceneCoords.toScene(state.position));
-      entry.model.update(time, deltaSeconds, entry.fading);
+      // В сцене мир y → −Z, поэтому знак у y-компоненты обратный.
+      const facing = Math.atan2(viewer.x - state.position.x, -(viewer.y - state.position.y));
+      entry.model.update(time, deltaSeconds, entry.fading, facing);
     }
   }
 

@@ -156,7 +156,7 @@ export class NetworkSession {
     if (serverNow !== null) {
       const renderTime = serverNow - NetworkSession.INTERPOLATION_DELAY_MS;
       this.remotes.forEach((remote) => remote.update(renderTime, time));
-      this.ghostsView.update(renderTime, time, deltaSeconds);
+      this.ghostsView.update(renderTime, time, deltaSeconds, this.player.position);
     }
   }
 

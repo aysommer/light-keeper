@@ -47,12 +47,24 @@ describe('GhostsView', () => {
       { id: 1, x: 6, y: 5, fading: false },
       { id: 2, x: 9, y: 5, fading: true },
     ]);
-    view.update(50, 0, 0.016);
+    view.update(50, 0, 0.016, new Vector2(0, 0));
     expect(view.nearestThreat(new Vector2(5.5, 7))).toBeCloseTo(2);
     view.push(200, [{ id: 2, x: 9, y: 5, fading: true }]);
-    view.update(150, 0.1, 0.016);
+    view.update(150, 0.1, 0.016, new Vector2(0, 0));
     expect(view.nearestThreat(new Vector2(5.5, 7))).toBeNull();
     view.clear();
     expect(scene.children).toHaveLength(0);
+  });
+
+  it('привидение поворачивается лицом к зрителю', () => {
+    const scene = new Scene();
+    const view = new GhostsView(scene);
+    view.push(0, [{ id: 1, x: 5, y: 5, fading: false }]);
+    // Зритель «севернее» по миру (больше y) — в сцене это −Z: лицо (+Z модели) должно смотреть туда.
+    for (let i = 0; i < 120; i++) view.update(0, i / 60, 1 / 60, new Vector2(5, 15));
+    const ghost = scene.children[0]!;
+    const face = { x: Math.sin(ghost.rotation.y), z: Math.cos(ghost.rotation.y) };
+    expect(face.z).toBeLessThan(-0.95);
+    expect(Math.abs(face.x)).toBeLessThan(0.2);
   });
 });
