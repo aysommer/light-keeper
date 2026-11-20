@@ -19,6 +19,7 @@ export class RemotePlayerView {
   private lastTime: number | null = null;
   private readonly handOver = new HandOverMotion();
   private exchangeCount: number | null = null;
+  private currentSpeed = 0;
 
   public constructor(
     public readonly id: string,
@@ -28,6 +29,11 @@ export class RemotePlayerView {
     this.model = new StickmanModel(color);
     this.model.root.visible = false;
     scene.add(this.model.root);
+  }
+
+  /** Скорость напарника по последним кадрам, м/с (для звука шагов). */
+  public get speed(): number {
+    return this.currentSpeed;
   }
 
   /** Последнее отрисованное состояние. */
@@ -73,6 +79,7 @@ export class RemotePlayerView {
     this.model.root.position.copy(SceneCoords.toScene(state.position));
     this.model.root.rotation.set(0, state.yaw, 0);
     this.motion.update(state.position, deltaSeconds);
+    this.currentSpeed = Math.abs(this.motion.signedSpeed(state.yaw));
     this.model.update(
       deltaSeconds,
       time,

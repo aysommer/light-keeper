@@ -115,6 +115,16 @@ export class NetworkSession {
     return this.selfInTambour;
   }
 
+  /** Где напарник и как быстро идёт; `null`, если он неизвестен или в тамбуре. */
+  public partnerMotion(): { position: Vector2; speed: number } | null {
+    for (const remote of this.remotes.values()) {
+      if (remote.state && !remote.inTambour) {
+        return { position: remote.state.position, speed: remote.speed };
+      }
+    }
+    return null;
+  }
+
   /** Где сейчас напарник; `null`, если он неизвестен или уже в тамбуре. */
   public partnerPosition(): Vector2 | null {
     for (const remote of this.remotes.values()) {

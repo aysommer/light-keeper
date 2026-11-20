@@ -8,6 +8,11 @@ import {
   SRGBColorSpace,
   WebGLRenderer,
 } from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FilmShader } from './FilmShader.ts';
 
 /** Рендерер, сцена, камера и реакция на изменение размера окна. */
 export class SceneManager {
@@ -24,6 +29,12 @@ export class SceneManager {
   public readonly viewmodelCamera = new PerspectiveCamera(70, 1, 0.01, 5);
   public readonly renderer: WebGLRenderer;
   private readonly resizeObserver: ResizeObserver;
+  /**
+   * Цепочка отрисовки: мир → рука от первого лица поверх (с очищенной
+   * глубиной) → плёнка (зерно, виньетка) → вывод с тональной компрессией.
+   */
+  private readonly composer: EffectComposer;
+  private readonly film: ShaderPass;
 
   public constructor(private readonly container: HTMLElement) {
     this.renderer = new WebGLRenderer({ antialias: true });
@@ -40,6 +51,16 @@ export class SceneManager {
     this.scene.add(new HemisphereLight('#fff1c4', '#2b2414', 0.35));
     this.scene.add(this.camera);
 
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    const viewmodelPass = new RenderPass(this.viewmodelScene, this.viewmodelCamera);
+    viewmodelPass.clear = false;
+    viewmodelPass.clearDepth = true;
+    this.composer.addPass(viewmodelPass);
+    this.film = new ShaderPass(FilmShader);
+    this.composer.addPass(this.film);
+    this.composer.addPass(new OutputPass());
+
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
@@ -49,17 +70,17 @@ export class SceneManager {
     return this.renderer.domElement;
   }
 
-  public render(): void {
-    this.renderer.autoClear = true;
-    this.renderer.render(this.scene, this.camera);
-    this.renderer.autoClear = false;
-    this.renderer.clearDepth();
-    this.renderer.render(this.viewmodelScene, this.viewmodelCamera);
-    this.renderer.autoClear = true;
+  /** @param time время, с (для зерна); @param scare испуг 0–1 */
+  public render(time = 0, scare = 0): void {
+    const uniforms = this.film.uniforms as Record<string, { value: number }>;
+    uniforms['uTime']!.value = time % 1000;
+    uniforms['uScare']!.value = scare;
+    this.composer.render();
   }
 
   public dispose(): void {
     this.resizeObserver.disconnect();
+    this.composer.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
@@ -68,6 +89,8 @@ export class SceneManager {
     const width = Math.max(1, this.container.clientWidth);
     const height = Math.max(1, this.container.clientHeight);
     this.renderer.setSize(width, height, false);
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
+    this.composer.setSize(width, height);
     for (const camera of [this.camera, this.viewmodelCamera]) {
       camera.aspect = width / height;
       camera.updateProjectionMatrix();

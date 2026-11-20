@@ -909,3 +909,18 @@ kbd {
   gap: 12px;
   margin-bottom: 16px;
 }
+
+.hud__sound {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.45);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.hud__sound[hidden] {
+  display: none;
+}

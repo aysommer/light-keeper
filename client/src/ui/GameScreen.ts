@@ -1,5 +1,7 @@
 import { PlayerMovement, Vector2 } from '@light-keeper/shared';
 import type { MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
+import { AudioEngine } from '../audio/AudioEngine.ts';
+import { SoundDirector } from '../audio/SoundDirector.ts';
 import { GameLoop } from '../core/GameLoop.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
@@ -102,6 +104,20 @@ export class GameScreen implements Screen {
         sceneManager.scene,
       ),
     );
+
+    // Звук разрешается только после действия пользователя — первый клик или клавиша.
+    const audio = this.own(new AudioEngine());
+    const sound = this.own(new SoundDirector(audio));
+    const unlockAudio = (): void => audio.unlock();
+    this.element.addEventListener('pointerdown', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+    this.own({
+      dispose: () => {
+        this.element.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+      },
+    });
+    this.hud.setMuted(audio.muted);
 
     input.onPointerLockChange((locked) => this.hud.setPointerLocked(locked));
     this.hud.setPointerLocked(false);
@@ -222,7 +238,32 @@ export class GameScreen implements Screen {
           ? PartnerBearing.clockwiseFromForward(player.position, player.yaw, partnerPosition)
           : null,
       );
-      sceneManager.render();
+      if (input.consumePress('KeyM')) {
+        this.hud.setMuted(audio.toggleMute());
+      }
+      const ownLampState = session.ownLamp;
+      sound.update(delta, {
+        camera: sceneManager.camera,
+        spaceIndex: space.spaceIndex,
+        phase: session.phase,
+        inTambour: session.inTambour,
+        exitOpen: session.exit?.open ?? false,
+        keyHolderId: session.exit?.keyHolderId ?? null,
+        canisters: session.ownCanisters,
+        overheated: ownLampState?.overheated ?? false,
+        exchangeCount: session.exchange?.count ?? 0,
+        bobPhase: controller.bobPhase,
+        moving: player.isMoving,
+        running: controller.isRunning,
+        lampLevel: viewmodel.lightLevel,
+        lampHeat: ownLampState?.heat ?? 0,
+        refueling: session.ownRefuelProgress > 0,
+        scare,
+        door: space.space.exit.position,
+        partner: session.partnerMotion(),
+        ghosts: session.ghosts.list(),
+      });
+      sceneManager.render(time, scare);
     });
     this.loop.start();
   }

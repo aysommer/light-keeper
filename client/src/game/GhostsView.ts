@@ -57,6 +57,15 @@ export class GhostsView {
     }
   }
 
+  /** Привидения, видимые сейчас (для звука). */
+  public list(): Array<{ id: number; position: Vector2; fading: boolean }> {
+    const result: Array<{ id: number; position: Vector2; fading: boolean }> = [];
+    for (const [id, entry] of this.ghosts) {
+      if (entry.position) result.push({ id, position: entry.position, fading: entry.fading });
+    }
+    return result;
+  }
+
   /** Расстояние до ближайшего опасного (не растворяющегося) привидения, м. */
   public nearestThreat(from: Vector2): number | null {
     let nearest: number | null = null;

@@ -5,6 +5,7 @@
 export class Hud {
   public readonly element: HTMLElement;
   private readonly overlay: HTMLElement;
+  private readonly sound: HTMLElement;
 
   public constructor(onExit: () => void) {
     this.element = document.createElement('div');
@@ -20,7 +21,7 @@ export class Hud {
     hint.innerHTML = `
       <p class="hud__hint-title">Кликни, чтобы осмотреться</p>
       <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> — идти · <kbd>Shift</kbd> — бежать ·
-        мышь — смотреть · <kbd>E</kbd> — дверь, обмен · <kbd>R</kbd> — заправить · <kbd>1</kbd> — лампа · <kbd>2</kbd> — компас ·
+        мышь — смотреть · <kbd>E</kbd> — дверь, обмен · <kbd>R</kbd> — заправить · <kbd>1</kbd> — лампа · <kbd>2</kbd> — компас · <kbd>M</kbd> — звук ·
         <kbd>Esc</kbd> — пауза</p>
     `;
     const exit = document.createElement('button');
@@ -34,7 +35,16 @@ export class Hud {
     hint.append(exit);
     this.overlay.append(hint);
 
-    this.element.append(crosshair, this.overlay);
+    this.sound = document.createElement('div');
+    this.sound.className = 'hud__sound';
+    this.sound.textContent = 'Звук выключен (M)';
+    this.sound.hidden = true;
+
+    this.element.append(crosshair, this.sound, this.overlay);
+  }
+
+  public setMuted(muted: boolean): void {
+    this.sound.hidden = !muted;
   }
 
   public setPointerLocked(locked: boolean): void {
