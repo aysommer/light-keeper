@@ -79,6 +79,7 @@ export class GameScreen implements Screen {
     const applyGraphics = (graphics: GraphicsOptions): void => {
       sceneManager.setAntialias(graphics.antialias);
       sceneManager.setBloom(graphics.bloom);
+      sceneManager.setDust(graphics.dust);
     };
     applyGraphics(options.graphics.options);
     const unsubscribeGraphics = options.graphics.onChange(applyGraphics);
@@ -281,7 +282,7 @@ export class GameScreen implements Screen {
         partner: session.partnerMotion(),
         ghosts: session.ghosts.list(),
       });
-      sceneManager.render(time, scare);
+      sceneManager.render(time, scare, viewmodel.lightLevel);
     });
     this.loop.start();
   }

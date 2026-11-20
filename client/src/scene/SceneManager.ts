@@ -12,6 +12,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { DustField } from './DustField.ts';
 import { FilmShader } from './FilmShader.ts';
 import { SoftBloomPass } from './SoftBloomPass.ts';
 
@@ -39,6 +40,8 @@ export class SceneManager {
   private readonly film: ShaderPass;
   /** Свечение: создаётся только при включении, чтобы выключенное ничего не стоило. */
   private bloom: SoftBloomPass | null = null;
+  /** Пыль: тоже создаётся только при включении. */
+  private dust: DustField | null = null;
 
   public constructor(private readonly container: HTMLElement) {
     // Сглаживание холста не нужно: картинка идёт через буферы пост-обработки,
@@ -103,8 +106,22 @@ export class SceneManager {
     }
   }
 
-  /** @param time время, с (для зерна); @param scare испуг 0–1 */
-  public render(time = 0, scare = 0): void {
+  /** Пыль в воздухе вокруг игрока. */
+  public setDust(enabled: boolean): void {
+    if (enabled && !this.dust) {
+      this.dust = new DustField(this.scene);
+    } else if (!enabled && this.dust) {
+      this.dust.dispose();
+      this.dust = null;
+    }
+  }
+
+  /**
+   * @param time время, с (для зерна); @param scare испуг 0–1;
+   * @param light свет своей лампы 0…~1 (пыль видна в её свете)
+   */
+  public render(time = 0, scare = 0, light = 1): void {
+    this.dust?.update(time, light, this.renderer.getPixelRatio());
     const uniforms = this.film.uniforms as Record<string, { value: number }>;
     uniforms['uTime']!.value = time % 1000;
     uniforms['uScare']!.value = scare;
@@ -114,6 +131,7 @@ export class SceneManager {
   public dispose(): void {
     this.resizeObserver.disconnect();
     this.setBloom(false);
+    this.setDust(false);
     this.composer.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

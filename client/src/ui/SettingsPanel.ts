@@ -11,6 +11,7 @@ export class SettingsPanel {
   private static readonly TOGGLES: readonly Toggle[] = [
     { key: 'antialias', label: 'Сглаживание' },
     { key: 'bloom', label: 'Свечение' },
+    { key: 'dust', label: 'Пыль' },
   ];
 
   public readonly element: HTMLElement;

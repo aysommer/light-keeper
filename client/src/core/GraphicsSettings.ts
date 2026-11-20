@@ -4,6 +4,8 @@ export interface GraphicsOptions {
   readonly antialias: boolean;
   /** Свечение вокруг ярких предметов. */
   readonly bloom: boolean;
+  /** Пыль в воздухе, видимая в свете лампы. */
+  readonly dust: boolean;
 }
 
 /** Где хранить настройки (в браузере — localStorage; в тестах — заглушка). */
@@ -18,7 +20,11 @@ export interface SettingsStorage {
  * На сервер ничего не уходит — сетевой игры настройки не касаются.
  */
 export class GraphicsSettings {
-  public static readonly DEFAULTS: GraphicsOptions = { antialias: false, bloom: false };
+  public static readonly DEFAULTS: GraphicsOptions = {
+    antialias: false,
+    bloom: false,
+    dust: false,
+  };
   private static readonly STORAGE_KEY = 'light-keeper:graphics';
 
   private current: GraphicsOptions;
