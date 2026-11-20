@@ -37,6 +37,8 @@ export interface WorldSettings {
     readonly decayPerSpace: number;
     /** Максимальное смещение канистры от центра клетки. */
     readonly jitter: number;
+    /** Доля пустых канистр-обманок среди разложенных по пространству. */
+    readonly emptyShare: number;
   };
 }
 
@@ -151,10 +153,12 @@ export class GameConfig {
       chancePerCell: 0.5,
     },
     oil: {
-      baseChance: 0.2,
-      minChance: 0.08,
+      // Шанс выше, чем нужно, — часть канистр окажется пустыми (emptyShare).
+      baseChance: 0.28,
+      minChance: 0.11,
       decayPerSpace: 0.9,
       jitter: 0.6,
+      emptyShare: 0.3,
     },
   };
 

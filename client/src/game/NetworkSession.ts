@@ -3,6 +3,7 @@ import { Vector2 } from '@light-keeper/shared';
 import type {
   DebugGotoTarget,
   DebugLampPreset,
+  DroppedCanister,
   ExchangeSnapshot,
   ExitSnapshot,
   LampSnapshot,
@@ -38,6 +39,7 @@ export class NetworkSession {
   private selfLamp: LampSnapshot | null = null;
   private latestExchange: ExchangeSnapshot | null = null;
   private latestOilTaken: readonly number[] | null = null;
+  private latestOilDropped: readonly DroppedCanister[] | null = null;
   private selfCanisters = 0;
   private selfRefuel = 0;
 
@@ -83,6 +85,11 @@ export class NetworkSession {
   /** Номера подобранных канистр текущего пространства. */
   public get oilTaken(): readonly number[] | null {
     return this.latestOilTaken;
+  }
+
+  /** Пустые канистры, брошенные после заправки. */
+  public get oilDropped(): readonly DroppedCanister[] | null {
+    return this.latestOilDropped;
   }
 
   /** Сколько канистр несёт этот игрок. */
@@ -151,6 +158,7 @@ export class NetworkSession {
     this.latestExit = snapshot.exit;
     this.latestExchange = snapshot.exchange;
     this.latestOilTaken = snapshot.oilTaken;
+    this.latestOilDropped = snapshot.oilDropped;
     const enteredNewSpace = snapshot.spaceIndex !== this.space.spaceIndex;
     if (enteredNewSpace) {
       this.space.enter(snapshot.spaceIndex);

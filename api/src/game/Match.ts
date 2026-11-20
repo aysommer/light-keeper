@@ -142,12 +142,12 @@ export class Match {
     }
   }
 
-  /** Ближайшая ещё не подобранная канистра. */
+  /** Ближайшая ещё не подобранная полная канистра. */
   private nearestCanister(from: Vector2 | undefined): Vector2 | undefined {
     if (!from) return undefined;
     let best: Vector2 | undefined;
     this.world.space.oilSpawns.forEach((spawn, index) => {
-      if (this.world.oil.isTaken(index)) return;
+      if (this.world.oil.isTaken(index) || !this.world.space.isOilFull(index)) return;
       if (!best || spawn.distanceTo(from) < best.distanceTo(from)) best = spawn;
     });
     return best;
@@ -190,6 +190,7 @@ export class Match {
         exit: this.world.exit.snapshot(GameConfig.exit.openSeconds),
         exchange: this.world.exchange.snapshot(),
         oilTaken: this.world.oil.snapshot(),
+        oilDropped: this.world.oil.droppedSnapshot(),
         players: [...this.world.players.values()].map((player) => player.snapshot()),
       },
     };

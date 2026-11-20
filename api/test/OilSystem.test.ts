@@ -15,13 +15,14 @@ class FakeParticipant implements LobbyParticipant {
 type Id = 'red' | 'blue';
 const settings = GameConfig.canister;
 
-/** Seed и номер пространства, где хотя бы три канистры. */
+/** Seed, где в первом пространстве хотя бы три полные канистры и одна пустая. */
 const findOilySpace = (): { seed: number; index: number } => {
-  for (let seed = 1; seed < 500; seed++) {
-    const generator = new SpaceGenerator(seed);
-    if (generator.generate(0).oilSpawns.length >= 3) return { seed, index: 0 };
+  for (let seed = 1; seed < 2000; seed++) {
+    const space = new SpaceGenerator(seed).generate(0);
+    const full = space.oilSpawns.filter((_, i) => space.isOilFull(i)).length;
+    if (full >= 3 && full < space.oilSpawns.length) return { seed, index: 0 };
   }
-  throw new Error('Нет пространства с тремя канистрами');
+  throw new Error('Нет подходящего пространства');
 };
 
 const setup = () => {
@@ -37,7 +38,10 @@ const setup = () => {
     { tickRate: 20, now: () => now },
   );
   const player = (id: Id) => match.world.players.get(id)!;
-  const spawns = match.world.space.oilSpawns;
+  const space = match.world.space;
+  const spawns = space.oilSpawns.filter((_, i) => space.isOilFull(i));
+  const emptySpawn = space.oilSpawns.find((_, i) => !space.isOilFull(i))!;
+  const fullIndex = space.oilSpawns.indexOf(spawns[0]!);
   let seq = 0;
   const tick = (input: { refuel?: boolean; move?: boolean } = {}): void => {
     const command: PlayerInput = {
@@ -63,7 +67,7 @@ const setup = () => {
     if (message?.type !== 'match:snapshot') throw new Error('нет снимка');
     return message.snapshot;
   };
-  return { match, player, spawns, tick, ticksFor, lastSnapshot };
+  return { match, player, spawns, emptySpawn, fullIndex, tick, ticksFor, lastSnapshot };
 };
 
 describe('OilSystem: канистры', () => {
@@ -72,7 +76,7 @@ describe('OilSystem: канистры', () => {
     ctx.player('red').position = ctx.spawns[0]!;
     ctx.tick();
     expect(ctx.player('red').canisters).toBe(1);
-    expect(ctx.lastSnapshot().oilTaken).toEqual([0]);
+    expect(ctx.lastSnapshot().oilTaken).toEqual([ctx.fullIndex]);
 
     ctx.player('blue').position = ctx.spawns[0]!;
     ctx.tick();
@@ -87,6 +91,33 @@ describe('OilSystem: канистры', () => {
     }
     expect(ctx.player('red').canisters).toBe(settings.maxCarried);
     expect(ctx.lastSnapshot().oilTaken).toHaveLength(settings.maxCarried);
+  });
+});
+
+describe('OilSystem: пустые канистры', () => {
+  it('пустую канистру-обманку не подобрать', () => {
+    const ctx = setup();
+    ctx.player('red').position = ctx.emptySpawn;
+    ctx.tick();
+    expect(ctx.player('red').canisters).toBe(0);
+  });
+
+  it('после заправки опустевшая канистра остаётся лежать, и её не подобрать', () => {
+    const ctx = setup();
+    ctx.player('red').canisters = 1;
+    ctx.player('red').lamp.oil = 30;
+    for (let i = 0; i < ctx.ticksFor(settings.refuelSeconds); i++) ctx.tick({ refuel: true });
+    const dropped = ctx.lastSnapshot().oilDropped;
+    expect(dropped).toHaveLength(1);
+    expect(
+      Math.hypot(
+        dropped[0]!.x - ctx.player('red').position.x,
+        dropped[0]!.y - ctx.player('red').position.y,
+      ),
+    ).toBeLessThan(0.6);
+    ctx.player('blue').position = ctx.player('red').position;
+    ctx.tick();
+    expect(ctx.player('blue').canisters).toBe(0);
   });
 });
 
@@ -149,5 +180,6 @@ describe('OilSystem: новое пространство', () => {
     ctx.tick();
     expect(ctx.player('red').canisters).toBe(0);
     expect(ctx.lastSnapshot().oilTaken).toEqual([]);
+    expect(ctx.lastSnapshot().oilDropped).toEqual([]);
   });
 });

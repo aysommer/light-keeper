@@ -1,13 +1,14 @@
-import { GameConfig } from '@light-keeper/shared';
+import { GameConfig, PlayerMovement } from '@light-keeper/shared';
 import type { CanisterSettings } from '@light-keeper/shared';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
 import type { MatchWorld } from '../game/MatchWorld.ts';
 import type { System } from './System.ts';
 
 /**
- * Канистры с маслом: игрок подбирает их, проходя рядом (не больше `maxCarried`),
- * и заправляет лампу в руках, удерживая `R` стоя на месте. Пошёл, отпустил
- * клавишу или лампа уже полная — прогресс сбрасывается.
+ * Канистры с маслом: игрок подбирает полные, проходя рядом (не больше
+ * `maxCarried`); пустые обманки не подбираются. Лампу в руках заправляют,
+ * удерживая `R` стоя на месте; пошёл, отпустил клавишу или лампа уже полная —
+ * прогресс сбрасывается. Опустевшая канистра остаётся лежать под ногами.
  */
 export class OilSystem implements System {
   public constructor(private readonly settings: CanisterSettings = GameConfig.canister) {}
@@ -22,7 +23,7 @@ export class OilSystem implements System {
         continue;
       }
       this.pickUp(world, player);
-      this.refuel(player, deltaSeconds);
+      this.refuel(world, player, deltaSeconds);
     }
   }
 
@@ -33,6 +34,7 @@ export class OilSystem implements System {
     world.space.oilSpawns.forEach((spawn, index) => {
       if (
         player.canisters < this.settings.maxCarried &&
+        world.space.isOilFull(index) &&
         !world.oil.isTaken(index) &&
         player.position.distanceTo(spawn) <= this.settings.pickupDistance
       ) {
@@ -42,7 +44,7 @@ export class OilSystem implements System {
     });
   }
 
-  private refuel(player: ServerPlayer, deltaSeconds: number): void {
+  private refuel(world: MatchWorld, player: ServerPlayer, deltaSeconds: number): void {
     const canRefuel =
       player.refueling &&
       !player.moving &&
@@ -57,6 +59,13 @@ export class OilSystem implements System {
       player.lamp.oil = Math.min(100, player.lamp.oil + this.settings.amount);
       player.canisters -= 1;
       player.refuelSeconds = 0;
+      world.oil.drop(this.dropPoint(world, player));
     }
+  }
+
+  /** Пустую канистру ставим чуть впереди игрока, если там нет стены, иначе — под ноги. */
+  private dropPoint(world: MatchWorld, player: ServerPlayer): ServerPlayer['position'] {
+    const ahead = player.position.add(PlayerMovement.forward(player.yaw).scale(0.45));
+    return world.collisions.lineOfSight(player.position, ahead) ? ahead : player.position;
   }
 }

@@ -1,6 +1,6 @@
 import type { Scene } from 'three';
 import { CollisionWorld, PlayerMovement, SpaceGenerator } from '@light-keeper/shared';
-import type { ExitSnapshot, Space } from '@light-keeper/shared';
+import type { DroppedCanister, ExitSnapshot, Space } from '@light-keeper/shared';
 import { CanisterField } from '../scene/CanisterField.ts';
 import { ExitDoorView } from '../scene/ExitDoorView.ts';
 import { KeyView } from '../scene/KeyView.ts';
@@ -40,7 +40,9 @@ export class ActiveSpace implements MovementProvider {
     scene.add(this.view.group);
     this.door = this.createDoor();
     this.key = this.createKey();
-    this.canisters = new CanisterField(scene, this.currentSpace.oilSpawns);
+    this.canisters = new CanisterField(scene, this.currentSpace.oilSpawns, (i) =>
+      this.currentSpace.isOilFull(i),
+    );
   }
 
   public get space(): Space {
@@ -72,20 +74,23 @@ export class ActiveSpace implements MovementProvider {
     this.scene.add(this.view.group);
     this.door = this.createDoor();
     this.key = this.createKey();
-    this.canisters = new CanisterField(this.scene, this.currentSpace.oilSpawns);
+    this.canisters = new CanisterField(this.scene, this.currentSpace.oilSpawns, (i) =>
+      this.currentSpace.isOilFull(i),
+    );
   }
 
   /** Анимация пространства, двери, ключа и канистр по последнему состоянию с сервера. */
   public update(
     exit: ExitSnapshot | null,
     oilTaken: readonly number[] | null,
+    oilDropped: readonly DroppedCanister[] | null,
     deltaSeconds: number,
     time: number,
   ): void {
     this.view.update(time);
     this.door.update(exit, deltaSeconds);
     this.key?.update(exit, time);
-    this.canisters.update(oilTaken);
+    this.canisters.update(oilTaken, oilDropped);
   }
 
   public dispose(): void {

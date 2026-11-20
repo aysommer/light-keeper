@@ -231,3 +231,20 @@ describe('HslColor', () => {
     expect(new HslColor(-120, 1, 0.5).toHex()).toBe('#0000ff');
   });
 });
+
+describe('Пустые канистры-обманки', () => {
+  it('примерно треть канистр пустые, разметка детерминирована', () => {
+    let total = 0;
+    let empty = 0;
+    for (const seed of SEEDS) {
+      const space = new SpaceGenerator(seed).generate(1);
+      expect(space.oilEmpty).toHaveLength(space.oilSpawns.length);
+      expect(new SpaceGenerator(seed).generate(1).oilEmpty).toEqual(space.oilEmpty);
+      total += space.oilSpawns.length;
+      empty += space.oilSpawns.filter((_, i) => !space.isOilFull(i)).length;
+    }
+    expect(total).toBeGreaterThan(50);
+    expect(empty / total).toBeGreaterThan(0.15);
+    expect(empty / total).toBeLessThan(0.45);
+  });
+});

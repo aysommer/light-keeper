@@ -4,6 +4,7 @@ import { GameLoop } from '../core/GameLoop.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
 import { HeldItems } from '../game/HeldItems.ts';
+import { CanisterHint } from '../game/CanisterHint.ts';
 import { ExchangePrompt } from '../game/ExchangePrompt.ts';
 import { HandOverMotion } from '../game/HandOverMotion.ts';
 import { InteractionPrompt } from '../game/InteractionPrompt.ts';
@@ -45,6 +46,7 @@ export class GameScreen implements Screen {
   private readonly compass = new CompassView();
   private readonly lampHud = new LampHud();
   private readonly lampHint = new LampHint();
+  private readonly canisterHint = new CanisterHint();
   private readonly held = new HeldItems();
   private readonly tambour = new TambourOverlay();
   private readonly prompt = new InteractionPrompt();
@@ -129,7 +131,7 @@ export class GameScreen implements Screen {
       controller.update(delta);
       session.update(delta, time);
       controller.applyToCamera(sceneManager.camera);
-      space.update(session.exit, session.oilTaken, delta, time);
+      space.update(session.exit, session.oilTaken, session.oilDropped, delta, time);
       const exit = session.exit;
       const partnerPosition = session.partnerPosition();
       // Смотришь на напарника рядом — подсказка об обмене важнее подсказки двери.
@@ -180,7 +182,15 @@ export class GameScreen implements Screen {
         this.lampHint.resolve(ownLamp, this.held.current, session.inTambour, {
           canisters: session.ownCanisters,
           refueling: session.ownRefuelProgress > 0,
-        }),
+        }) ??
+          (session.inTambour
+            ? null
+            : this.canisterHint.resolve(
+                space.space,
+                session.oilTaken,
+                session.oilDropped,
+                player.position,
+              )),
       );
       this.lampHud.updateOil(
         session.inTambour ? 0 : session.ownCanisters,

@@ -30,7 +30,14 @@ export class Space {
     public readonly exit: ExitDoor,
     /** Где лежит ключ (только для двери `locked`). */
     public readonly key: Vector2 | null,
+    /** Какие канистры пустые (обманки) — по индексам `oilSpawns`. */
+    public readonly oilEmpty: readonly boolean[] = [],
   ) {}
+
+  /** Полная ли канистра с номером `index` (пустые — серые обманки). */
+  public isOilFull(index: number): boolean {
+    return this.oilEmpty[index] !== true;
+  }
 
   public get bounds(): AABB {
     return this.grid.bounds;
@@ -40,6 +47,7 @@ export class Space {
     return this.rooms.flatMap((room) => room.obstacles);
   }
 
+  /** Все канистры пространства — и полные, и пустые. */
   public get oilSpawns(): Vector2[] {
     return this.rooms.flatMap((room) => room.oilSpawns);
   }

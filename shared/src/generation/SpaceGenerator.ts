@@ -104,7 +104,15 @@ export class SpaceGenerator {
       this.startYaw(startCenter, startRoom, doors),
       exit,
       key,
+      this.planEmptyOil(rooms, rng.fork('oil-empty')),
     );
+  }
+
+  /** Часть канистр — пустые обманки: издалека и в темноте их не отличить от полных. */
+  private planEmptyOil(rooms: readonly Room[], rng: SeededRandom): boolean[] {
+    return rooms
+      .flatMap((room) => room.oilSpawns)
+      .map(() => rng.chance(this.settings.oil.emptyShare));
   }
 
   /** Поворот, при котором игрок смотрит на ближайшую дверь стартовой комнаты (а не в стену). */

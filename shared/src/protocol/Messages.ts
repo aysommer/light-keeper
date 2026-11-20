@@ -28,6 +28,12 @@ export interface MatchPlayerInfo {
   readonly color: PlayerColor;
 }
 
+/** Пустая канистра, брошенная после заправки. */
+export interface DroppedCanister {
+  readonly x: number;
+  readonly y: number;
+}
+
 /** Состояние лампы игрока в снимке мира. */
 export interface LampSnapshot {
   /** Масло, %. */
@@ -107,6 +113,8 @@ export interface MatchSnapshot {
   readonly exchange: ExchangeSnapshot;
   /** Номера уже подобранных канистр пространства (индексы в `Space.oilSpawns`). */
   readonly oilTaken: readonly number[];
+  /** Пустые канистры, оставленные игроками после заправки. */
+  readonly oilDropped: readonly DroppedCanister[];
   readonly players: readonly PlayerSnapshot[];
 }
 

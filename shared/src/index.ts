@@ -9,6 +9,7 @@ export type {
   ClientMessage,
   ClientMessageType,
   DebugGotoTarget,
+  DroppedCanister,
   DebugLampPreset,
   ErrorCode,
   ExchangeSnapshot,

@@ -6,23 +6,30 @@ import {
   MeshStandardMaterial,
   TorusGeometry,
 } from 'three';
-import type { BufferGeometry, Scene } from 'three';
-import type { Vector2 } from '@light-keeper/shared';
+import type { BufferGeometry, Material, Scene } from 'three';
+import { Vector2 } from '@light-keeper/shared';
+import type { DroppedCanister } from '@light-keeper/shared';
 import { SceneCoords } from './SceneCoords.ts';
 
 /**
- * Канистры с маслом в пространстве: тёмно-красные с латунной крышкой,
- * которая слегка поблёскивает в темноте. Подобранные скрываются.
- * Геометрия и материалы общие для всех канистр.
+ * Канистры пространства. Полные — тёмно-красные, пустые — серые; у тех
+ * и других одинаковая латунная крышка, поэтому издалека и в темноте их
+ * не отличить. Подобранные скрываются, брошенные после заправки — добавляются.
  */
 export class CanisterField {
   private readonly root = new Group();
-  private readonly canisters: Group[] = [];
+  private readonly placed: Group[] = [];
+  private readonly dropped: Group[] = [];
   private readonly geometries: BufferGeometry[] = [];
-  private readonly body = new MeshStandardMaterial({
+  private readonly full = new MeshStandardMaterial({
     color: '#8c2a1e',
     metalness: 0.4,
     roughness: 0.5,
+  });
+  private readonly empty = new MeshStandardMaterial({
+    color: '#6b6a66',
+    metalness: 0.4,
+    roughness: 0.55,
   });
   private readonly cap = new MeshStandardMaterial({
     color: '#c9a227',
@@ -31,40 +38,52 @@ export class CanisterField {
     metalness: 0.8,
     roughness: 0.3,
   });
+  private readonly bodyGeometry = this.geometry(new BoxGeometry(0.24, 0.32, 0.12));
+  private readonly handleGeometry = this.geometry(new TorusGeometry(0.05, 0.012, 6, 12, Math.PI));
+  private readonly spoutGeometry = this.geometry(new CylinderGeometry(0.022, 0.026, 0.06, 10));
 
-  public constructor(scene: Scene, spawns: readonly Vector2[]) {
-    const bodyGeometry = this.geometry(new BoxGeometry(0.24, 0.32, 0.12));
-    const handleGeometry = this.geometry(new TorusGeometry(0.05, 0.012, 6, 12, Math.PI));
-    const spoutGeometry = this.geometry(new CylinderGeometry(0.022, 0.026, 0.06, 10));
+  /**
+   * @param spawns все канистры пространства
+   * @param isFull полная ли канистра с данным номером
+   */
+  public constructor(scene: Scene, spawns: readonly Vector2[], isFull: (index: number) => boolean) {
     spawns.forEach((spawn, index) => {
-      const canister = new Group();
-      const body = new Mesh(bodyGeometry, this.body);
-      body.position.y = 0.16;
-      const handle = new Mesh(handleGeometry, this.body);
-      handle.position.set(-0.04, 0.32, 0);
-      const spout = new Mesh(spoutGeometry, this.cap);
-      spout.position.set(0.08, 0.35, 0);
-      canister.add(body, handle, spout);
-      canister.position.copy(SceneCoords.toScene(spawn));
       // Поворот детерминирован номером, чтобы у обоих игроков картинка совпадала.
-      canister.rotation.y = index * 1.7;
-      this.root.add(canister);
-      this.canisters.push(canister);
+      this.placed.push(this.create(spawn, index * 1.7, isFull(index) ? this.full : this.empty));
     });
     scene.add(this.root);
   }
 
-  /** Скрывает подобранные канистры. */
-  public update(taken: readonly number[] | null): void {
+  /** Скрывает подобранные канистры и добавляет брошенные пустые. */
+  public update(taken: readonly number[] | null, dropped: readonly DroppedCanister[] | null): void {
     const set = new Set(taken ?? []);
-    this.canisters.forEach((canister, index) => (canister.visible = !set.has(index)));
+    this.placed.forEach((canister, index) => (canister.visible = !set.has(index)));
+    const drops = dropped ?? [];
+    for (let i = this.dropped.length; i < drops.length; i++) {
+      const drop = drops[i]!;
+      this.dropped.push(this.create(new Vector2(drop.x, drop.y), 0.6 + i * 2.3, this.empty));
+    }
   }
 
   public dispose(): void {
     this.root.removeFromParent();
     this.geometries.forEach((geometry) => geometry.dispose());
-    this.body.dispose();
-    this.cap.dispose();
+    [this.full, this.empty, this.cap].forEach((material) => material.dispose());
+  }
+
+  private create(position: Vector2, rotation: number, body: Material): Group {
+    const canister = new Group();
+    const shell = new Mesh(this.bodyGeometry, body);
+    shell.position.y = 0.16;
+    const handle = new Mesh(this.handleGeometry, body);
+    handle.position.set(-0.04, 0.32, 0);
+    const spout = new Mesh(this.spoutGeometry, this.cap);
+    spout.position.set(0.08, 0.35, 0);
+    canister.add(shell, handle, spout);
+    canister.position.copy(SceneCoords.toScene(position));
+    canister.rotation.y = rotation;
+    this.root.add(canister);
+    return canister;
   }
 
   private geometry<T extends BufferGeometry>(geometry: T): T {
