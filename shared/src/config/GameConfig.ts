@@ -98,6 +98,50 @@ export interface CanisterSettings {
   readonly fullAt: number;
 }
 
+/** Привидения: появление, скорость, реакция на свет, поимка. */
+export interface GhostSettings {
+  /** Через сколько секунд после входа в первое пространство приходит первое привидение. */
+  readonly firstDelaySeconds: number;
+  /** Интервал появления в первом пространстве, с. */
+  readonly intervalSeconds: number;
+  /** Самый короткий интервал появления, с. */
+  readonly minIntervalSeconds: number;
+  /** Множитель задержки и интервала за каждое пройденное пространство. */
+  readonly intervalDecay: number;
+  /** Сколько привидений одновременно в первом пространстве. */
+  readonly maxConcurrentBase: number;
+  /** Каждые сколько пространств их может быть на одно больше. */
+  readonly maxConcurrentEvery: number;
+  readonly maxConcurrentCap: number;
+  /** Не ближе этого расстояния к игрокам привидение появляется, м. */
+  readonly spawnMinDistance: number;
+  /** Скорость в темноте в первом пространстве, м/с. */
+  readonly speed: number;
+  /** Прибавка скорости за каждое пройденное пространство, м/с. */
+  readonly speedPerSpace: number;
+  readonly maxSpeed: number;
+  /** Скорость отступления из света, м/с. */
+  readonly retreatSpeed: number;
+  /** Радиус света лампы: база и прибавка за полную яркость, м. */
+  readonly lightRadiusBase: number;
+  readonly lightRadiusPerBrightness: number;
+  /** На сколько (доля) уменьшается радиус света за каждое пространство и до какого предела. */
+  readonly lightShrinkPerSpace: number;
+  readonly minLightFactor: number;
+  /** Сколько секунд в свете растворяют привидение. */
+  readonly dissolveSeconds: number;
+  /** Сколько длится растворение (привидение уже не опасно), с. */
+  readonly fadeSeconds: number;
+  /** На этом расстоянии привидение настигает игрока, м. */
+  readonly catchDistance: number;
+  /** С этого расстояния игроку становится страшно (эффекты), м. */
+  readonly scareDistance: number;
+  /** Радиус привидения для прохода по лабиринту, м. */
+  readonly radius: number;
+  /** Как часто пересчитывать путь к игрокам, с. */
+  readonly fieldRefreshSeconds: number;
+}
+
 /** Правила обмена лампами («горячая картошка»). */
 export interface ExchangeSettings {
   /** Наибольшее расстояние между игроками для обмена, м. */
@@ -193,6 +237,31 @@ export class GameConfig {
     refuelSeconds: 1.5,
     amount: 50,
     fullAt: 95,
+  };
+
+  public static readonly ghosts: GhostSettings = {
+    firstDelaySeconds: 40,
+    intervalSeconds: 35,
+    minIntervalSeconds: 14,
+    intervalDecay: 0.88,
+    maxConcurrentBase: 1,
+    maxConcurrentEvery: 2,
+    maxConcurrentCap: 4,
+    spawnMinDistance: 12,
+    speed: 1.3,
+    speedPerSpace: 0.08,
+    maxSpeed: 2.3,
+    retreatSpeed: 1.1,
+    lightRadiusBase: 2,
+    lightRadiusPerBrightness: 3.5,
+    lightShrinkPerSpace: 0.05,
+    minLightFactor: 0.6,
+    dissolveSeconds: 4,
+    fadeSeconds: 1,
+    catchDistance: 0.9,
+    scareDistance: 7,
+    radius: 0.35,
+    fieldRefreshSeconds: 0.4,
   };
 
   public static readonly exchange: ExchangeSettings = {

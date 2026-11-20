@@ -12,6 +12,7 @@ import { LampHint } from '../game/LampHint.ts';
 import { LocalPlayer } from '../game/LocalPlayer.ts';
 import { NetworkSession } from '../game/NetworkSession.ts';
 import { PartnerBearing } from '../game/PartnerBearing.ts';
+import { ScareLevel } from '../game/ScareLevel.ts';
 import { InputController } from '../input/InputController.ts';
 import type { NetworkClient } from '../network/NetworkClient.ts';
 import { FirstPersonViewmodel } from '../scene/FirstPersonViewmodel.ts';
@@ -20,6 +21,7 @@ import { SceneManager } from '../scene/SceneManager.ts';
 import { CompassView } from './CompassView.ts';
 import { ExitHud } from './ExitHud.ts';
 import { Hud } from './Hud.ts';
+import { ScareOverlay } from './ScareOverlay.ts';
 import { LampHud } from './LampHud.ts';
 import type { Screen } from './Screen.ts';
 import { TambourOverlay } from './TambourOverlay.ts';
@@ -45,6 +47,8 @@ export class GameScreen implements Screen {
   private readonly exitHud = new ExitHud();
   private readonly compass = new CompassView();
   private readonly lampHud = new LampHud();
+  private readonly scare = new ScareLevel();
+  private readonly scareOverlay = new ScareOverlay();
   private readonly lampHint = new LampHint();
   private readonly canisterHint = new CanisterHint();
   private readonly held = new HeldItems();
@@ -66,6 +70,7 @@ export class GameScreen implements Screen {
     const sceneManager = this.own(new SceneManager(this.element));
     // Затемнение — поверх HUD, чтобы подсказки не перекрывали надпись.
     this.element.append(
+      this.scareOverlay.element,
       this.lampHud.element,
       this.hud.element,
       this.exitHud.element,
@@ -176,6 +181,20 @@ export class GameScreen implements Screen {
       previousYaw = player.yaw;
       previousPitch = player.pitch;
       lamp.setLevel(viewmodel.lightLevel);
+      // Испуг: привидение рядом — тёмная виньетка и дрожь камеры.
+      const scare = session.inTambour
+        ? 0
+        : this.scare.update(
+            delta,
+            session.ghosts.nearestThreat(player.position),
+            viewmodel.lightLevel,
+          );
+      this.scareOverlay.update(scare);
+      if (scare > 0.01) {
+        sceneManager.camera.position.x += (Math.random() - 0.5) * 0.03 * scare;
+        sceneManager.camera.position.y += (Math.random() - 0.5) * 0.03 * scare;
+        sceneManager.camera.rotation.z += (Math.random() - 0.5) * 0.02 * scare;
+      }
       const ownLamp = session.ownLamp;
       this.lampHud.update(
         session.inTambour ? 0 : (ownLamp?.heat ?? 0),
@@ -210,8 +229,8 @@ export class GameScreen implements Screen {
 
   /**
    * Клавиши отладки (только `npm run dev`): N — следующее пространство, T — к двери,
-   * K — к ключу (в шаге от него), O — к ближайшей канистре, H — нагреть лампу,
-   * L — почти слить масло.
+   * K — к ключу (в шаге от него), O — к ближайшей канистре, G — вызвать привидение,
+   * H — нагреть лампу, L — почти слить масло.
    */
   private handleDebugKeys(
     input: InputController,
@@ -227,6 +246,9 @@ export class GameScreen implements Screen {
       // Повернуться лицом к двери (взгляд управляется клиентом).
       player.yaw = PlayerMovement.yawTowards(space.space.exit.normal.scale(-1));
       player.pitch = 0;
+    }
+    if (input.consumePress('KeyG')) {
+      session.requestGhost();
     }
     if (input.consumePress('KeyH')) {
       session.requestLamp('hot');

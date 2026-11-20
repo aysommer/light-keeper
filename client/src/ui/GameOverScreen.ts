@@ -5,6 +5,7 @@ import type { Screen } from './Screen.ts';
 export class GameOverScreen implements Screen {
   private static readonly REASONS: Record<MatchOverReason, string> = {
     door_timeout: 'Не все успели войти в дверь.',
+    ghost_caught: 'Привидение настигло одного из вас.',
   };
 
   public readonly element: HTMLElement;

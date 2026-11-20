@@ -18,6 +18,7 @@ import { ServerClock } from '../network/ServerClock.ts';
 import type { ActiveSpace } from './ActiveSpace.ts';
 import type { FirstPersonController } from './FirstPersonController.ts';
 import type { LocalPlayer } from './LocalPlayer.ts';
+import { GhostsView } from './GhostsView.ts';
 import { RemotePlayerView } from './RemotePlayerView.ts';
 
 /**
@@ -32,6 +33,7 @@ export class NetworkSession {
   private readonly reconciler: PredictionReconciler;
   private readonly clock = new ServerClock();
   private readonly remotes = new Map<string, RemotePlayerView>();
+  private readonly ghostsView: GhostsView;
   private readonly unsubscribe: Array<() => void> = [];
   private currentPhase: SpacePhase = 'playing';
   private latestExit: ExitSnapshot | null = null;
@@ -53,6 +55,7 @@ export class NetworkSession {
     scene: Scene,
   ) {
     this.sender = new InputSender(network);
+    this.ghostsView = new GhostsView(scene);
     this.reconciler = new PredictionReconciler(space);
     for (const info of players) {
       if (info.id !== playerId) {
@@ -122,6 +125,16 @@ export class NetworkSession {
     return null;
   }
 
+  /** Привидения на сцене. */
+  public get ghosts(): GhostsView {
+    return this.ghostsView;
+  }
+
+  /** Отладка: вызвать привидение неподалёку. */
+  public requestGhost(): void {
+    this.network.send({ type: 'debug:ghost' });
+  }
+
   /** Отладка: попросить сервер перейти в следующее пространство. */
   public requestNextSpace(): void {
     this.network.send({ type: 'debug:next-space' });
@@ -143,6 +156,7 @@ export class NetworkSession {
     if (serverNow !== null) {
       const renderTime = serverNow - NetworkSession.INTERPOLATION_DELAY_MS;
       this.remotes.forEach((remote) => remote.update(renderTime, time));
+      this.ghostsView.update(renderTime, time, deltaSeconds);
     }
   }
 
@@ -150,6 +164,7 @@ export class NetworkSession {
     this.unsubscribe.forEach((off) => off());
     this.remotes.forEach((remote) => remote.dispose());
     this.remotes.clear();
+    this.ghostsView.clear();
   }
 
   private applySnapshot(snapshot: MatchSnapshot): void {
@@ -164,7 +179,9 @@ export class NetworkSession {
       this.space.enter(snapshot.spaceIndex);
       this.reconciler.clear();
       this.remotes.forEach((remote) => remote.resetMotion());
+      this.ghostsView.clear();
     }
+    this.ghostsView.push(snapshot.serverTime, snapshot.ghosts);
     for (const state of snapshot.players) {
       const position = new Vector2(state.x, state.y);
       if (state.id === this.playerId) {

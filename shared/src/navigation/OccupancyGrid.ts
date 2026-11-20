@@ -4,7 +4,7 @@ import type { Vector2 } from '../math/Vector2.ts';
 /**
  * Растровая карта проходимости. Клетка заблокирована, если её центр попадает
  * в препятствие, расширенное на радиус агента.
- * Используется для проверки связности уровня, позже — для поиска пути привидений.
+ * Используется для проверки связности уровня и для путей привидений (NavigationField).
  */
 export class OccupancyGrid {
   public readonly columns: number;
@@ -82,6 +82,19 @@ export class OccupancyGrid {
       }
     }
     return new ReachableSet(this, visited);
+  }
+
+  public isBlockedIndex(index: number): boolean {
+    return index < 0 || index >= this.blocked.length || this.blocked[index] === 1;
+  }
+
+  /** Центр клетки с индексом `index` в мировых координатах. */
+  public cellCenterX(index: number): number {
+    return this.bounds.minX + ((index % this.columns) + 0.5) * this.resolution;
+  }
+
+  public cellCenterY(index: number): number {
+    return this.bounds.minY + (Math.floor(index / this.columns) + 0.5) * this.resolution;
   }
 
   /** Индекс клетки, содержащей точку, или `-1`, если точка вне карты. */

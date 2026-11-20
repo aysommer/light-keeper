@@ -68,6 +68,8 @@ export class MessageCodec {
         return this.decodeInput(data['commands']);
       case 'debug:next-space':
         return { type: 'debug:next-space' };
+      case 'debug:ghost':
+        return { type: 'debug:ghost' };
       case 'debug:lamp':
         return data['preset'] === 'hot' || data['preset'] === 'low-oil'
           ? { type: 'debug:lamp', preset: data['preset'] }

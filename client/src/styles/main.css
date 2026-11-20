@@ -745,3 +745,45 @@ kbd {
   border-radius: 1px;
   background: #c9a227;
 }
+
+/* Испуг: привидение рядом */
+
+.scare-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 30%,
+    rgb(5 5 15 / 0.6) 70%,
+    rgb(0 0 5 / 0.95) 100%
+  );
+}
+
+.scare-overlay__grain {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.35;
+  background-image: repeating-radial-gradient(
+    circle at 17% 32%,
+    rgb(255 255 255 / 0.08) 0 1px,
+    transparent 1px 3px
+  );
+  animation: scare-grain 0.2s steps(3) infinite;
+}
+
+@keyframes scare-grain {
+  33% {
+    transform: translate(-3%, 2%);
+  }
+  66% {
+    transform: translate(2%, -3%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scare-overlay__grain {
+    animation: none;
+  }
+}

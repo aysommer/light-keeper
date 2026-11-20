@@ -14,6 +14,7 @@ export type {
   ErrorCode,
   ExchangeSnapshot,
   ExitSnapshot,
+  GhostSnapshot,
   LampSnapshot,
   LobbyPlayerInfo,
   LobbySnapshot,
@@ -35,6 +36,7 @@ export type {
   CanisterSettings,
   ExchangeSettings,
   ExitSettings,
+  GhostSettings,
   LampSettings,
   MatchSettings,
   PlayerSettings,
@@ -93,8 +95,10 @@ export type { PlayerInput } from './simulation/PlayerInput.ts';
 export { HELD_ITEMS } from './simulation/HeldItem.ts';
 export { LampRules } from './simulation/LampRules.ts';
 export { ExchangeRules } from './simulation/ExchangeRules.ts';
+export { GhostRules } from './simulation/GhostRules.ts';
 export type { LampLightState } from './simulation/LampRules.ts';
 export type { HeldItem } from './simulation/HeldItem.ts';
 
 // Навигация
 export { OccupancyGrid, ReachableSet } from './navigation/OccupancyGrid.ts';
+export { NavigationField } from './navigation/NavigationField.ts';

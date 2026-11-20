@@ -11,6 +11,7 @@ import { ServerPlayer } from '../entities/ServerPlayer.ts';
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
 import { ExchangeSystem } from '../systems/ExchangeSystem.ts';
 import { ExitSystem } from '../systems/ExitSystem.ts';
+import { GhostSystem } from '../systems/GhostSystem.ts';
 import { LampSystem } from '../systems/LampSystem.ts';
 import { OilSystem } from '../systems/OilSystem.ts';
 import { MovementSystem } from '../systems/MovementSystem.ts';
@@ -68,6 +69,7 @@ export class Match {
       new LampSystem(),
       new OilSystem(),
       new ExchangeSystem(),
+      new GhostSystem(),
       new ExitSystem(GameConfig.exit, {
         transitionSeconds: options.transitionSeconds ?? GameConfig.match.transitionSeconds,
       }),
@@ -127,6 +129,23 @@ export class Match {
     if (player && !player.inTambour && destination) {
       player.position = destination;
     }
+  }
+
+  /** Отладка: вызвать привидение примерно в 8 м от игрока (по лабиринту). */
+  public debugGhost(playerId: string): void {
+    const player = this.world.players.get(playerId);
+    if (!player) {
+      return;
+    }
+    const population = this.world.ghostPopulation;
+    population.field.computeFrom([player.position]);
+    const steps = Math.round(8 / population.field.resolution);
+    const ring = population.field
+      .cellsFartherThan(steps)
+      .filter((cell) => population.field.stepsAt(cell) <= steps + 2);
+    const at = ring[0] ?? population.field.farthestCell();
+    if (at) population.add(at);
+    population.fieldRefreshIn = 0;
   }
 
   /** Отладка: нагреть лампу игрока или почти слить из неё масло. */
@@ -191,6 +210,7 @@ export class Match {
         exchange: this.world.exchange.snapshot(),
         oilTaken: this.world.oil.snapshot(),
         oilDropped: this.world.oil.droppedSnapshot(),
+        ghosts: this.world.ghostPopulation.ghosts.map((ghost) => ghost.snapshot()),
         players: [...this.world.players.values()].map((player) => player.snapshot()),
       },
     };

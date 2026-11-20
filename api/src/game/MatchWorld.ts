@@ -8,6 +8,7 @@ import type { MatchOverReason, Space, SpacePhase } from '@light-keeper/shared';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
 import { ExchangeState } from './ExchangeState.ts';
 import { ExitState } from './ExitState.ts';
+import { GhostPopulation } from './GhostPopulation.ts';
 import { OilState } from './OilState.ts';
 
 /**
@@ -26,6 +27,7 @@ export class MatchWorld {
   private transitionLeft = 0;
   private currentExit: ExitState;
   private currentOil = new OilState();
+  private currentGhosts: GhostPopulation;
   private overReason: MatchOverReason | null = null;
 
   public constructor(public readonly seed: number) {
@@ -34,6 +36,7 @@ export class MatchWorld {
     this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
     this.currentMovement = new PlayerMovement(this.currentCollisions);
     this.currentExit = new ExitState(this.currentSpace);
+    this.currentGhosts = new GhostPopulation(this.currentSpace, seed);
   }
 
   public get space(): Space {
@@ -56,6 +59,11 @@ export class MatchWorld {
 
   public get phase(): SpacePhase {
     return this.currentPhase;
+  }
+
+  /** Привидения текущего пространства (в новое пространство не переходят). */
+  public get ghostPopulation(): GhostPopulation {
+    return this.currentGhosts;
   }
 
   /** Какие канистры текущего пространства уже подобраны. */
@@ -116,6 +124,7 @@ export class MatchWorld {
     this.currentMovement = new PlayerMovement(this.currentCollisions);
     this.currentExit = new ExitState(this.currentSpace);
     this.currentOil = new OilState();
+    this.currentGhosts = new GhostPopulation(this.currentSpace, this.seed);
     this.exchange.clearOffer();
     this.currentPhase = 'playing';
     this.transitionLeft = 0;

@@ -96,7 +96,16 @@ export interface ExchangeSnapshot {
 }
 
 /** Почему партия закончилась. */
-export type MatchOverReason = 'door_timeout';
+export type MatchOverReason = 'door_timeout' | 'ghost_caught';
+
+/** Привидение в снимке мира. */
+export interface GhostSnapshot {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  /** Растворяется в свете (уже не опасно). */
+  readonly fading: boolean;
+}
 
 /** Фаза пространства: игра идёт или идёт переход (затемнение) в следующее. */
 export type SpacePhase = 'playing' | 'transition';
@@ -115,6 +124,7 @@ export interface MatchSnapshot {
   readonly oilTaken: readonly number[];
   /** Пустые канистры, оставленные игроками после заправки. */
   readonly oilDropped: readonly DroppedCanister[];
+  readonly ghosts: readonly GhostSnapshot[];
   readonly players: readonly PlayerSnapshot[];
 }
 
@@ -143,7 +153,9 @@ export type ClientMessage =
   /** Отладка: перенестись к двери выхода или к ключу. Только в режиме разработки. */
   | { readonly type: 'debug:goto'; readonly target: DebugGotoTarget }
   /** Отладка: нагреть свою лампу (`hot`) или почти слить масло (`low-oil`). Только в режиме разработки. */
-  | { readonly type: 'debug:lamp'; readonly preset: DebugLampPreset };
+  | { readonly type: 'debug:lamp'; readonly preset: DebugLampPreset }
+  /** Отладка: вызвать привидение неподалёку. Только в режиме разработки. */
+  | { readonly type: 'debug:ghost' };
 
 /** Сообщения сервер → клиент. */
 export type ServerMessage =
