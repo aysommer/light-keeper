@@ -14,7 +14,10 @@ class MemoryStorage implements SettingsStorage {
 
 describe('GraphicsSettings', () => {
   it('по умолчанию все галочки выключены', () => {
-    expect(new GraphicsSettings(new MemoryStorage()).options).toEqual({ antialias: false });
+    expect(new GraphicsSettings(new MemoryStorage()).options).toEqual({
+      antialias: false,
+      bloom: false,
+    });
     expect(new GraphicsSettings(null).options.antialias).toBe(false);
   });
 
@@ -22,6 +25,15 @@ describe('GraphicsSettings', () => {
     const storage = new MemoryStorage();
     new GraphicsSettings(storage).set('antialias', true);
     expect(new GraphicsSettings(storage).options.antialias).toBe(true);
+  });
+
+  it('галочки независимы, старая запись без новой галочки читается', () => {
+    const storage = new MemoryStorage();
+    storage.setItem('light-keeper:graphics', '{"antialias":true}');
+    const settings = new GraphicsSettings(storage);
+    expect(settings.options).toEqual({ antialias: true, bloom: false });
+    settings.set('bloom', true);
+    expect(new GraphicsSettings(storage).options).toEqual({ antialias: true, bloom: true });
   });
 
   it('сообщает подписчикам только о настоящих изменениях', () => {

@@ -13,6 +13,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FilmShader } from './FilmShader.ts';
+import { SoftBloomPass } from './SoftBloomPass.ts';
 
 /** Рендерер, сцена, камера и реакция на изменение размера окна. */
 export class SceneManager {
@@ -36,6 +37,8 @@ export class SceneManager {
    */
   private readonly composer: EffectComposer;
   private readonly film: ShaderPass;
+  /** Свечение: создаётся только при включении, чтобы выключенное ничего не стоило. */
+  private bloom: SoftBloomPass | null = null;
 
   public constructor(private readonly container: HTMLElement) {
     // Сглаживание холста не нужно: картинка идёт через буферы пост-обработки,
@@ -88,6 +91,18 @@ export class SceneManager {
     }
   }
 
+  /** Свечение вокруг ярких предметов — проход перед зерном плёнки. */
+  public setBloom(enabled: boolean): void {
+    if (enabled && !this.bloom) {
+      this.bloom = new SoftBloomPass();
+      this.composer.insertPass(this.bloom, this.composer.passes.indexOf(this.film));
+    } else if (!enabled && this.bloom) {
+      this.composer.removePass(this.bloom);
+      this.bloom.dispose();
+      this.bloom = null;
+    }
+  }
+
   /** @param time время, с (для зерна); @param scare испуг 0–1 */
   public render(time = 0, scare = 0): void {
     const uniforms = this.film.uniforms as Record<string, { value: number }>;
@@ -98,6 +113,7 @@ export class SceneManager {
 
   public dispose(): void {
     this.resizeObserver.disconnect();
+    this.setBloom(false);
     this.composer.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

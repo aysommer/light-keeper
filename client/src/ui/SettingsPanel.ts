@@ -8,7 +8,10 @@ interface Toggle {
 
 /** Окно настроек графики: галочки применяются сразу. */
 export class SettingsPanel {
-  private static readonly TOGGLES: readonly Toggle[] = [{ key: 'antialias', label: 'Сглаживание' }];
+  private static readonly TOGGLES: readonly Toggle[] = [
+    { key: 'antialias', label: 'Сглаживание' },
+    { key: 'bloom', label: 'Свечение' },
+  ];
 
   public readonly element: HTMLElement;
   private readonly inputs = new Map<keyof GraphicsOptions, HTMLInputElement>();

@@ -3,7 +3,7 @@ import type { MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
 import { AudioEngine } from '../audio/AudioEngine.ts';
 import { SoundDirector } from '../audio/SoundDirector.ts';
 import { GameLoop } from '../core/GameLoop.ts';
-import type { GraphicsSettings } from '../core/GraphicsSettings.ts';
+import type { GraphicsOptions, GraphicsSettings } from '../core/GraphicsSettings.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
 import { FirstPersonController } from '../game/FirstPersonController.ts';
 import { HeldItems } from '../game/HeldItems.ts';
@@ -76,10 +76,12 @@ export class GameScreen implements Screen {
     const options = this.options;
     const sceneManager = this.own(new SceneManager(this.element));
     // Настройки графики применяются сразу, без перезагрузки; сети они не касаются.
-    sceneManager.setAntialias(options.graphics.options.antialias);
-    const unsubscribeGraphics = options.graphics.onChange((graphics) =>
-      sceneManager.setAntialias(graphics.antialias),
-    );
+    const applyGraphics = (graphics: GraphicsOptions): void => {
+      sceneManager.setAntialias(graphics.antialias);
+      sceneManager.setBloom(graphics.bloom);
+    };
+    applyGraphics(options.graphics.options);
+    const unsubscribeGraphics = options.graphics.onChange(applyGraphics);
     this.own({ dispose: unsubscribeGraphics });
     this.own(this.settings);
     // Затемнение — поверх HUD, чтобы подсказки не перекрывали надпись.

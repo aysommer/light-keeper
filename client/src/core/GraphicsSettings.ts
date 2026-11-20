@@ -2,6 +2,8 @@
 export interface GraphicsOptions {
   /** Сглаживание краёв (мультисэмплинг). */
   readonly antialias: boolean;
+  /** Свечение вокруг ярких предметов. */
+  readonly bloom: boolean;
 }
 
 /** Где хранить настройки (в браузере — localStorage; в тестах — заглушка). */
@@ -16,7 +18,7 @@ export interface SettingsStorage {
  * На сервер ничего не уходит — сетевой игры настройки не касаются.
  */
 export class GraphicsSettings {
-  public static readonly DEFAULTS: GraphicsOptions = { antialias: false };
+  public static readonly DEFAULTS: GraphicsOptions = { antialias: false, bloom: false };
   private static readonly STORAGE_KEY = 'light-keeper:graphics';
 
   private current: GraphicsOptions;
@@ -57,12 +59,12 @@ export class GraphicsSettings {
       const saved: unknown = raw ? JSON.parse(raw) : null;
       if (typeof saved === 'object' && saved !== null) {
         const record = saved as Record<string, unknown>;
-        return {
-          antialias:
-            typeof record['antialias'] === 'boolean'
-              ? record['antialias']
-              : GraphicsSettings.DEFAULTS.antialias,
-        };
+        const options: Record<string, boolean> = { ...GraphicsSettings.DEFAULTS };
+        for (const key of Object.keys(options)) {
+          const value = record[key];
+          if (typeof value === 'boolean') options[key] = value;
+        }
+        return options as unknown as GraphicsOptions;
       }
     } catch {
       // Повреждённая запись — берём значения по умолчанию.
