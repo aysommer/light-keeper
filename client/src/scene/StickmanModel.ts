@@ -3,6 +3,7 @@ import { LampRules } from '@light-keeper/shared';
 import type { HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
 import { LampFlame } from '../game/LampFlame.ts';
 import { StickmanAnimator } from '../game/StickmanAnimator.ts';
+import { GroundShadow } from './GroundShadow.ts';
 import { LanternModel } from './LanternModel.ts';
 import { StickmanRig } from './StickmanRig.ts';
 
@@ -25,6 +26,7 @@ export class StickmanModel {
   private readonly lantern = new LanternModel();
   private readonly lampLight: PointLight;
   private readonly compass: Mesh;
+  private readonly shadow = new GroundShadow(0.85);
   private readonly compassMaterial = new MeshStandardMaterial({
     color: '#c9a227',
     metalness: 0.8,
@@ -47,6 +49,8 @@ export class StickmanModel {
     this.compass.position.set(0, -0.02, -0.03);
     this.compass.rotation.x = Math.PI / 2;
     this.rig.rightHand.add(this.compass);
+
+    this.shadow.attach(this.root, 0.9);
   }
 
   /**
@@ -84,6 +88,7 @@ export class StickmanModel {
   }
 
   public dispose(): void {
+    this.shadow.dispose();
     this.rig.dispose();
     this.lantern.dispose();
     this.lampLight.dispose();

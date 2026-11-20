@@ -9,6 +9,7 @@ import {
 import type { BufferGeometry, Material, Scene } from 'three';
 import { Vector2 } from '@light-keeper/shared';
 import type { DroppedCanister } from '@light-keeper/shared';
+import { GroundShadow } from './GroundShadow.ts';
 import { SceneCoords } from './SceneCoords.ts';
 
 /**
@@ -21,6 +22,7 @@ export class CanisterField {
   private readonly placed: Group[] = [];
   private readonly dropped: Group[] = [];
   private readonly geometries: BufferGeometry[] = [];
+  private readonly shadow = new GroundShadow(0.8);
   private readonly full = new MeshStandardMaterial({
     color: '#8c2a1e',
     metalness: 0.4,
@@ -67,6 +69,7 @@ export class CanisterField {
 
   public dispose(): void {
     this.root.removeFromParent();
+    this.shadow.dispose();
     this.geometries.forEach((geometry) => geometry.dispose());
     [this.full, this.empty, this.cap].forEach((material) => material.dispose());
   }
@@ -80,6 +83,7 @@ export class CanisterField {
     const spout = new Mesh(this.spoutGeometry, this.cap);
     spout.position.set(0.08, 0.35, 0);
     canister.add(shell, handle, spout);
+    this.shadow.attach(canister, 0.7, 0.5);
     canister.position.copy(SceneCoords.toScene(position));
     canister.rotation.y = rotation;
     this.root.add(canister);

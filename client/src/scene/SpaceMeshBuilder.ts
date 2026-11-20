@@ -5,7 +5,7 @@ import { GameConfig, SeedHasher } from '@light-keeper/shared';
 import type { Space, WorldSettings } from '@light-keeper/shared';
 import { BoxGeometryFactory } from './BoxGeometryFactory.ts';
 import { MaterialLibrary } from './MaterialLibrary.ts';
-import type { PanelState } from './MaterialLibrary.ts';
+import type { PanelState, SpaceDetail } from './MaterialLibrary.ts';
 import { SceneCoords } from './SceneCoords.ts';
 import { SpaceView } from './SpaceView.ts';
 
@@ -23,8 +23,8 @@ export class SpaceMeshBuilder {
 
   public constructor(private readonly settings: WorldSettings = GameConfig.world) {}
 
-  public build(space: Space): SpaceView {
-    const materials = new MaterialLibrary(space.palette);
+  public build(space: Space, detail: SpaceDetail = MaterialLibrary.NO_DETAIL): SpaceView {
+    const materials = new MaterialLibrary(space.palette, detail);
     const group = new Group();
     group.name = `space-${space.index}`;
     group.add(this.buildFloor(space, materials), this.buildCeiling(space, materials));

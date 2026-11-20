@@ -14,6 +14,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { DustField } from './DustField.ts';
 import { FilmShader } from './FilmShader.ts';
+import { GroundShadow } from './GroundShadow.ts';
 import { SoftBloomPass } from './SoftBloomPass.ts';
 
 /** Рендерер, сцена, камера и реакция на изменение размера окна. */
@@ -103,6 +104,15 @@ export class SceneManager {
       this.composer.removePass(this.bloom);
       this.bloom.dispose();
       this.bloom = null;
+    }
+  }
+
+  /** Тени под ногами: камера начинает или перестаёт видеть их слой. */
+  public setGroundShadows(enabled: boolean): void {
+    if (enabled) {
+      this.camera.layers.enable(GroundShadow.LAYER);
+    } else {
+      this.camera.layers.disable(GroundShadow.LAYER);
     }
   }
 

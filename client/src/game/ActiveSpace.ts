@@ -4,6 +4,8 @@ import type { DroppedCanister, ExitSnapshot, Space } from '@light-keeper/shared'
 import { CanisterField } from '../scene/CanisterField.ts';
 import { ExitDoorView } from '../scene/ExitDoorView.ts';
 import { KeyView } from '../scene/KeyView.ts';
+import { MaterialLibrary } from '../scene/MaterialLibrary.ts';
+import type { SpaceDetail } from '../scene/MaterialLibrary.ts';
 import { SpaceMeshBuilder } from '../scene/SpaceMeshBuilder.ts';
 import type { SpaceView } from '../scene/SpaceView.ts';
 
@@ -27,16 +29,19 @@ export class ActiveSpace implements MovementProvider {
   private door: ExitDoorView;
   private key: KeyView | null;
   private canisters: CanisterField;
+  private detail: SpaceDetail;
 
   public constructor(
     matchSeed: number,
     private readonly scene: Scene,
+    detail: SpaceDetail = MaterialLibrary.NO_DETAIL,
   ) {
+    this.detail = detail;
     this.generator = new SpaceGenerator(matchSeed);
     this.currentSpace = this.generator.generate(0);
     this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
     this.currentMovement = new PlayerMovement(this.currentCollisions);
-    this.view = this.builder.build(this.currentSpace);
+    this.view = this.builder.build(this.currentSpace, this.detail);
     scene.add(this.view.group);
     this.door = this.createDoor();
     this.key = this.createKey();
@@ -62,6 +67,12 @@ export class ActiveSpace implements MovementProvider {
     return this.currentMovement;
   }
 
+  /** Галочки графики материалов: сразу для текущего пространства и для следующих. */
+  public setDetail(detail: SpaceDetail): void {
+    this.detail = detail;
+    this.view.materials.setDetail(detail);
+  }
+
   public enter(index: number): void {
     if (index === this.currentSpace.index) {
       return;
@@ -70,7 +81,7 @@ export class ActiveSpace implements MovementProvider {
     this.currentSpace = this.generator.generate(index);
     this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
     this.currentMovement = new PlayerMovement(this.currentCollisions);
-    this.view = this.builder.build(this.currentSpace);
+    this.view = this.builder.build(this.currentSpace, this.detail);
     this.scene.add(this.view.group);
     this.door = this.createDoor();
     this.key = this.createKey();

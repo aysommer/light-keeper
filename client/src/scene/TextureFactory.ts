@@ -6,9 +6,20 @@ type Painter = (ctx: CanvasRenderingContext2D, size: number) => void;
 
 /** Процедурные текстуры пространства по его палитре (без внешних файлов). */
 export class TextureFactory {
+  /** Логический размер текстуры: в нём рисуются все узоры. */
   private static readonly SIZE = 256;
+  /** Анизотропная фильтрация: обычная и для чётких текстур (видеокарта ограничит сама). */
+  private static readonly ANISOTROPY = 4;
+  private static readonly SHARP_ANISOTROPY = 16;
 
-  public constructor(private readonly palette: SpacePalette) {}
+  /**
+   * @param scale во сколько раз больше пикселей у холста (1 — обычные текстуры,
+   *   2 — чёткие): узоры те же, но края у них резче, а пол вдали не «плывёт».
+   */
+  public constructor(
+    private readonly palette: SpacePalette,
+    private readonly scale = 1,
+  ) {}
 
   /** Обои: цвет и узор из палитры. Плитка — 1 м. */
   public createWallpaper(): CanvasTexture {
@@ -153,18 +164,20 @@ export class TextureFactory {
     draw: (ctx: CanvasRenderingContext2D, rng: SeededRandom, size: number) => void,
   ): CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = TextureFactory.SIZE;
-    canvas.height = TextureFactory.SIZE;
+    canvas.width = TextureFactory.SIZE * this.scale;
+    canvas.height = TextureFactory.SIZE * this.scale;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       throw new Error('Canvas 2D недоступен');
     }
+    ctx.scale(this.scale, this.scale);
     draw(ctx, new SeededRandom(seed), TextureFactory.SIZE);
     const texture = new CanvasTexture(canvas);
     texture.wrapS = RepeatWrapping;
     texture.wrapT = RepeatWrapping;
     texture.colorSpace = SRGBColorSpace;
-    texture.anisotropy = 4;
+    texture.anisotropy =
+      this.scale > 1 ? TextureFactory.SHARP_ANISOTROPY : TextureFactory.ANISOTROPY;
     return texture;
   }
 

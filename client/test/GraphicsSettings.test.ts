@@ -18,6 +18,9 @@ describe('GraphicsSettings', () => {
       antialias: false,
       bloom: false,
       dust: false,
+      sharpTextures: false,
+      groundShadows: false,
+      cornerShade: false,
     });
     expect(new GraphicsSettings(null).options.antialias).toBe(false);
   });
@@ -32,12 +35,18 @@ describe('GraphicsSettings', () => {
     const storage = new MemoryStorage();
     storage.setItem('light-keeper:graphics', '{"antialias":true}');
     const settings = new GraphicsSettings(storage);
-    expect(settings.options).toEqual({ antialias: true, bloom: false, dust: false });
+    expect(settings.options).toEqual({
+      ...GraphicsSettings.DEFAULTS,
+      antialias: true,
+    });
     settings.set('bloom', true);
     expect(new GraphicsSettings(storage).options).toEqual({
       antialias: true,
       bloom: true,
       dust: false,
+      sharpTextures: false,
+      groundShadows: false,
+      cornerShade: false,
     });
   });
 

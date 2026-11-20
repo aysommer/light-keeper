@@ -6,6 +6,12 @@ export interface GraphicsOptions {
   readonly bloom: boolean;
   /** Пыль в воздухе, видимая в свете лампы. */
   readonly dust: boolean;
+  /** Текстуры с удвоенным разрешением. */
+  readonly sharpTextures: boolean;
+  /** Мягкие тени под напарником и канистрами. */
+  readonly groundShadows: boolean;
+  /** Стены темнеют у пола и потолка. */
+  readonly cornerShade: boolean;
 }
 
 /** Где хранить настройки (в браузере — localStorage; в тестах — заглушка). */
@@ -24,6 +30,9 @@ export class GraphicsSettings {
     antialias: false,
     bloom: false,
     dust: false,
+    sharpTextures: false,
+    groundShadows: false,
+    cornerShade: false,
   };
   private static readonly STORAGE_KEY = 'light-keeper:graphics';
 

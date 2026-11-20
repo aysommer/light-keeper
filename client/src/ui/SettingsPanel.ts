@@ -12,6 +12,9 @@ export class SettingsPanel {
     { key: 'antialias', label: 'Сглаживание' },
     { key: 'bloom', label: 'Свечение' },
     { key: 'dust', label: 'Пыль' },
+    { key: 'sharpTextures', label: 'Чёткие текстуры' },
+    { key: 'groundShadows', label: 'Тени под ногами' },
+    { key: 'cornerShade', label: 'Затенение углов' },
   ];
 
   public readonly element: HTMLElement;

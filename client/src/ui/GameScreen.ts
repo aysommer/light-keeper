@@ -75,15 +75,6 @@ export class GameScreen implements Screen {
   public mount(): void {
     const options = this.options;
     const sceneManager = this.own(new SceneManager(this.element));
-    // Настройки графики применяются сразу, без перезагрузки; сети они не касаются.
-    const applyGraphics = (graphics: GraphicsOptions): void => {
-      sceneManager.setAntialias(graphics.antialias);
-      sceneManager.setBloom(graphics.bloom);
-      sceneManager.setDust(graphics.dust);
-    };
-    applyGraphics(options.graphics.options);
-    const unsubscribeGraphics = options.graphics.onChange(applyGraphics);
-    this.own({ dispose: unsubscribeGraphics });
     this.own(this.settings);
     // Затемнение — поверх HUD, чтобы подсказки не перекрывали надпись.
     this.element.append(
@@ -97,7 +88,20 @@ export class GameScreen implements Screen {
       this.settings.element,
     );
 
-    const space = this.own(new ActiveSpace(options.seed, sceneManager.scene));
+    const space = this.own(
+      new ActiveSpace(options.seed, sceneManager.scene, options.graphics.options),
+    );
+    // Настройки графики применяются сразу, без перезагрузки; сети они не касаются.
+    const applyGraphics = (graphics: GraphicsOptions): void => {
+      sceneManager.setAntialias(graphics.antialias);
+      sceneManager.setBloom(graphics.bloom);
+      sceneManager.setDust(graphics.dust);
+      sceneManager.setGroundShadows(graphics.groundShadows);
+      space.setDetail(graphics);
+    };
+    applyGraphics(options.graphics.options);
+    const unsubscribeGraphics = options.graphics.onChange(applyGraphics);
+    this.own({ dispose: unsubscribeGraphics });
     const input = this.own(new InputController(sceneManager.canvas));
     const [redStart, blueStart] = space.space.startPositions;
     const player = new LocalPlayer(options.color === 'blue' ? blueStart : redStart);
