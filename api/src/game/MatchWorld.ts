@@ -1,8 +1,8 @@
 import {
   CollisionWorld,
-  LampRules,
   PLAYER_COLORS,
   PlayerMovement,
+  SeedHasher,
   SpaceGenerator,
 } from '@light-keeper/shared';
 import type { MatchOverReason, Space, SpacePhase } from '@light-keeper/shared';
@@ -31,6 +31,8 @@ export class MatchWorld {
   private currentOil = new OilState();
   private currentGhosts: GhostPopulation;
   private overReason: MatchOverReason | null = null;
+  /** Лампа одна на двоих; кто её держит — решается заново в каждом пространстве. */
+  private readonly sharedLamp = new Lamp();
 
   public constructor(public readonly seed: number) {
     this.generator = new SpaceGenerator(seed);
@@ -93,20 +95,37 @@ export class MatchWorld {
     return this.transitionLeft;
   }
 
-  /** Общая лампа (одна на двоих) — у того, кто её сейчас держит. */
-  public get lamp(): Lamp | null {
-    for (const player of this.players.values()) {
-      if (player.lamp) return player.lamp;
+  /** Общая лампа (одна на двоих). */
+  public get lamp(): Lamp {
+    return this.sharedLamp;
+  }
+
+  /**
+   * Вход в пространство: кому достаётся лампа, решает случай — красному или
+   * синему. Жребий выводится из зерна партии и номера пространства, поэтому
+   * сервер не хранит лишнего, а сами партии (с разными зёрнами) непредсказуемы.
+   */
+  public dealLamp(): void {
+    const colors = [...this.players.values()].map((player) => player.color);
+    if (colors.length === 0) {
+      return;
     }
-    return null;
+    const ordered = PLAYER_COLORS.filter((color) => colors.includes(color));
+    const color =
+      ordered[SeedHasher.hash(this.seed, 'lamp-holder', this.spaceIndex) % ordered.length];
+    const holder = [...this.players.values()].find((player) => player.color === color);
+    if (holder) this.giveLampTo(holder.id);
+  }
+
+  /** Отдать лампу игроку (у второго она пропадает из рук). */
+  public giveLampTo(playerId: string): void {
+    this.players.forEach((player) => {
+      player.lamp = player.id === playerId ? this.sharedLamp : null;
+    });
   }
 
   public addPlayer(player: ServerPlayer): void {
     this.players.set(player.id, player);
-    // Лампа одна на двоих: в начале она у первого игрока (красного).
-    if (player.color === LampRules.FIRST_HOLDER && !this.lamp) {
-      player.lamp = new Lamp();
-    }
     player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw);
   }
 
@@ -142,10 +161,11 @@ export class MatchWorld {
     this.exchange.clearOffer();
     this.currentPhase = 'playing';
     this.transitionLeft = 0;
-    this.players.forEach((player) => {
-      player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw);
-      player.lamp?.refill();
-    });
+    this.players.forEach((player) =>
+      player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw),
+    );
+    this.sharedLamp.refill();
+    this.dealLamp();
   }
 
   private startPositionFor(player: ServerPlayer): ServerPlayer['position'] {

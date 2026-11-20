@@ -67,6 +67,7 @@ export class Match {
       const start = this.world.space.startPositions[0];
       this.world.addPlayer(new ServerPlayer(member.participant, member.color, start));
     }
+    this.world.dealLamp();
     this.systems = [
       new MovementSystem(),
       new LampSystem(),

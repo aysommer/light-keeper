@@ -30,6 +30,8 @@ const setup = () => {
     ],
     { tickRate: 20, now: () => now },
   );
+  // Лампу в каждом пространстве получает случайный игрок; в тестах — красный.
+  match.world.giveLampTo('red');
   const items: Record<Id, HeldItem> = { red: 'lamp', blue: 'lamp' };
   const seq = { red: 0, blue: 0 };
   const player = (id: Id) => match.world.players.get(id)!;
@@ -190,6 +192,8 @@ describe('Конец партии и рекорды', () => {
       ],
       { tickRate: 20, now: () => now, records },
     );
+    // Лампу в каждом пространстве получает случайный игрок; в тестах — красный.
+    match.world.giveLampTo('red');
     match.start();
     match.stop();
     match.world.enterSpace(2); // как будто прошли два пространства

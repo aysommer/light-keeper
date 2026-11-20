@@ -37,6 +37,8 @@ const setup = () => {
     ],
     { tickRate: 20, now: () => now },
   );
+  // Лампу в каждом пространстве получает случайный игрок; в тестах — красный.
+  match.world.giveLampTo('red');
   const player = (id: Id) => match.world.players.get(id)!;
   const space = match.world.space;
   const spawns = space.oilSpawns.filter((_, i) => space.isOilFull(i));

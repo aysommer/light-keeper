@@ -39,7 +39,9 @@ const setup = (spaceIndex = 0) => {
     ],
     { tickRate: 20, transitionSeconds: 0.5, now: () => now, onEnd: () => ended++ },
   );
+  // Лампу в каждом пространстве получает случайный игрок; в тестах — красный.
   if (spaceIndex > 0) match.world.enterSpace(spaceIndex);
+  match.world.giveLampTo('red');
   const seq = { red: 0, blue: 0 };
   const space = () => match.world.space;
   const player = (id: 'red' | 'blue') => match.world.players.get(id)!;
@@ -253,12 +255,12 @@ describe('ExitSystem: ключ и скрытая дверь', () => {
     expect(ctx.match.world.exit.revealed).toBe(true);
   });
 
-  it('новое пространство — лампы снова полные и холодные', () => {
+  it('новое пространство — лампа снова полная и холодная', () => {
     const ctx = setup();
     ctx.player('red').lamp!.oil = 10;
     ctx.player('red').lamp!.heat = 90;
     ctx.match.world.enterSpace(1);
-    expect(ctx.player('red').lamp!.snapshot()).toEqual({
+    expect(ctx.match.world.lamp.snapshot()).toEqual({
       oil: 100,
       heat: 0,
       lit: true,
@@ -279,15 +281,36 @@ describe('ExitSystem: ключ и скрытая дверь', () => {
     expect(blue.item).toBe('compass');
   });
 
-  it('в новом пространстве лампа остаётся у того, кто её держал', () => {
+  it('в каждом пространстве лампу получает случайный игрок — то красный, то синий', () => {
     const ctx = setup();
-    const lamp = ctx.player('red').lamp;
-    ctx.player('blue').lamp = lamp;
-    ctx.player('red').lamp = null;
-    ctx.match.world.enterSpace(1);
-    expect(ctx.player('blue').lamp).toBe(lamp);
-    expect(ctx.player('red').lamp).toBeNull();
-    expect(lamp!.oil).toBe(100);
+    const lamp = ctx.match.world.lamp;
+    lamp.oil = 10;
+    const holders = new Set<string>();
+    for (let index = 1; index <= 12; index++) {
+      ctx.match.world.enterSpace(index);
+      const withLamp = [ctx.player('red'), ctx.player('blue')].filter((p) => p.lamp);
+      expect(withLamp).toHaveLength(1);
+      expect(withLamp[0]!.lamp).toBe(lamp);
+      holders.add(withLamp[0]!.id);
+    }
+    expect(holders).toEqual(new Set(['red', 'blue']));
+    expect(lamp.oil).toBe(100);
+  });
+
+  it('жребий лампы зависит от зерна партии: у разных партий он разный', () => {
+    const holderAt = (seed: number) => {
+      const match = new Match(
+        seed,
+        [
+          { participant: new FakeParticipant('red'), color: 'red' },
+          { participant: new FakeParticipant('blue'), color: 'blue' },
+        ],
+        { tickRate: 20, now: () => 0 },
+      );
+      return [...match.world.players.values()].find((p) => p.lamp)!.color;
+    };
+    const firstHolders = new Set(Array.from({ length: 20 }, (_, seed) => holderAt(seed + 1)));
+    expect(firstHolders).toEqual(new Set(['red', 'blue']));
   });
 
   it('у обычной двери ключа нет и она видна сразу', () => {

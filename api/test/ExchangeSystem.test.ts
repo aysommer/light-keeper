@@ -25,6 +25,8 @@ const setup = () => {
     ],
     { tickRate: 20, now: () => now },
   );
+  // Лампу в каждом пространстве получает случайный игрок; в тестах — красный.
+  match.world.giveLampTo('red');
   const player = (id: Id) => match.world.players.get(id)!;
   const seq = { red: 0, blue: 0 };
   const yaw = { red: 0, blue: 0 };
@@ -68,9 +70,9 @@ const setup = () => {
 };
 
 describe('ExchangeSystem', () => {
-  it('лампа одна на двоих: в начале она у красного', () => {
+  it('лампа одна на двоих: она только у одного игрока', () => {
     const ctx = setup();
-    expect(ctx.player('red').lamp).not.toBeNull();
+    expect(ctx.player('red').lamp).toBe(ctx.match.world.lamp);
     expect(ctx.player('blue').lamp).toBeNull();
   });
 

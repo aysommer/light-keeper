@@ -1,5 +1,5 @@
 import type { Scene } from 'three';
-import { LampRules, Vector2 } from '@light-keeper/shared';
+import { Vector2 } from '@light-keeper/shared';
 import type {
   DebugGotoTarget,
   DebugLampPreset,
@@ -40,7 +40,7 @@ export class NetworkSession {
   private selfInTambour = false;
   private selfLamp: LampSnapshot | null = null;
   /** Лампа одна на двоих: у этого ли игрока она сейчас. */
-  private selfHasLamp: boolean;
+  private selfHasLamp = false;
   /** Состояние общей лампы, у кого бы она ни была. */
   private latestSharedLamp: LampSnapshot | null = null;
   private latestExchange: ExchangeSnapshot | null = null;
@@ -59,9 +59,8 @@ export class NetworkSession {
     scene: Scene,
   ) {
     this.sender = new InputSender(network);
-    // До первого снимка считаем, что лампа у того, кому она достаётся в начале.
-    this.selfHasLamp =
-      players.find((info) => info.id === playerId)?.color === LampRules.FIRST_HOLDER;
+    // Кому достанется лампа, решает сервер (жребий в каждом пространстве);
+    // до первого снимка считаем, что её нет — это скрыто заставкой пространства.
     this.ghostsView = new GhostsView(scene);
     this.reconciler = new PredictionReconciler(space);
     for (const info of players) {

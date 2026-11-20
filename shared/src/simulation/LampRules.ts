@@ -1,6 +1,5 @@
 import { GameConfig } from '../config/GameConfig.ts';
 import type { LampSettings } from '../config/GameConfig.ts';
-import type { PlayerColor } from '../protocol/Messages.ts';
 
 /** Минимум о лампе, чтобы судить о её свете. */
 export interface LampLightState {
@@ -11,12 +10,6 @@ export interface LampLightState {
 
 /** Правила лампы, общие для сервера (симуляция) и клиента (отображение). */
 export class LampRules {
-  /**
-   * Лампа одна на двоих. В начале партии она у этого игрока; дальше её
-   * передают из рук в руки, а у второго в руке компас.
-   */
-  public static readonly FIRST_HOLDER: PlayerColor = 'red';
-
   /**
    * Скорость нагрева горящей лампы в руке, %/с. Растёт с временем непрерывного
    * удержания одним игроком — поэтому лампами выгодно меняться.
