@@ -1,6 +1,7 @@
 import { PLAYER_COLORS } from '@light-keeper/shared';
 import type { LobbySnapshot, PlayerColor } from '@light-keeper/shared';
 import type { Screen } from './Screen.ts';
+import { Clipboard } from '../core/Clipboard.ts';
 import { StickmanIcon } from './StickmanIcon.ts';
 
 export interface LobbyScreenActions {
@@ -17,6 +18,8 @@ export class LobbyScreen implements Screen {
 
   public readonly element: HTMLElement;
   private readonly code: HTMLElement;
+  private readonly copyButton: HTMLButtonElement;
+  private copyResetTimer: number | null = null;
   private readonly slots = new Map<PlayerColor, HTMLElement>();
   private readonly readyButton: HTMLButtonElement;
   private readonly status: HTMLElement;
@@ -33,12 +36,20 @@ export class LobbyScreen implements Screen {
 
     const heading = document.createElement('p');
     heading.className = 'lobby-screen__label';
-    heading.textContent = 'Код комнаты — продиктуй его напарнику';
+    heading.textContent = 'Код комнаты — отправь его напарнику';
 
-    this.code = document.createElement('button');
+    this.code = document.createElement('div');
     this.code.className = 'lobby-screen__code';
-    this.code.title = 'Скопировать';
-    this.code.addEventListener('click', () => void this.copyCode());
+
+    this.copyButton = document.createElement('button');
+    this.copyButton.type = 'button';
+    this.copyButton.className = 'button button--secondary lobby-screen__copy';
+    this.copyButton.textContent = 'Скопировать';
+    this.copyButton.addEventListener('click', () => void this.copyCode());
+
+    const codeRow = document.createElement('div');
+    codeRow.className = 'lobby-screen__code-row';
+    codeRow.append(this.code, this.copyButton);
 
     const slots = document.createElement('div');
     slots.className = 'lobby-screen__slots';
@@ -76,13 +87,11 @@ export class LobbyScreen implements Screen {
     controls.className = 'lobby-screen__controls';
     controls.append(this.readyButton, leave);
 
-    this.element.append(heading, this.code, slots, this.status, this.notice, controls);
+    this.element.append(heading, codeRow, slots, this.status, this.notice, controls);
     this.update(snapshot);
   }
 
   public mount(): void {}
-
-  public dispose(): void {}
 
   public update(snapshot: LobbySnapshot): void {
     this.code.textContent = snapshot.code;
@@ -124,13 +133,20 @@ export class LobbyScreen implements Screen {
     return 'Когда оба нажмут «Готов» — начнём.';
   }
 
+  public dispose(): void {
+    if (this.copyResetTimer !== null) window.clearTimeout(this.copyResetTimer);
+  }
+
   private async copyCode(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.code.textContent ?? '');
-      this.code.classList.add('lobby-screen__code--copied');
-      setTimeout(() => this.code.classList.remove('lobby-screen__code--copied'), 800);
-    } catch {
-      // Буфер обмена недоступен (например, не HTTPS) — код и так виден.
-    }
+    const copied = await Clipboard.copy(this.code.textContent ?? '');
+    this.copyButton.textContent = copied ? 'Скопировано ✓' : 'Не вышло — выдели код';
+    this.copyButton.classList.toggle('lobby-screen__copy--done', copied);
+    this.code.classList.toggle('lobby-screen__code--copied', copied);
+    if (this.copyResetTimer !== null) window.clearTimeout(this.copyResetTimer);
+    this.copyResetTimer = window.setTimeout(() => {
+      this.copyButton.textContent = 'Скопировать';
+      this.copyButton.classList.remove('lobby-screen__copy--done');
+      this.code.classList.remove('lobby-screen__code--copied');
+    }, 1800);
   }
 }

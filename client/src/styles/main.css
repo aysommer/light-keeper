@@ -299,8 +299,24 @@ kbd {
   font-size: clamp(48px, 12vw, 88px);
   font-weight: 800;
   letter-spacing: 0.25em;
-  cursor: copy;
+  user-select: all;
   transition: background 0.2s ease;
+}
+
+.lobby-screen__code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+}
+
+.lobby-screen__copy {
+  min-width: 170px;
+}
+
+.lobby-screen__copy--done {
+  background: var(--ok);
 }
 
 .lobby-screen__code--copied {
