@@ -7,7 +7,7 @@
   --lamp: #fff4c2;
   --ok: #1d6b2a;
   --bad: #9b1c1c;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-family: Arial, sans-serif;
   color: var(--ink);
 }
 
@@ -159,14 +159,6 @@ body {
   inset: 0;
   pointer-events: none;
   color: #f3e7b0;
-}
-
-.hud__seed {
-  position: absolute;
-  right: 16px;
-  bottom: 12px;
-  font-size: 12px;
-  opacity: 0.4;
 }
 
 .hud__crosshair {

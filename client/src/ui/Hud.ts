@@ -6,13 +6,9 @@ export class Hud {
   public readonly element: HTMLElement;
   private readonly overlay: HTMLElement;
 
-  public constructor(seed: number, onExit: () => void) {
+  public constructor(onExit: () => void) {
     this.element = document.createElement('div');
     this.element.className = 'hud';
-
-    const seedLabel = document.createElement('div');
-    seedLabel.className = 'hud__seed';
-    seedLabel.textContent = `seed ${seed}`;
 
     const crosshair = document.createElement('div');
     crosshair.className = 'hud__crosshair';
@@ -38,7 +34,7 @@ export class Hud {
     hint.append(exit);
     this.overlay.append(hint);
 
-    this.element.append(seedLabel, crosshair, this.overlay);
+    this.element.append(crosshair, this.overlay);
   }
 
   public setPointerLocked(locked: boolean): void {

@@ -52,7 +52,7 @@ export class GameScreen implements Screen {
   public constructor(private readonly options: GameScreenOptions) {
     this.element = document.createElement('div');
     this.element.className = 'game-screen';
-    this.hud = new Hud(options.seed, options.onExit);
+    this.hud = new Hud(options.onExit);
   }
 
   public mount(): void {
