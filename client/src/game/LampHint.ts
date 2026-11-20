@@ -11,6 +11,36 @@ export interface OilSupply {
 export class LampHint {
   public constructor(private readonly settings: LampSettings = GameConfig.lamp) {}
 
+  /**
+   * Подсказка тому, у кого лампы нет (она одна на двоих и сейчас у напарника).
+   * @param lamp состояние общей лампы в руках напарника
+   * @param askedForLamp игрок только что нажал «лампа» (1), а лампы у него нет
+   */
+  public resolvePartnerLamp(
+    lamp: LampSnapshot | null,
+    inTambour: boolean,
+    canisters: number,
+    askedForLamp: boolean,
+  ): string | null {
+    if (!lamp || inTambour) {
+      return null;
+    }
+    const refuelHint = canisters > 0 ? ' — возьми её и заправь (R)' : '';
+    if (lamp.overheated) {
+      return 'Лампа перегрелась и остывает';
+    }
+    if (lamp.oil <= 0) {
+      return `Масло в лампе кончилось${refuelHint}`;
+    }
+    if (lamp.heat >= this.settings.warningHeat) {
+      return 'Лампа у напарника перегревается — возьми её (E)';
+    }
+    if (canisters > 0 && lamp.oil < this.settings.lowOil) {
+      return `Масло на исходе${refuelHint}`;
+    }
+    return askedForLamp ? 'Лампа у напарника — попроси её (E)' : null;
+  }
+
   public resolve(
     lamp: LampSnapshot | null,
     item: HeldItem,

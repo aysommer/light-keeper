@@ -68,27 +68,55 @@ const setup = () => {
 };
 
 describe('ExchangeSystem', () => {
-  it('предложение и ответ — лампы меняются руками и остывают', () => {
+  it('лампа одна на двоих: в начале она у красного', () => {
+    const ctx = setup();
+    expect(ctx.player('red').lamp).not.toBeNull();
+    expect(ctx.player('blue').lamp).toBeNull();
+  });
+
+  it('предложение и ответ — лампа переходит к напарнику и немного остывает', () => {
     const ctx = setup();
     ctx.faceEachOther();
     ctx.tick();
-    const redLamp = ctx.player('red').lamp;
-    const blueLamp = ctx.player('blue').lamp;
-    redLamp.heat = 80;
-    redLamp.holdSeconds = 30;
-    blueLamp.heat = 10;
+    const lamp = ctx.player('red').lamp!;
+    lamp.heat = 80;
+    lamp.holdSeconds = 30;
 
     ctx.press('red');
     expect(ctx.match.world.exchange.offerFromId).toBe('red');
-    expect(ctx.player('red').lamp).toBe(redLamp);
+    expect(ctx.player('red').lamp).toBe(lamp);
     ctx.press('blue');
 
-    expect(ctx.player('red').lamp).toBe(blueLamp);
-    expect(ctx.player('blue').lamp).toBe(redLamp);
-    expect(redLamp.holdSeconds).toBeLessThan(0.2);
-    expect(redLamp.heat).toBeLessThan(80 - settings.heatRelief + 2);
+    expect(ctx.player('red').lamp).toBeNull();
+    expect(ctx.player('blue').lamp).toBe(lamp);
+    expect(lamp.holdSeconds).toBeLessThan(0.2);
+    expect(lamp.heat).toBeLessThan(80 - settings.heatRelief + 2);
     expect(ctx.match.world.exchange.count).toBe(1);
     expect(ctx.match.world.exchange.offerFromId).toBeNull();
+  });
+
+  it('попросить лампу может и тот, у кого её нет', () => {
+    const ctx = setup();
+    ctx.faceEachOther();
+    const lamp = ctx.player('red').lamp;
+    ctx.press('blue');
+    expect(ctx.match.world.exchange.offerFromId).toBe('blue');
+    ctx.press('red');
+    expect(ctx.player('blue').lamp).toBe(lamp);
+    expect(ctx.player('red').lamp).toBeNull();
+  });
+
+  it('лампу можно передавать туда и обратно — она всё время одна', () => {
+    const ctx = setup();
+    ctx.faceEachOther();
+    const lamp = ctx.player('red').lamp;
+    ctx.tick({ red: true, blue: true });
+    for (let i = 0; i < Math.ceil(settings.cooldownSeconds / 0.05) + 1; i++) ctx.tick();
+    ctx.tick({ red: true, blue: true });
+    expect(ctx.match.world.exchange.count).toBe(2);
+    expect(ctx.player('red').lamp).toBe(lamp);
+    expect(ctx.player('blue').lamp).toBeNull();
+    expect(ctx.match.world.lamp).toBe(lamp);
   });
 
   it('одновременное нажатие тоже меняет лампы', () => {
@@ -159,7 +187,7 @@ describe('ExchangeSystem', () => {
   it('перегретая лампа после обмена может сразу загореться, если остыла достаточно', () => {
     const ctx = setup();
     ctx.faceEachOther();
-    const lamp = ctx.player('red').lamp;
+    const lamp = ctx.player('red').lamp!;
     lamp.heat = GameConfig.lamp.relightHeat + settings.heatRelief - 5;
     lamp.overheated = true;
     ctx.tick({ red: true, blue: true });

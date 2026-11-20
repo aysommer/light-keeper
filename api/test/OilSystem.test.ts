@@ -105,7 +105,7 @@ describe('OilSystem: пустые канистры', () => {
   it('после заправки опустевшая канистра остаётся лежать, и её не подобрать', () => {
     const ctx = setup();
     ctx.player('red').canisters = 1;
-    ctx.player('red').lamp.oil = 30;
+    ctx.player('red').lamp!.oil = 30;
     for (let i = 0; i < ctx.ticksFor(settings.refuelSeconds); i++) ctx.tick({ refuel: true });
     const dropped = ctx.lastSnapshot().oilDropped;
     expect(dropped).toHaveLength(1);
@@ -125,7 +125,7 @@ describe('OilSystem: заправка', () => {
   const withCanister = () => {
     const ctx = setup();
     ctx.player('red').canisters = 1;
-    ctx.player('red').lamp.oil = 30;
+    ctx.player('red').lamp!.oil = 30;
     return ctx;
   };
 
@@ -136,7 +136,7 @@ describe('OilSystem: заправка', () => {
     ctx.tick({ refuel: true });
     expect(ctx.player('red').canisters).toBe(0);
     // 30 % минус немного сгоревшего за время заправки, плюс канистра.
-    expect(ctx.player('red').lamp.oil).toBeGreaterThan(30 + settings.amount - 2);
+    expect(ctx.player('red').lamp!.oil).toBeGreaterThan(30 + settings.amount - 2);
     expect(ctx.player('red').refuelSeconds).toBe(0);
   });
 
@@ -151,11 +151,20 @@ describe('OilSystem: заправка', () => {
     expect(ctx.player('red').canisters).toBe(1);
   });
 
+  it('без лампы в руках заправки нет: канистра остаётся до передачи лампы', () => {
+    const ctx = withCanister();
+    ctx.player('blue').lamp = ctx.player('red').lamp;
+    ctx.player('red').lamp = null;
+    for (let i = 0; i < ctx.ticksFor(settings.refuelSeconds * 2); i++) ctx.tick({ refuel: true });
+    expect(ctx.player('red').canisters).toBe(1);
+    expect(ctx.player('red').refuelSeconds).toBe(0);
+  });
+
   it('без канистры или с полной лампой заправки нет', () => {
     const empty = setup();
-    empty.player('red').lamp.oil = 30;
+    empty.player('red').lamp!.oil = 30;
     for (let i = 0; i < empty.ticksFor(2); i++) empty.tick({ refuel: true });
-    expect(empty.player('red').lamp.oil).toBeLessThan(30);
+    expect(empty.player('red').lamp!.oil).toBeLessThan(30);
 
     const full = setup();
     full.player('red').canisters = 1;
@@ -165,9 +174,9 @@ describe('OilSystem: заправка', () => {
 
   it('масла не больше 100 %', () => {
     const ctx = withCanister();
-    ctx.player('red').lamp.oil = 80;
+    ctx.player('red').lamp!.oil = 80;
     for (let i = 0; i < ctx.ticksFor(settings.refuelSeconds); i++) ctx.tick({ refuel: true });
-    expect(ctx.player('red').lamp.oil).toBe(100);
+    expect(ctx.player('red').lamp!.oil).toBe(100);
   });
 });
 

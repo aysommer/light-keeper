@@ -1,10 +1,12 @@
 import {
   CollisionWorld,
+  LampRules,
   PLAYER_COLORS,
   PlayerMovement,
   SpaceGenerator,
 } from '@light-keeper/shared';
 import type { MatchOverReason, Space, SpacePhase } from '@light-keeper/shared';
+import { Lamp } from '../entities/Lamp.ts';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
 import { ExchangeState } from './ExchangeState.ts';
 import { ExitState } from './ExitState.ts';
@@ -91,8 +93,20 @@ export class MatchWorld {
     return this.transitionLeft;
   }
 
+  /** Общая лампа (одна на двоих) — у того, кто её сейчас держит. */
+  public get lamp(): Lamp | null {
+    for (const player of this.players.values()) {
+      if (player.lamp) return player.lamp;
+    }
+    return null;
+  }
+
   public addPlayer(player: ServerPlayer): void {
     this.players.set(player.id, player);
+    // Лампа одна на двоих: в начале она у первого игрока (красного).
+    if (player.color === LampRules.FIRST_HOLDER && !this.lamp) {
+      player.lamp = new Lamp();
+    }
     player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw);
   }
 
@@ -130,7 +144,7 @@ export class MatchWorld {
     this.transitionLeft = 0;
     this.players.forEach((player) => {
       player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw);
-      player.lamp.refill();
+      player.lamp?.refill();
     });
   }
 

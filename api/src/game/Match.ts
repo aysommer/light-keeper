@@ -151,9 +151,9 @@ export class Match {
     population.fieldRefreshIn = 0;
   }
 
-  /** Отладка: нагреть лампу игрока или почти слить из неё масло. */
+  /** Отладка: нагреть общую лампу или почти слить из неё масло. */
   public debugLamp(playerId: string, preset: DebugLampPreset): void {
-    const lamp = this.world.players.get(playerId)?.lamp;
+    const lamp = this.world.players.has(playerId) ? this.world.lamp : null;
     if (!lamp) {
       return;
     }

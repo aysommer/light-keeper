@@ -80,3 +80,39 @@ describe('LampHint', () => {
     expect(hint.resolve(lamp({ heat: 99 }), 'lamp', true)).toBeNull();
   });
 });
+
+describe('LampHint: лампа у напарника', () => {
+  const hint = new LampHint();
+  const lamp = (over: Partial<LampSnapshot> = {}): LampSnapshot => ({
+    oil: 80,
+    heat: 20,
+    lit: true,
+    overheated: false,
+    ...over,
+  });
+
+  it('напарник перегревает лампу — пора её взять', () => {
+    expect(hint.resolvePartnerLamp(lamp({ heat: 90 }), false, 0, false)).toBe(
+      'Лампа у напарника перегревается — возьми её (E)',
+    );
+    expect(hint.resolvePartnerLamp(lamp({ overheated: true, lit: false }), false, 0, false)).toBe(
+      'Лампа перегрелась и остывает',
+    );
+  });
+
+  it('масло: заправить может тот, у кого канистра, взяв лампу', () => {
+    expect(hint.resolvePartnerLamp(lamp({ oil: 10 }), false, 1, false)).toBe(
+      'Масло на исходе — возьми её и заправь (R)',
+    );
+    expect(hint.resolvePartnerLamp(lamp({ oil: 10 }), false, 0, false)).toBeNull();
+  });
+
+  it('нажал 1 без лампы — подсказка; в тамбуре и без данных — тишина', () => {
+    expect(hint.resolvePartnerLamp(lamp(), false, 0, true)).toBe(
+      'Лампа у напарника — попроси её (E)',
+    );
+    expect(hint.resolvePartnerLamp(lamp(), false, 0, false)).toBeNull();
+    expect(hint.resolvePartnerLamp(lamp({ heat: 90 }), true, 0, true)).toBeNull();
+    expect(hint.resolvePartnerLamp(null, false, 0, true)).toBeNull();
+  });
+});

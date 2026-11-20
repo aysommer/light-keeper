@@ -1,5 +1,5 @@
 import type { Scene } from 'three';
-import { Vector2 } from '@light-keeper/shared';
+import { LampRules, Vector2 } from '@light-keeper/shared';
 import type {
   DebugGotoTarget,
   DebugLampPreset,
@@ -39,6 +39,10 @@ export class NetworkSession {
   private latestExit: ExitSnapshot | null = null;
   private selfInTambour = false;
   private selfLamp: LampSnapshot | null = null;
+  /** Лампа одна на двоих: у этого ли игрока она сейчас. */
+  private selfHasLamp: boolean;
+  /** Состояние общей лампы, у кого бы она ни была. */
+  private latestSharedLamp: LampSnapshot | null = null;
   private latestExchange: ExchangeSnapshot | null = null;
   private latestOilTaken: readonly number[] | null = null;
   private latestOilDropped: readonly DroppedCanister[] | null = null;
@@ -55,6 +59,9 @@ export class NetworkSession {
     scene: Scene,
   ) {
     this.sender = new InputSender(network);
+    // До первого снимка считаем, что лампа у того, кому она достаётся в начале.
+    this.selfHasLamp =
+      players.find((info) => info.id === playerId)?.color === LampRules.FIRST_HOLDER;
     this.ghostsView = new GhostsView(scene);
     this.reconciler = new PredictionReconciler(space);
     for (const info of players) {
@@ -105,9 +112,19 @@ export class NetworkSession {
     return this.selfRefuel;
   }
 
-  /** Состояние своей лампы по данным сервера. */
+  /** Состояние общей лампы, если она сейчас у этого игрока; иначе `null`. */
   public get ownLamp(): LampSnapshot | null {
-    return this.selfLamp;
+    return this.selfHasLamp ? this.selfLamp : null;
+  }
+
+  /** Лампа (одна на двоих) сейчас у этого игрока. */
+  public get hasLamp(): boolean {
+    return this.selfHasLamp;
+  }
+
+  /** Состояние общей лампы, у кого бы из двоих она ни была. */
+  public get sharedLamp(): LampSnapshot | null {
+    return this.latestSharedLamp;
   }
 
   /** Этот игрок уже в тамбуре. */
@@ -192,11 +209,13 @@ export class NetworkSession {
       this.ghostsView.clear();
     }
     this.ghostsView.push(snapshot.serverTime, snapshot.ghosts);
+    this.latestSharedLamp = snapshot.players.find((state) => state.lamp)?.lamp ?? null;
     for (const state of snapshot.players) {
       const position = new Vector2(state.x, state.y);
       if (state.id === this.playerId) {
         this.selfInTambour = state.inTambour;
         this.selfLamp = state.lamp;
+        this.selfHasLamp = state.lamp !== null;
         this.selfCanisters = state.canisters;
         this.selfRefuel = state.refuelProgress;
         if (enteredNewSpace) {

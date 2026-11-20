@@ -5,10 +5,11 @@ import type { MatchWorld } from '../game/MatchWorld.ts';
 import type { System } from './System.ts';
 
 /**
- * Обмен лампами — «горячая картошка». Нужно согласие обоих: игрок, глядя на
- * напарника рядом, нажимает `E` — это предложение; если напарник в ответ
- * (за `offerSeconds`) тоже нажмёт `E`, глядя на него, лампы меняются руками.
- * Каждая лампа при этом остывает, а «привычка» к руке сбрасывается.
+ * Передача общей лампы — «горячая картошка». Лампа одна на двоих.
+ * Нужно согласие обоих: игрок, глядя на напарника рядом, нажимает `E` —
+ * это предложение (отдать или попросить лампу); если напарник в ответ
+ * (за `offerSeconds`) тоже нажмёт `E`, глядя на него, лампа переходит в
+ * другие руки. При этом она немного остывает, а «привычка» к руке сбрасывается.
  */
 export class ExchangeSystem implements System {
   public constructor(private readonly settings: ExchangeSettings = GameConfig.exchange) {}
@@ -61,8 +62,7 @@ export class ExchangeSystem implements System {
 
   private swap(world: MatchWorld, a: ServerPlayer, b: ServerPlayer): void {
     [a.lamp, b.lamp] = [b.lamp, a.lamp];
-    a.lamp.handOver(this.settings.heatRelief);
-    b.lamp.handOver(this.settings.heatRelief);
+    (a.lamp ?? b.lamp)?.handOver(this.settings.heatRelief);
     const state = world.exchange;
     state.count += 1;
     state.cooldownLeft = this.settings.cooldownSeconds;

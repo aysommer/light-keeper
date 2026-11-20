@@ -35,7 +35,7 @@ export interface DroppedCanister {
   readonly y: number;
 }
 
-/** Состояние лампы игрока в снимке мира. */
+/** Состояние общей лампы в снимке мира. */
 export interface LampSnapshot {
   /** Масло, %. */
   readonly oil: number;
@@ -58,9 +58,10 @@ export interface PlayerSnapshot {
   readonly lastSeq: number;
   /** Игрок уже вошёл в дверь и ждёт в тамбуре. */
   readonly inTambour: boolean;
-  /** Что игрок держит в руке. */
+  /** Что игрок держит в руке (без лампы — всегда компас). */
   readonly item: HeldItem;
-  readonly lamp: LampSnapshot;
+  /** Общая лампа, если она сейчас у этого игрока; иначе `null`. */
+  readonly lamp: LampSnapshot | null;
   /** Сколько канистр с маслом несёт. */
   readonly canisters: number;
   /** Прогресс заправки лампы, 0–1. */

@@ -14,34 +14,40 @@ const idle: ExchangeSnapshot = { offerFromId: null, count: 0 };
 describe('ExchangePrompt', () => {
   const prompt = new ExchangePrompt();
 
-  it('смотришь на напарника рядом — можно обменяться', () => {
-    expect(prompt.resolve(idle, 'me', me, facing, partner, open, false)).toBe(
-      'E — обменяться лампами',
+  it('смотришь на напарника рядом — можно передать или взять лампу', () => {
+    expect(prompt.resolve(idle, 'me', me, facing, partner, open, false, true)).toBe(
+      'E — передать лампу',
     );
-    expect(prompt.resolve(idle, 'me', me, away, partner, open, false)).toBeNull();
+    expect(prompt.resolve(idle, 'me', me, facing, partner, open, false, false)).toBe(
+      'E — взять лампу',
+    );
+    expect(prompt.resolve(idle, 'me', me, away, partner, open, false, true)).toBeNull();
   });
 
   it('своё предложение — ждём напарника', () => {
     expect(
-      prompt.resolve({ offerFromId: 'me', count: 0 }, 'me', me, facing, partner, open, false),
+      prompt.resolve({ offerFromId: 'me', count: 0 }, 'me', me, facing, partner, open, false, true),
     ).toBe('Ждём, пока напарник нажмёт E');
   });
 
   it('предложение напарника — ответить или подойти', () => {
     const offer = { offerFromId: 'mate', count: 0 };
-    expect(prompt.resolve(offer, 'me', me, facing, partner, open, false)).toBe(
-      'Напарник предлагает обмен — нажми E',
+    expect(prompt.resolve(offer, 'me', me, facing, partner, open, false, true)).toBe(
+      'Напарник просит лампу — нажми E',
     );
-    expect(prompt.resolve(offer, 'me', me, away, partner, open, false)).toBe(
-      'Напарник предлагает обмен — подойди и посмотри на него',
+    expect(prompt.resolve(offer, 'me', me, facing, partner, open, false, false)).toBe(
+      'Напарник отдаёт лампу — нажми E',
+    );
+    expect(prompt.resolve(offer, 'me', me, away, partner, open, false, true)).toBe(
+      'Напарник просит лампу — подойди и посмотри на него',
     );
   });
 
   it('стена, тамбур или неизвестный напарник — без подсказки', () => {
     const wall = new CollisionWorld([new AABB(5.5, 3, 5.7, 7)]);
-    expect(prompt.resolve(idle, 'me', me, facing, partner, wall, false)).toBeNull();
-    expect(prompt.resolve(idle, 'me', me, facing, partner, open, true)).toBeNull();
-    expect(prompt.resolve(idle, 'me', me, facing, null, open, false)).toBeNull();
+    expect(prompt.resolve(idle, 'me', me, facing, partner, wall, false, true)).toBeNull();
+    expect(prompt.resolve(idle, 'me', me, facing, partner, open, true, true)).toBeNull();
+    expect(prompt.resolve(idle, 'me', me, facing, null, open, false, true)).toBeNull();
   });
 });
 

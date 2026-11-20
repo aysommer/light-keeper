@@ -45,18 +45,21 @@ export class OilSystem implements System {
   }
 
   private refuel(world: MatchWorld, player: ServerPlayer, deltaSeconds: number): void {
+    // Заправить можно только общую лампу — у того, у кого она в руках.
+    const lamp = player.lamp;
     const canRefuel =
+      lamp !== null &&
       player.refueling &&
       !player.moving &&
       player.canisters > 0 &&
-      player.lamp.oil < this.settings.fullAt;
+      lamp.oil < this.settings.fullAt;
     if (!canRefuel) {
       player.refuelSeconds = 0;
       return;
     }
     player.refuelSeconds += deltaSeconds;
     if (player.refuelSeconds + 1e-6 >= this.settings.refuelSeconds) {
-      player.lamp.oil = Math.min(100, player.lamp.oil + this.settings.amount);
+      lamp.oil = Math.min(100, lamp.oil + this.settings.amount);
       player.canisters -= 1;
       player.refuelSeconds = 0;
       world.oil.drop(this.dropPoint(world, player));

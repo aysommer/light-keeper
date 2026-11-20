@@ -124,7 +124,9 @@ describe('GhostSystem: темнота и свет', () => {
     const ghost = ctx.ghostNear('red', 3);
     ctx.run(1);
     expect(ghost.position.distanceTo(ctx.player('red').position)).toBeGreaterThan(3);
-    ctx.run(settings.dissolveSeconds + settings.fadeSeconds + 1);
+    // Лампа одна: привидение то отступает из света, то возвращается к его краю,
+    // но «облучение» копится, и в итоге оно растворяется.
+    ctx.run(3 * (settings.dissolveSeconds + settings.fadeSeconds));
     expect(ctx.population().ghosts).not.toContain(ghost);
     expect(ctx.red.last('match:over')).toBeUndefined();
   });
@@ -132,8 +134,8 @@ describe('GhostSystem: темнота и свет', () => {
   it('перегретая лампа не защищает', () => {
     const ctx = setup();
     ctx.items.blue = 'compass';
-    ctx.player('red').lamp.overheated = true;
-    ctx.player('red').lamp.heat = 100;
+    ctx.player('red').lamp!.overheated = true;
+    ctx.player('red').lamp!.heat = 100;
     ctx.ghostNear('red', 2.5);
     ctx.run(4);
     expect(ctx.red.last('match:over')).toMatchObject({ reason: 'ghost_caught' });

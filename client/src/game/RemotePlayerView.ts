@@ -50,8 +50,8 @@ export class RemotePlayerView {
     this.hiddenInTambour = inTambour;
   }
 
-  /** Что напарник держит в руке и в каком состоянии его лампа (из снимка сервера). */
-  public setHands(item: HeldItem, lamp: LampSnapshot): void {
+  /** Что напарник держит в руке и общая лампа, если она у него (из снимка сервера). */
+  public setHands(item: HeldItem, lamp: LampSnapshot | null): void {
     this.item = item;
     this.lamp = lamp;
   }

@@ -6,7 +6,7 @@ export interface PartnerView {
   readonly position: Vector2;
 }
 
-/** Подсказка об обмене лампами (по тем же правилам, что и на сервере). */
+/** Подсказка о передаче общей лампы (по тем же правилам, что и на сервере). */
 export class ExchangePrompt {
   public resolve(
     exchange: ExchangeSnapshot | null,
@@ -16,6 +16,7 @@ export class ExchangePrompt {
     partner: PartnerView | null,
     collisions: CollisionWorld,
     inTambour: boolean,
+    hasLamp: boolean,
   ): string | null {
     if (!exchange || !partner || inTambour) {
       return null;
@@ -25,10 +26,12 @@ export class ExchangePrompt {
       return 'Ждём, пока напарник нажмёт E';
     }
     if (exchange.offerFromId !== null) {
-      return aiming
-        ? 'Напарник предлагает обмен — нажми E'
-        : 'Напарник предлагает обмен — подойди и посмотри на него';
+      const offer = hasLamp ? 'Напарник просит лампу' : 'Напарник отдаёт лампу';
+      return aiming ? `${offer} — нажми E` : `${offer} — подойди и посмотри на него`;
     }
-    return aiming ? 'E — обменяться лампами' : null;
+    if (!aiming) {
+      return null;
+    }
+    return hasLamp ? 'E — передать лампу' : 'E — взять лампу';
   }
 }

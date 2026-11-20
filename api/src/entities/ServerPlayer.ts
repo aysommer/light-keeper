@@ -9,7 +9,7 @@ import type {
 import type { LobbyParticipant } from '../lobby/LobbyParticipant.ts';
 import { InputBudget } from '../game/InputBudget.ts';
 import { Entity } from './Entity.ts';
-import { Lamp } from './Lamp.ts';
+import type { Lamp } from './Lamp.ts';
 
 /** Игрок в партии: позиция, взгляд, очередь команд ввода. */
 export class ServerPlayer extends Entity {
@@ -37,8 +37,8 @@ export class ServerPlayer extends Entity {
   public canisters = 0;
   /** Сколько секунд уже идёт заправка. */
   public refuelSeconds = 0;
-  /** Лампа в руках игрока; при обмене лампы переходят из рук в руки. */
-  public lamp = new Lamp();
+  /** Общая лампа, если она сейчас у этого игрока (лампа одна на двоих). */
+  public lamp: Lamp | null = null;
   public readonly budget = new InputBudget();
   private readonly queue: PlayerInput[] = [];
 
@@ -79,14 +79,19 @@ export class ServerPlayer extends Entity {
     this.refuelSeconds = 0;
   }
 
-  /** Лампа в руке (а не убрана ради компаса и не в тамбуре). */
+  /** Лампа у игрока и в руке (а не убрана ради компаса и не в тамбуре). */
   public get lampInHand(): boolean {
-    return this.item === 'lamp' && !this.inTambour;
+    return this.lamp !== null && this.item === 'lamp' && !this.inTambour;
   }
 
   /** Лампа в руке и горит — светит в мир (проявляет скрытую дверь). */
   public get lampShining(): boolean {
-    return this.lampInHand && this.lamp.lit;
+    return this.lampInHand && (this.lamp?.lit ?? false);
+  }
+
+  /** Насколько ярко светит лампа этого игрока в мир, 0–1. */
+  public get lightBrightness(): number {
+    return this.lampShining ? (this.lamp?.brightness ?? 0) : 0;
   }
 
   /** Учитывает клавишу действия из команды: удержание и фронт нажатия. */
@@ -111,8 +116,8 @@ export class ServerPlayer extends Entity {
       pitch: this.pitch,
       lastSeq: this.lastSeq,
       inTambour: this.inTambour,
-      item: this.item,
-      lamp: this.lamp.snapshot(),
+      item: this.lamp ? this.item : 'compass',
+      lamp: this.lamp?.snapshot() ?? null,
       canisters: this.canisters,
       refuelProgress: Math.min(1, this.refuelSeconds / GameConfig.canister.refuelSeconds),
     };

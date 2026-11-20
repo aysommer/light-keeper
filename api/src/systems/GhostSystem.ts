@@ -84,7 +84,7 @@ export class GhostSystem implements System {
       .filter((player) => player.lampShining)
       .map((player) => ({
         position: player.position,
-        radius: world.ghostPopulation.rules.lightRadius(player.lamp.brightness, world.spaceIndex),
+        radius: world.ghostPopulation.rules.lightRadius(player.lightBrightness, world.spaceIndex),
       }));
   }
 

@@ -45,6 +45,8 @@ export interface GameScreenOptions {
 export class GameScreen implements Screen {
   /** Сколько держать надпись «Пространство N» после входа, с. */
   private static readonly TITLE_HOLD_SECONDS = 1.2;
+  /** Сколько показывать «лампа у напарника» после нажатия 1 без лампы, с. */
+  private static readonly NO_LAMP_HINT_SECONDS = 2;
 
   public readonly element: HTMLElement;
   private readonly hud: Hud;
@@ -150,6 +152,8 @@ export class GameScreen implements Screen {
     let titleUntil = GameScreen.TITLE_HOLD_SECONDS;
     this.overlay.showEntering(shownSpace + 1);
 
+    let hadLamp = session.hasLamp;
+    let askedForLampUntil = 0;
     this.loop = new GameLoop((delta, time) => {
       if (import.meta.env.DEV) {
         this.handleDebugKeys(input, session, player, space);
@@ -168,10 +172,19 @@ export class GameScreen implements Screen {
       controller.frozen = inTransition || session.inTambour;
 
       // Предмет в руке: 1 — лампа, 2 — компас. Уходит на сервер вместе с командой.
+      // Лампа одна на двоих: без неё в руке всегда компас.
       for (const code of HeldItems.keyCodes) {
-        if (input.consumePress(code)) this.held.selectByKey(code);
+        if (!input.consumePress(code)) continue;
+        this.held.selectByKey(code);
+        if (!session.hasLamp && this.held.current === 'lamp') {
+          askedForLampUntil = time + GameScreen.NO_LAMP_HINT_SECONDS;
+        }
       }
-      controller.item = this.held.current;
+      // Лампу только что передали — она сразу в руке.
+      if (session.hasLamp && !hadLamp) this.held.select('lamp');
+      hadLamp = session.hasLamp;
+      const item = session.hasLamp ? this.held.current : 'compass';
+      controller.item = item;
       controller.update(delta);
       session.update(delta, time);
       controller.applyToCamera(sceneManager.camera);
@@ -187,6 +200,7 @@ export class GameScreen implements Screen {
         partnerPosition ? { position: partnerPosition } : null,
         space.collisions,
         session.inTambour,
+        session.hasLamp,
       );
       this.exitHud.update(
         exit,
@@ -212,7 +226,7 @@ export class GameScreen implements Screen {
         running: controller.isRunning,
         yawDelta,
         pitchDelta: player.pitch - previousPitch,
-        wanted: this.held.current,
+        wanted: item,
         lamp: session.ownLamp,
         reach: this.handOver.update(delta, session.exchange?.count ?? null),
         refueling: session.ownRefuelProgress > 0,
@@ -237,10 +251,17 @@ export class GameScreen implements Screen {
       const ownLamp = session.ownLamp;
       this.lampHud.update(
         session.inTambour ? 0 : (ownLamp?.heat ?? 0),
-        this.lampHint.resolve(ownLamp, this.held.current, session.inTambour, {
-          canisters: session.ownCanisters,
-          refueling: session.ownRefuelProgress > 0,
-        }) ??
+        (session.hasLamp
+          ? this.lampHint.resolve(ownLamp, item, session.inTambour, {
+              canisters: session.ownCanisters,
+              refueling: session.ownRefuelProgress > 0,
+            })
+          : this.lampHint.resolvePartnerLamp(
+              session.sharedLamp,
+              session.inTambour,
+              session.ownCanisters,
+              time < askedForLampUntil,
+            )) ??
           (session.inTambour
             ? null
             : this.canisterHint.resolve(
@@ -254,7 +275,7 @@ export class GameScreen implements Screen {
         session.inTambour ? 0 : session.ownCanisters,
         session.ownRefuelProgress,
       );
-      const compassInHand = this.held.current === 'compass' && !session.inTambour;
+      const compassInHand = item === 'compass' && !session.inTambour;
       this.compass.update(
         compassInHand,
         partnerPosition

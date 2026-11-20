@@ -245,20 +245,20 @@ describe('ExitSystem: ключ и скрытая дверь', () => {
     expect(ctx.match.world.exit.revealed).toBe(false);
     // Погасшая лампа тоже не проявит.
     ctx.player('red').item = 'lamp';
-    ctx.player('red').lamp.oil = 0;
+    ctx.player('red').lamp!.oil = 0;
     ctx.match.step();
     expect(ctx.match.world.exit.revealed).toBe(false);
-    ctx.player('red').lamp.oil = 50;
+    ctx.player('red').lamp!.oil = 50;
     ctx.match.step();
     expect(ctx.match.world.exit.revealed).toBe(true);
   });
 
   it('новое пространство — лампы снова полные и холодные', () => {
     const ctx = setup();
-    ctx.player('red').lamp.oil = 10;
-    ctx.player('red').lamp.heat = 90;
+    ctx.player('red').lamp!.oil = 10;
+    ctx.player('red').lamp!.heat = 90;
     ctx.match.world.enterSpace(1);
-    expect(ctx.player('red').lamp.snapshot()).toEqual({
+    expect(ctx.player('red').lamp!.snapshot()).toEqual({
       oil: 100,
       heat: 0,
       lit: true,
@@ -271,8 +271,23 @@ describe('ExitSystem: ключ и скрытая дверь', () => {
     for (let i = 0; i < 40; i++) ctx.tick();
     const red = ctx.red.last('match:snapshot')!.snapshot.players.find((p) => p.id === 'red')!;
     expect(red.item).toBe('lamp');
-    expect(red.lamp.oil).toBeLessThan(100);
-    expect(red.lamp.heat).toBeGreaterThan(0);
+    expect(red.lamp!.oil).toBeLessThan(100);
+    expect(red.lamp!.heat).toBeGreaterThan(0);
+    // Лампа одна на двоих: у синего её нет, в руке — компас.
+    const blue = ctx.red.last('match:snapshot')!.snapshot.players.find((p) => p.id === 'blue')!;
+    expect(blue.lamp).toBeNull();
+    expect(blue.item).toBe('compass');
+  });
+
+  it('в новом пространстве лампа остаётся у того, кто её держал', () => {
+    const ctx = setup();
+    const lamp = ctx.player('red').lamp;
+    ctx.player('blue').lamp = lamp;
+    ctx.player('red').lamp = null;
+    ctx.match.world.enterSpace(1);
+    expect(ctx.player('blue').lamp).toBe(lamp);
+    expect(ctx.player('red').lamp).toBeNull();
+    expect(lamp!.oil).toBe(100);
   });
 
   it('у обычной двери ключа нет и она видна сразу', () => {
