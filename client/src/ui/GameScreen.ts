@@ -28,6 +28,7 @@ import { ExitHud } from './ExitHud.ts';
 import { Hud } from './Hud.ts';
 import { ScareOverlay } from './ScareOverlay.ts';
 import { SettingsPanel } from './SettingsPanel.ts';
+import { LampGauges } from './LampGauges.ts';
 import { LampHud } from './LampHud.ts';
 import type { Screen } from './Screen.ts';
 import { TambourOverlay } from './TambourOverlay.ts';
@@ -60,6 +61,7 @@ export class GameScreen implements Screen {
   private submitCode: ((code: readonly string[]) => void) | null = null;
   private readonly codePanel = new CodePanel((code) => this.submitCode?.(code));
   private readonly lampHud = new LampHud();
+  private readonly lampGauges = new LampGauges();
   private readonly scare = new ScareLevel();
   private readonly scareOverlay = new ScareOverlay();
   private readonly lampHint = new LampHint();
@@ -87,6 +89,7 @@ export class GameScreen implements Screen {
     this.element.append(
       this.scareOverlay.element,
       this.lampHud.element,
+      this.lampGauges.element,
       this.hud.element,
       this.exitHud.element,
       this.compass.element,
@@ -305,6 +308,11 @@ export class GameScreen implements Screen {
         sceneManager.camera.rotation.z += (Math.random() - 0.5) * 0.02 * scare;
       }
       const ownLamp = session.ownLamp;
+      // Индикаторы нагрева и масла общей лампы — видны обоим (в тамбуре и при переходе скрыты).
+      this.lampGauges.update(
+        session.inTambour || inTransition ? null : session.sharedLamp,
+        session.hasLamp,
+      );
       this.lampHud.update(
         session.inTambour ? 0 : (ownLamp?.heat ?? 0),
         (flash !== null && time < flash.until ? flash.text : null) ??

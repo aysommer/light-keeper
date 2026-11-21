@@ -1213,3 +1213,110 @@ kbd {
   background: #6b6a66;
   color: #f3e7b0;
 }
+
+/* Индикаторы общей лампы: нагрев и масло (левый верхний угол) */
+
+.lamp-gauges {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 10px 12px 8px;
+  border-radius: 14px;
+  background: rgb(20 17 10 / 0.55);
+  color: #f3e7b0;
+  pointer-events: none;
+}
+
+.lamp-gauges[hidden],
+.lamp-gauges__owner[hidden] {
+  display: none;
+}
+
+.lamp-gauges__row {
+  display: flex;
+  gap: 14px;
+}
+
+.lamp-gauges__owner {
+  margin: 6px 0 0;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.lamp-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  --gauge-color: #f3e7b0;
+}
+
+.lamp-gauge--heat {
+  --gauge-color: #ffb347;
+}
+
+.lamp-gauge--oil {
+  --gauge-color: #e0b84a;
+}
+
+.lamp-gauge[data-state='warn'] {
+  --gauge-color: #ff7a3d;
+}
+
+.lamp-gauge[data-state='alarm'] {
+  --gauge-color: #ff4b3d;
+}
+
+.lamp-gauge[data-state='alarm'] .lamp-gauge__dial,
+.lamp-gauge--heat[data-state='warn'] .lamp-gauge__dial {
+  animation: lamp-gauge-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes lamp-gauge-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.lamp-gauge__dial {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.lamp-gauge__ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.lamp-gauge__track {
+  fill: none;
+  stroke: rgb(243 231 176 / 0.18);
+  stroke-width: 6;
+}
+
+.lamp-gauge__progress {
+  fill: none;
+  stroke: var(--gauge-color);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.2s linear;
+}
+
+.lamp-gauge__value {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lamp-gauge__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--gauge-color);
+}
