@@ -126,6 +126,7 @@ describe('MessageCodec: код двери и предметы в руке', () =
             item,
             refuel: false,
             space: 0,
+            floor: 0,
           },
         ],
       });

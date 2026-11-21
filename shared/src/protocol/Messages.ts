@@ -33,6 +33,7 @@ export interface MatchPlayerInfo {
 export interface DroppedCanister {
   readonly x: number;
   readonly y: number;
+  readonly floor: number;
 }
 
 /** Состояние общей лампы в снимке мира. */
@@ -51,6 +52,7 @@ export interface LampSnapshot {
 export interface DroppedLampSnapshot {
   readonly x: number;
   readonly y: number;
+  readonly floor: number;
   readonly lamp: LampSnapshot;
 }
 
@@ -63,6 +65,8 @@ export interface PlayerSnapshot {
   readonly pitch: number;
   /** Номер последней применённой команды ввода этого игрока. */
   readonly lastSeq: number;
+  /** Этаж игрока (0 — первый). */
+  readonly floor: number;
   /** Игрок уже вошёл в дверь и ждёт в тамбуре. */
   readonly inTambour: boolean;
   /** Что игрок держит в руке (без лампы — всегда компас). */
@@ -100,7 +104,7 @@ export interface ExitSnapshot {
 export type DebugLampPreset = 'hot' | 'low-oil';
 
 /** Куда можно перенестись отладочной командой. */
-export type DebugGotoTarget = 'exit' | 'key' | 'note' | 'oil';
+export type DebugGotoTarget = 'exit' | 'key' | 'note' | 'oil' | 'stair';
 
 /** Обмен лампами: кто предложил и сколько обменов уже было в пространстве. */
 export interface ExchangeSnapshot {
@@ -118,6 +122,7 @@ export interface GhostSnapshot {
   readonly id: number;
   readonly x: number;
   readonly y: number;
+  readonly floor: number;
   /** Растворяется в свете (уже не опасно). */
   readonly fading: boolean;
 }

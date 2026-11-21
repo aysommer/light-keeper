@@ -51,7 +51,7 @@ export class ExitSystem implements System {
       if (world.exit.keysTaken.has(index)) {
         return;
       }
-      const finder = this.finderOf(key, active);
+      const finder = this.finderOf(key, world.space.keyFloors[index] ?? 0, active);
       if (finder) {
         world.exit.keysTaken.add(index);
         finder.keys += 1;
@@ -64,15 +64,21 @@ export class ExitSystem implements System {
     if (!note || world.exit.noteHolderId !== null) {
       return;
     }
-    const finder = this.finderOf(note, active);
+    const finder = this.finderOf(note, world.space.noteFloor, active);
     if (finder) {
       world.exit.noteHolderId = finder.id;
     }
   }
 
-  private finderOf(point: Vector2, active: readonly ServerPlayer[]): ServerPlayer | undefined {
+  private finderOf(
+    point: Vector2,
+    floor: number,
+    active: readonly ServerPlayer[],
+  ): ServerPlayer | undefined {
     return active.find(
-      (player) => player.position.distanceTo(point) <= this.exitSettings.keyPickupDistance,
+      (player) =>
+        player.floor === floor &&
+        player.position.distanceTo(point) <= this.exitSettings.keyPickupDistance,
     );
   }
 
@@ -175,8 +181,9 @@ export class ExitSystem implements System {
 
   private isNearDoor(world: MatchWorld, player: ServerPlayer, slack = 0): boolean {
     return (
+      player.floor === world.space.exitFloor &&
       player.position.distanceTo(world.space.exit.frontPoint()) <=
-      this.exitSettings.interactDistance + slack
+        this.exitSettings.interactDistance + slack
     );
   }
 }

@@ -57,6 +57,7 @@ const setup = (spaceIndex = 0) => {
 
   /** Поставить игрока перед дверью. */
   const toDoor = (id: 'red' | 'blue', offset = 0.6): void => {
+    player(id).floor = space().exitFloor;
     player(id).position = space().exit.frontPoint(offset);
   };
   /** Один тик: каждый игрок шлёт команду «стоять» с нужным состоянием `E`. */
@@ -74,6 +75,7 @@ const setup = (spaceIndex = 0) => {
         item: items[id],
         refuel: false,
         space: space().index,
+        floor: player(id).floor,
       };
       match.receiveInput(id, [command]);
     }
@@ -199,6 +201,7 @@ describe('ExitSystem: тамбур и таймер', () => {
         item: 'lamp',
         refuel: false,
         space: 0,
+        floor: 0,
       },
     ]);
     ctx.tick();
@@ -236,8 +239,9 @@ describe('ExitSystem: запертая дверь и ключи', () => {
     expect(ctx.exitState().open).toBe(false);
 
     // Красный собирает все ключи, но держит лампу — дверь не открывается.
-    for (const key of keys) {
+    for (const [i, key] of keys.entries()) {
       ctx.player('red').position = key;
+      ctx.player('red').floor = ctx.space().keyFloors[i]!;
       ctx.tick();
     }
     expect(ctx.player('red').keys).toBe(keys.length);
@@ -260,9 +264,12 @@ describe('ExitSystem: запертая дверь и ключи', () => {
     const keys = ctx.space().keys;
     expect(keys.length).toBeGreaterThanOrEqual(2);
     ctx.player('red').position = keys[0]!;
+    ctx.player('red').floor = ctx.space().keyFloors[0]!;
     ctx.tick();
-    for (const key of keys.slice(1)) {
+    for (const [i, key] of keys.entries()) {
+      if (i === 0) continue;
       ctx.player('blue').position = key;
+      ctx.player('blue').floor = ctx.space().keyFloors[i]!;
       ctx.tick();
     }
     expect(ctx.player('red').keys).toBe(1);
@@ -288,6 +295,7 @@ describe('ExitSystem: запертая дверь и ключи', () => {
   it('в снимке игрока — сколько у него ключей', () => {
     const ctx = setup(indexWithKind('locked'));
     ctx.player('blue').position = ctx.space().keys[0]!;
+    ctx.player('blue').floor = ctx.space().keyFloors[0]!;
     ctx.tick();
     const blue = ctx.red.last('match:snapshot')!.snapshot.players.find((p) => p.id === 'blue')!;
     expect(blue.keys).toBe(1);
@@ -307,6 +315,7 @@ describe('ExitSystem: дверь с кодовой панелью', () => {
   it('записку подбирает тот, кто подошёл к ней', () => {
     const ctx = codeSetup();
     ctx.player('blue').position = ctx.space().note!;
+    ctx.player('blue').floor = ctx.space().noteFloor;
     ctx.tick();
     expect(ctx.exitState().noteHolderId).toBe('blue');
   });

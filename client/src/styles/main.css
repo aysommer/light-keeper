@@ -1398,3 +1398,20 @@ kbd {
   opacity: 0.35;
   filter: grayscale(1);
 }
+
+.floor-hud {
+  position: absolute;
+  top: 52px;
+  right: 20px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgb(20 17 10 / 0.55);
+  color: #f3e7b0;
+  font-size: 14px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.floor-hud[hidden] {
+  display: none;
+}

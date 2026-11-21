@@ -58,6 +58,7 @@ const setup = () => {
       item: 'lamp',
       refuel: input.refuel ?? false,
       space: match.world.spaceIndex,
+      floor: 0,
     };
     match.receiveInput('red', [command]);
     now += 50;

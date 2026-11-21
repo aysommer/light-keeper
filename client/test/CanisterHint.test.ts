@@ -31,6 +31,6 @@ describe('CanisterHint', () => {
 
   it('брошенная после заправки канистра тоже пустая', () => {
     const at = new Vector2(-30, -30);
-    expect(hint.resolve(space, [], [{ x: at.x, y: at.y }], at)).toBe('Пустая канистра');
+    expect(hint.resolve(space, [], [{ x: at.x, y: at.y, floor: 0 }], at)).toBe('Пустая канистра');
   });
 });

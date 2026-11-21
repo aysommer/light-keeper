@@ -9,7 +9,7 @@ import { ServerClock } from '../src/network/ServerClock.ts';
 
 // Пустой мир без стен: проверяем логику согласования, а не коллизии.
 const movement = new PlayerMovement(new CollisionWorld([]));
-const rules: MovementProvider = { movement, spaceIndex: 0 };
+const rules: MovementProvider = { movement, spaceIndex: 0, floor: 0 };
 const start = new Vector2(10, 10);
 const step = (seq: number): PlayerInput => ({
   seq,
@@ -23,6 +23,7 @@ const step = (seq: number): PlayerInput => ({
   item: 'lamp',
   refuel: false,
   space: 0,
+  floor: 0,
 });
 
 describe('PredictionReconciler', () => {
@@ -76,7 +77,7 @@ describe('PredictionReconciler: смена пространства', () => {
 
   it('команды прошлого пространства не переигрываются на новой карте', () => {
     const player = new LocalPlayer(start);
-    const nextRules: MovementProvider = { movement, spaceIndex: 1 };
+    const nextRules: MovementProvider = { movement, spaceIndex: 1, floor: 0 };
     const reconciler = new PredictionReconciler(nextRules);
     reconciler.record(step(1)); // space: 0
     reconciler.reconcile(player, start, 0);

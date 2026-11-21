@@ -58,7 +58,14 @@ export class ExchangeSystem implements System {
     return (
       !from.inTambour &&
       !to.inTambour &&
-      ExchangeRules.canReach(from.position, from.yaw, to.position, world.collisions, this.settings)
+      from.floor === to.floor &&
+      ExchangeRules.canReach(
+        from.position,
+        from.yaw,
+        to.position,
+        world.collisionsOn(from.floor),
+        this.settings,
+      )
     );
   }
 

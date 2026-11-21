@@ -15,6 +15,7 @@ import { ExchangeSystem } from '../systems/ExchangeSystem.ts';
 import { ExitSystem } from '../systems/ExitSystem.ts';
 import { GhostSystem } from '../systems/GhostSystem.ts';
 import { LampSystem } from '../systems/LampSystem.ts';
+import { StairSystem } from '../systems/StairSystem.ts';
 import { OilSystem } from '../systems/OilSystem.ts';
 import { MovementSystem } from '../systems/MovementSystem.ts';
 import type { System } from '../systems/System.ts';
@@ -72,6 +73,7 @@ export class Match {
     this.systems = [
       new MovementSystem(),
       new LampSystem(),
+      new StairSystem(),
       new OilSystem(),
       new ExchangeSystem(),
       new GhostSystem(),
@@ -125,18 +127,26 @@ export class Match {
     const player = this.world.players.get(playerId);
     const space = this.world.space;
     // К ключу и канистре — в шаге от них, чтобы их было видно и подобрать можно было самому.
-    const destination =
+    const keyIndex = space.keys.findIndex((_, index) => !this.world.exit.keysTaken.has(index));
+    const canister = this.nearestCanister(player?.position, player?.floor ?? 0);
+    // Лестница с этажа игрока (вверх, если можно, иначе вниз).
+    const playerFloor = player?.floor ?? 0;
+    const stair =
+      space.stairs.find((s) => s.lower === playerFloor) ??
+      space.stairs.find((s) => s.lower + 1 === playerFloor);
+    const [destination, floor] =
       target === 'exit'
-        ? space.exit.frontPoint(0.6)
+        ? [space.exit.frontPoint(0.6), space.exitFloor]
         : target === 'key'
-          ? space.keys
-              .find((_, index) => !this.world.exit.keysTaken.has(index))
-              ?.add(Match.KEY_GOTO_OFFSET)
+          ? [space.keys[keyIndex]?.add(Match.KEY_GOTO_OFFSET), space.keyFloors[keyIndex] ?? 0]
           : target === 'note'
-            ? space.note?.add(Match.KEY_GOTO_OFFSET)
-            : this.nearestCanister(player?.position)?.add(Match.KEY_GOTO_OFFSET);
+            ? [space.note?.add(Match.KEY_GOTO_OFFSET), space.noteFloor]
+            : target === 'stair'
+              ? [stair?.position.add(new Vector2(-0.6, 0)), player?.floor ?? 0]
+              : [canister?.add(Match.KEY_GOTO_OFFSET), player?.floor ?? 0];
     if (player && !player.inTambour && destination) {
       player.position = destination;
+      player.floor = floor;
     }
   }
 
@@ -147,13 +157,12 @@ export class Match {
       return;
     }
     const population = this.world.ghostPopulation;
-    population.field.computeFrom([player.position]);
-    const steps = Math.round(8 / population.field.resolution);
-    const ring = population.field
-      .cellsFartherThan(steps)
-      .filter((cell) => population.field.stepsAt(cell) <= steps + 2);
-    const at = ring[0] ?? population.field.farthestCell();
-    if (at) population.add(at);
+    const field = population.fieldOn(player.floor);
+    field.computeFrom([player.position]);
+    const steps = Math.round(8 / field.resolution);
+    const ring = field.cellsFartherThan(steps).filter((cell) => field.stepsAt(cell) <= steps + 2);
+    const at = ring[0] ?? field.farthestCell();
+    if (at) population.add(at, player.floor);
     population.fieldRefreshIn = 0;
   }
 
@@ -171,11 +180,13 @@ export class Match {
   }
 
   /** Ближайшая ещё не подобранная полная канистра. */
-  private nearestCanister(from: Vector2 | undefined): Vector2 | undefined {
+  private nearestCanister(from: Vector2 | undefined, floor: number): Vector2 | undefined {
     if (!from) return undefined;
     let best: Vector2 | undefined;
+    const floors = this.world.space.oilFloors;
     this.world.space.oilSpawns.forEach((spawn, index) => {
       if (this.world.oil.isTaken(index) || !this.world.space.isOilFull(index)) return;
+      if (floors[index] !== floor) return;
       if (!best || spawn.distanceTo(from) < best.distanceTo(from)) best = spawn;
     });
     return best;
@@ -245,7 +256,9 @@ export class Match {
 
   private droppedLampSnapshot(): MatchSnapshot['droppedLamp'] {
     const at = this.world.lampOnFloor;
-    return at ? { x: at.x, y: at.y, lamp: this.world.lamp.snapshot() } : null;
+    return at
+      ? { x: at.x, y: at.y, floor: this.world.lampFloor, lamp: this.world.lamp.snapshot() }
+      : null;
   }
 
   private broadcast(message: ServerMessage): void {

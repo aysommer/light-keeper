@@ -21,7 +21,7 @@ export class LampSystem implements System {
     world.lamp.update(deltaSeconds, holder?.lampInHand ?? false);
     // Выпадает в момент перегрева; поднятая ещё горячей — остывает в руках.
     if (holder && world.lamp.overheated && !wasOverheated && !holder.inTambour) {
-      world.dropLamp(this.dropPoint(world, holder));
+      world.dropLamp(this.dropPoint(world, holder), holder.floor);
     }
     this.pickUp(world);
   }
@@ -36,6 +36,7 @@ export class LampSystem implements System {
       (player) =>
         player.interactPressed &&
         !player.inTambour &&
+        player.floor === world.lampFloor &&
         player.position.distanceTo(at) <= this.settings.pickupDistance,
     );
     if (picker) {
@@ -47,6 +48,8 @@ export class LampSystem implements System {
   /** Лампа падает чуть впереди игрока, если там нет стены, иначе — под ноги. */
   private dropPoint(world: MatchWorld, player: ServerPlayer): ServerPlayer['position'] {
     const ahead = player.position.add(PlayerMovement.forward(player.yaw).scale(0.5));
-    return world.collisions.lineOfSight(player.position, ahead) ? ahead : player.position;
+    return world.collisionsOn(player.floor).lineOfSight(player.position, ahead)
+      ? ahead
+      : player.position;
   }
 }

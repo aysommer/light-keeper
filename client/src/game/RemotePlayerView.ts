@@ -13,6 +13,7 @@ export class RemotePlayerView {
   private readonly model: StickmanModel;
   private current: RemotePlayerState | null = null;
   private hiddenInTambour = false;
+  private floor = 0;
   private item: HeldItem = 'lamp';
   private lamp: LampSnapshot | null = null;
   private readonly motion = new MotionEstimator();
@@ -46,6 +47,18 @@ export class RemotePlayerView {
     return this.hiddenInTambour;
   }
 
+  /** Этаж напарника (из снимка); при смене этажа — не принимать перенос за бег. */
+  public setFloor(floor: number): void {
+    if (floor !== this.floor) {
+      this.floor = floor;
+      this.resetMotion();
+    }
+  }
+
+  public get currentFloor(): number {
+    return this.floor;
+  }
+
   public setInTambour(inTambour: boolean): void {
     this.hiddenInTambour = inTambour;
   }
@@ -76,7 +89,7 @@ export class RemotePlayerView {
       return;
     }
     this.model.root.visible = !this.hiddenInTambour;
-    this.model.root.position.copy(SceneCoords.toScene(state.position));
+    this.model.root.position.copy(SceneCoords.toScene(state.position, 0, this.floor));
     this.model.root.rotation.set(0, state.yaw, 0);
     this.motion.update(state.position, deltaSeconds);
     this.currentSpeed = Math.abs(this.motion.signedSpeed(state.yaw));

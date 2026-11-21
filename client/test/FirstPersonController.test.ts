@@ -30,7 +30,7 @@ describe('FirstPersonController: клавиша действия', () => {
     const controller = new FirstPersonController(
       new LocalPlayer(new Vector2(5, 5)),
       input as unknown as InputController,
-      { movement: new PlayerMovement(new CollisionWorld([])), spaceIndex: 0 },
+      { movement: new PlayerMovement(new CollisionWorld([])), spaceIndex: 0, floor: 0 },
     );
     controller.onCommand((command) => commands.push(command));
     return { input, commands, controller };

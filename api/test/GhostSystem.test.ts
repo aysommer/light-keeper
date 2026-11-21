@@ -50,6 +50,7 @@ const setup = () => {
         item: items[id],
         refuel: false,
         space: match.world.spaceIndex,
+        floor: 0,
       };
       match.receiveInput(id, [command]);
     }

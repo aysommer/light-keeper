@@ -21,8 +21,9 @@ export class MatchWorld {
   public readonly generator: SpaceGenerator;
   public readonly players = new Map<string, ServerPlayer>();
   private currentSpace: Space;
-  private currentMovement: PlayerMovement;
-  private currentCollisions: CollisionWorld;
+  /** Коллизии и правило движения — по этажам. */
+  private currentMovements: PlayerMovement[] = [];
+  private currentCollisions: CollisionWorld[] = [];
   /** Обмен лампами (счётчик обменов — на всю партию). */
   public readonly exchange = new ExchangeState();
   private currentPhase: SpacePhase = 'playing';
@@ -35,12 +36,12 @@ export class MatchWorld {
   private readonly sharedLamp = new Lamp();
   /** Где лежит лампа, выпавшая из рук от перегрева; `null` — она у кого-то в руках. */
   private droppedAt: Vector2 | null = null;
+  private droppedFloor = 0;
 
   public constructor(public readonly seed: number) {
     this.generator = new SpaceGenerator(seed);
     this.currentSpace = this.generator.generate(0);
-    this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
-    this.currentMovement = new PlayerMovement(this.currentCollisions);
+    this.buildPhysics();
     this.currentExit = new ExitState();
     this.currentGhosts = new GhostPopulation(this.currentSpace, seed);
   }
@@ -54,13 +55,24 @@ export class MatchWorld {
     return this.currentSpace.index;
   }
 
+  /** Правило движения первого этажа. */
   public get movement(): PlayerMovement {
-    return this.currentMovement;
+    return this.movementOn(0);
   }
 
-  /** Коллизии текущего пространства (для прямой видимости). */
+  /** Коллизии первого этажа. */
   public get collisions(): CollisionWorld {
-    return this.currentCollisions;
+    return this.collisionsOn(0);
+  }
+
+  /** Правило движения на этаже. */
+  public movementOn(floor: number): PlayerMovement {
+    return this.currentMovements[floor] ?? this.currentMovements[0]!;
+  }
+
+  /** Коллизии этажа (для прямой видимости). */
+  public collisionsOn(floor: number): CollisionWorld {
+    return this.currentCollisions[floor] ?? this.currentCollisions[0]!;
   }
 
   public get phase(): SpacePhase {
@@ -124,10 +136,16 @@ export class MatchWorld {
     return this.droppedAt;
   }
 
+  /** На каком этаже лежит выпавшая лампа. */
+  public get lampFloor(): number {
+    return this.droppedFloor;
+  }
+
   /** Лампа выпала из рук (перегрелась) и лежит на полу. */
-  public dropLamp(at: Vector2): void {
+  public dropLamp(at: Vector2, floor: number): void {
     this.players.forEach((player) => (player.lamp = null));
     this.droppedAt = at;
+    this.droppedFloor = floor;
   }
 
   /** Отдать лампу игроку (у второго она пропадает из рук; с пола — поднимается). */
@@ -167,8 +185,7 @@ export class MatchWorld {
   /** Новое пространство: генерация, коллизии, игроки на старт, ресурсы — заново. */
   public enterSpace(index: number): void {
     this.currentSpace = this.generator.generate(index);
-    this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
-    this.currentMovement = new PlayerMovement(this.currentCollisions);
+    this.buildPhysics();
     this.currentExit = new ExitState();
     this.currentOil = new OilState();
     this.currentGhosts = new GhostPopulation(this.currentSpace, this.seed);
@@ -181,6 +198,15 @@ export class MatchWorld {
     this.sharedLamp.refill();
     this.droppedAt = null;
     this.dealLamp();
+  }
+
+  private buildPhysics(): void {
+    this.currentCollisions = this.currentSpace.floors.map((_, floor) =>
+      CollisionWorld.fromSpace(this.currentSpace, floor),
+    );
+    this.currentMovements = this.currentCollisions.map(
+      (collisions) => new PlayerMovement(collisions),
+    );
   }
 
   private startPositionFor(player: ServerPlayer): ServerPlayer['position'] {

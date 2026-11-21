@@ -14,7 +14,8 @@ import { Ghost } from '../entities/Ghost.ts';
  */
 export class GhostPopulation {
   public readonly ghosts: Ghost[] = [];
-  public readonly field: NavigationField;
+  /** Поля путей по этажам. */
+  public readonly fields: NavigationField[];
   public readonly rules: GhostRules;
   /** Через сколько секунд придёт следующее привидение. */
   public nextSpawnIn: number;
@@ -29,9 +30,21 @@ export class GhostPopulation {
     private readonly settings: GhostSettings = GameConfig.ghosts,
   ) {
     this.rules = new GhostRules(settings);
-    this.field = new NavigationField(space, settings.radius);
+    this.fields = space.floors.map(
+      (_, floor) => new NavigationField(space, settings.radius, 0.5, floor),
+    );
     this.nextSpawnIn = this.rules.firstDelay(space.index);
     this.rng = new SeededRandom(SeedHasher.hash(matchSeed, 'ghosts', space.index));
+  }
+
+  /** Поле путей первого этажа. */
+  public get field(): NavigationField {
+    return this.fields[0]!;
+  }
+
+  /** Поле путей этажа. */
+  public fieldOn(floor: number): NavigationField {
+    return this.fields[floor] ?? this.fields[0]!;
   }
 
   public get spaceIndex(): number {
@@ -39,19 +52,25 @@ export class GhostPopulation {
   }
 
   /**
-   * Привидение появляется в случайной клетке не ближе `spawnMinDistance`
-   * к игрокам (по лабиринту), а если таких нет — в самой дальней.
-   * Поле путей должно быть посчитано от текущих позиций игроков.
+   * Привидение появляется на этаже `floor` в случайной клетке не ближе
+   * `spawnMinDistance` к игрокам этого этажа (по лабиринту), а если таких нет —
+   * в самой дальней. Поле путей этажа должно быть посчитано от игроков на нём.
    */
-  public spawnFar(): Ghost | null {
-    const minSteps = Math.ceil(this.settings.spawnMinDistance / this.field.resolution);
-    const cells = this.field.cellsFartherThan(minSteps);
-    const position = cells.length > 0 ? this.rng.pick(cells) : this.field.farthestCell();
-    return position ? this.add(position) : null;
+  public spawnFar(floor = 0): Ghost | null {
+    const field = this.fieldOn(floor);
+    const minSteps = Math.ceil(this.settings.spawnMinDistance / field.resolution);
+    const cells = field.cellsFartherThan(minSteps);
+    const position = cells.length > 0 ? this.rng.pick(cells) : field.farthestCell();
+    return position ? this.add(position, floor) : null;
   }
 
-  public add(position: Vector2): Ghost {
-    const ghost = new Ghost(this.nextId++, position);
+  /** Случайный номер из `count` (для выбора этажа появления). */
+  public pickIndex(count: number): number {
+    return this.rng.int(0, Math.max(0, count - 1));
+  }
+
+  public add(position: Vector2, floor = 0): Ghost {
+    const ghost = new Ghost(this.nextId++, position, floor);
     this.ghosts.push(ghost);
     return ghost;
   }

@@ -26,4 +26,6 @@ export interface PlayerInput {
   readonly refuel: boolean;
   /** Номер пространства, в котором сформирована команда. Чужие команды сервер не двигает. */
   readonly space: number;
+  /** Этаж, на котором сформирована команда. Команды с другого этажа сервер не двигает. */
+  readonly floor: number;
 }

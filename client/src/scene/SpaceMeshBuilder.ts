@@ -23,23 +23,32 @@ export class SpaceMeshBuilder {
 
   public constructor(private readonly settings: WorldSettings = GameConfig.world) {}
 
-  public build(space: Space, detail: SpaceDetail = MaterialLibrary.NO_DETAIL): SpaceView {
+  /**
+   * @param floorIndex какой этаж строить; группа этажа поднята на его высоту
+   */
+  public build(
+    space: Space,
+    detail: SpaceDetail = MaterialLibrary.NO_DETAIL,
+    floorIndex = 0,
+  ): SpaceView {
+    const floor = space.floor(floorIndex);
     const materials = new MaterialLibrary(space.palette, detail);
     const group = new Group();
-    group.name = `space-${space.index}`;
+    group.name = `space-${space.index}-floor-${floorIndex}`;
+    group.position.y = SceneCoords.floorY(floorIndex);
     group.add(this.buildFloor(space, materials), this.buildCeiling(space, materials));
 
     const height = this.settings.ceilingHeight;
     const wallBoxes = [
-      ...space.walls.map((wall) => this.boxes.create(wall.bounds, 0, height)),
-      ...space.obstacles
+      ...floor.walls.map((wall) => this.boxes.create(wall.bounds, 0, height)),
+      ...floor.obstacles
         .filter((obstacle) => obstacle.kind === 'pillar')
         .map((pillar) => this.boxes.create(pillar.bounds, 0, height)),
     ];
     this.addMerged(group, wallBoxes, materials.wall, 'walls');
     this.addMerged(
       group,
-      space.obstacles
+      floor.obstacles
         .filter((obstacle) => obstacle.kind === 'desk')
         .map((desk) => this.boxes.create(desk.bounds, 0, SpaceMeshBuilder.DESK_HEIGHT)),
       materials.desk,
@@ -48,7 +57,7 @@ export class SpaceMeshBuilder {
     if (space.palette.pattern === 'plain') {
       this.addMerged(
         group,
-        space.walls.map((wall) =>
+        floor.walls.map((wall) =>
           this.boxes.create(
             wall.bounds.expand(SpaceMeshBuilder.RAIL_DEPTH),
             SpaceMeshBuilder.RAIL_BOTTOM,
@@ -59,7 +68,7 @@ export class SpaceMeshBuilder {
         'rail',
       );
     }
-    group.add(...this.buildPanels(space, materials));
+    group.add(...this.buildPanels(space, materials, floorIndex));
     return new SpaceView(space.index, group, materials);
   }
 
@@ -82,7 +91,11 @@ export class SpaceMeshBuilder {
   }
 
   /** Панели дневного света в центре каждой клетки; состояние детерминировано seed пространства. */
-  private buildPanels(space: Space, materials: MaterialLibrary): InstancedMesh[] {
+  private buildPanels(
+    space: Space,
+    materials: MaterialLibrary,
+    floorIndex: number,
+  ): InstancedMesh[] {
     const byState: Record<PanelState, Matrix4[]> = { on: [], off: [], flicker: [] };
     const height = this.settings.ceilingHeight - 0.01;
     // Подсказка обычной двери: лампа над ней всегда мерцает.
@@ -91,8 +104,12 @@ export class SpaceMeshBuilder {
     const hintRow = Math.floor(doorFront.y / space.grid.cellSize);
     for (let row = 0; row < space.grid.rows; row++) {
       for (let col = 0; col < space.grid.columns; col++) {
-        const roll = SeedHasher.hash(space.seed, 'panel', col, row) / 2 ** 32;
-        const isHint = space.exit.kind === 'plain' && col === hintCol && row === hintRow;
+        const roll = SeedHasher.hash(space.seed, 'panel', floorIndex, col, row) / 2 ** 32;
+        const isHint =
+          space.exit.kind === 'plain' &&
+          floorIndex === space.exitFloor &&
+          col === hintCol &&
+          row === hintRow;
         const state: PanelState = isHint
           ? 'flicker'
           : roll < 0.6

@@ -48,10 +48,17 @@ export class CanisterField {
    * @param spawns все канистры пространства
    * @param isFull полная ли канистра с данным номером
    */
-  public constructor(scene: Scene, spawns: readonly Vector2[], isFull: (index: number) => boolean) {
+  public constructor(
+    scene: Scene,
+    spawns: readonly Vector2[],
+    isFull: (index: number) => boolean,
+    floors: readonly number[] = [],
+  ) {
     spawns.forEach((spawn, index) => {
       // Поворот детерминирован номером, чтобы у обоих игроков картинка совпадала.
-      this.placed.push(this.create(spawn, index * 1.7, isFull(index) ? this.full : this.empty));
+      this.placed.push(
+        this.create(spawn, index * 1.7, isFull(index) ? this.full : this.empty, floors[index] ?? 0),
+      );
     });
     scene.add(this.root);
   }
@@ -63,7 +70,9 @@ export class CanisterField {
     const drops = dropped ?? [];
     for (let i = this.dropped.length; i < drops.length; i++) {
       const drop = drops[i]!;
-      this.dropped.push(this.create(new Vector2(drop.x, drop.y), 0.6 + i * 2.3, this.empty));
+      this.dropped.push(
+        this.create(new Vector2(drop.x, drop.y), 0.6 + i * 2.3, this.empty, drop.floor),
+      );
     }
   }
 
@@ -74,7 +83,7 @@ export class CanisterField {
     [this.full, this.empty, this.cap].forEach((material) => material.dispose());
   }
 
-  private create(position: Vector2, rotation: number, body: Material): Group {
+  private create(position: Vector2, rotation: number, body: Material, floor = 0): Group {
     const canister = new Group();
     const shell = new Mesh(this.bodyGeometry, body);
     shell.position.y = 0.16;
@@ -84,7 +93,7 @@ export class CanisterField {
     spout.position.set(0.08, 0.35, 0);
     canister.add(shell, handle, spout);
     this.shadow.attach(canister, 0.7, 0.5);
-    canister.position.copy(SceneCoords.toScene(position));
+    canister.position.copy(SceneCoords.toScene(position, 0, floor));
     canister.rotation.y = rotation;
     this.root.add(canister);
     return canister;

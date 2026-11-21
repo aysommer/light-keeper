@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import { GameConfig } from '@light-keeper/shared';
 import type { Vector2 } from '@light-keeper/shared';
 
 /**
@@ -7,8 +8,14 @@ import type { Vector2 } from '@light-keeper/shared';
  * высота → Y сцены. Так камера с нулевым поворотом смотрит вперёд по пути.
  */
 export class SceneCoords {
-  public static toScene(point: Vector2, height = 0): Vector3 {
-    return new Vector3(point.x, height, -point.y);
+  /** @param floor этаж: этажи стоят стопкой, каждый на `floorHeight` выше предыдущего */
+  public static toScene(point: Vector2, height = 0, floor = 0): Vector3 {
+    return new Vector3(point.x, height + SceneCoords.floorY(floor), -point.y);
+  }
+
+  /** Высота пола этажа в сцене. */
+  public static floorY(floor: number): number {
+    return floor * GameConfig.world.floorHeight;
   }
 
   public static sceneZ(worldY: number): number {

@@ -53,6 +53,7 @@ export class FirstPersonController {
       item: this.item,
       refuel: this.input.isPressed('KeyR'),
       space: this.rules.spaceIndex,
+      floor: this.rules.floor,
     };
     this.player.isMoving = axis.lengthSquared() > 0;
     this.running = command.run && this.player.isMoving;
@@ -75,6 +76,7 @@ export class FirstPersonController {
     const position = SceneCoords.toScene(
       this.player.renderPosition,
       this.settings.eyeHeight + this.bobOffset,
+      this.rules.floor,
     );
     camera.position.copy(position);
     camera.rotation.set(this.player.pitch, this.player.yaw, 0, 'YXZ');

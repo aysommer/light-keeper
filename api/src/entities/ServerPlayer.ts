@@ -25,6 +25,8 @@ export class ServerPlayer extends Entity {
   public interactPressed = false;
   /** Игрок вошёл в дверь и ждёт в тамбуре. */
   public inTambour = false;
+  /** Этаж игрока (0 — первый; меняется по лестнице). */
+  public floor = 0;
   /** Смотрит на напарника рядом — клавиша действия означает обмен, а не дверь. */
   public aimingAtPartner = false;
   /** Предмет в руке (по последней команде). */
@@ -77,6 +79,7 @@ export class ServerPlayer extends Entity {
     this.position = position;
     this.yaw = yaw;
     this.pitch = 0;
+    this.floor = 0;
     this.inTambour = false;
     this.interactPressed = false;
     this.canisters = 0;
@@ -120,6 +123,7 @@ export class ServerPlayer extends Entity {
       y: this.position.y,
       yaw: this.yaw,
       pitch: this.pitch,
+      floor: this.floor,
       lastSeq: this.lastSeq,
       inTambour: this.inTambour,
       // Без лампы вместо неё в руке компас.

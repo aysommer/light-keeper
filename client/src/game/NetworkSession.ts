@@ -160,7 +160,8 @@ export class NetworkSession {
   /** Где напарник и как быстро идёт; `null`, если он неизвестен или в тамбуре. */
   public partnerMotion(): { position: Vector2; speed: number } | null {
     for (const remote of this.remotes.values()) {
-      if (remote.state && !remote.inTambour) {
+      // Шаги через перекрытие не слышны.
+      if (remote.state && !remote.inTambour && remote.currentFloor === this.space.floor) {
         return { position: remote.state.position, speed: remote.speed };
       }
     }
@@ -173,6 +174,14 @@ export class NetworkSession {
       if (remote.state && !remote.inTambour) {
         return remote.state.position;
       }
+    }
+    return null;
+  }
+
+  /** Этаж напарника; `null`, если он неизвестен. */
+  public partnerFloor(): number | null {
+    for (const remote of this.remotes.values()) {
+      if (remote.state) return remote.currentFloor;
     }
     return null;
   }
@@ -208,7 +217,13 @@ export class NetworkSession {
     if (serverNow !== null) {
       const renderTime = serverNow - NetworkSession.INTERPOLATION_DELAY_MS;
       this.remotes.forEach((remote) => remote.update(renderTime, time));
-      this.ghostsView.update(renderTime, time, deltaSeconds, this.player.position);
+      this.ghostsView.update(
+        renderTime,
+        time,
+        deltaSeconds,
+        this.player.position,
+        this.space.floor,
+      );
       this.floorLamp.update(this.latestDroppedLamp, time);
     }
   }
@@ -249,13 +264,20 @@ export class NetworkSession {
         this.selfKeys = state.keys;
         this.selfRefuel = state.refuelProgress;
         if (enteredNewSpace) {
+          this.space.setFloor(state.floor);
           this.player.teleport(position, this.space.space.startYaw);
+        } else if (state.floor !== this.space.floor) {
+          // Поднялся или спустился по лестнице: другой этаж — свои стены, старые команды не переиграть.
+          this.space.setFloor(state.floor);
+          this.reconciler.clear();
+          this.player.teleport(position, this.player.yaw);
         } else {
           this.reconciler.reconcile(this.player, position, state.lastSeq);
         }
         continue;
       }
       const remote = this.remotes.get(state.id);
+      remote?.setFloor(state.floor);
       remote?.setInTambour(state.inTambour);
       remote?.setHands(state.item, state.lamp);
       remote?.setExchangeCount(snapshot.exchange.count);

@@ -23,9 +23,10 @@ export class NavigationField {
   private readonly grid: OccupancyGrid;
   private distances: Int32Array;
 
-  public constructor(space: Space, agentRadius: number, resolution = 0.5) {
+  /** Поле путей по этажу `floor` пространства. */
+  public constructor(space: Space, agentRadius: number, resolution = 0.5, floor = 0) {
     this.grid = new OccupancyGrid(space.bounds, resolution);
-    space.colliders.forEach((collider) => this.grid.block(collider, agentRadius));
+    space.floor(floor).colliders.forEach((collider) => this.grid.block(collider, agentRadius));
     this.distances = new Int32Array(this.grid.columns * this.grid.rows).fill(-1);
   }
 

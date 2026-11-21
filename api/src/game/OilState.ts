@@ -6,7 +6,7 @@ import type { DroppedCanister, Vector2 } from '@light-keeper/shared';
  */
 export class OilState {
   private readonly taken = new Set<number>();
-  private readonly dropped: Vector2[] = [];
+  private readonly dropped: Array<{ position: Vector2; floor: number }> = [];
 
   public isTaken(index: number): boolean {
     return this.taken.has(index);
@@ -17,11 +17,11 @@ export class OilState {
   }
 
   /** Бросить пустую канистру — она остаётся лежать серой обманкой. */
-  public drop(position: Vector2): void {
-    this.dropped.push(position);
+  public drop(position: Vector2, floor: number): void {
+    this.dropped.push({ position, floor });
   }
 
-  public get droppedCanisters(): readonly Vector2[] {
+  public get droppedCanisters(): ReadonlyArray<{ position: Vector2; floor: number }> {
     return this.dropped;
   }
 
@@ -30,9 +30,10 @@ export class OilState {
   }
 
   public droppedSnapshot(): DroppedCanister[] {
-    return this.dropped.map((p) => ({
-      x: Math.round(p.x * 100) / 100,
-      y: Math.round(p.y * 100) / 100,
+    return this.dropped.map(({ position, floor }) => ({
+      x: Math.round(position.x * 100) / 100,
+      y: Math.round(position.y * 100) / 100,
+      floor,
     }));
   }
 }

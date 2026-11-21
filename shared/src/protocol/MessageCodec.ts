@@ -17,6 +17,7 @@ export class MessageCodec {
   /** Максимум команд ввода в одном сообщении `input`. */
   public static readonly MAX_INPUT_COMMANDS = 16;
   private static readonly MAX_SEQ = 2 ** 31;
+  private static readonly MAX_FLOORS = 8;
   private static readonly MAX_ANGLE = 1e4;
 
   private static readonly SERVER_TYPES: ReadonlySet<ServerMessageType> = new Set([
@@ -93,7 +94,8 @@ export class MessageCodec {
         return data['target'] === 'exit' ||
           data['target'] === 'key' ||
           data['target'] === 'note' ||
-          data['target'] === 'oil'
+          data['target'] === 'oil' ||
+          data['target'] === 'stair'
           ? { type: 'debug:goto', target: data['target'] }
           : null;
       default:
@@ -132,7 +134,7 @@ export class MessageCodec {
     if (typeof raw !== 'object' || raw === null) {
       return null;
     }
-    const { seq, dt, moveX, moveY, yaw, pitch, run, interact, item, refuel, space } =
+    const { seq, dt, moveX, moveY, yaw, pitch, run, interact, item, refuel, space, floor } =
       raw as JsonObject;
     const valid =
       Number.isInteger(seq) &&
@@ -149,7 +151,10 @@ export class MessageCodec {
       typeof refuel === 'boolean' &&
       Number.isInteger(space) &&
       (space as number) >= 0 &&
-      (space as number) < MessageCodec.MAX_SEQ;
+      (space as number) < MessageCodec.MAX_SEQ &&
+      Number.isInteger(floor) &&
+      (floor as number) >= 0 &&
+      (floor as number) < MessageCodec.MAX_FLOORS;
     if (!valid) {
       return null;
     }
@@ -165,6 +170,7 @@ export class MessageCodec {
       item: item as HeldItem,
       refuel: refuel as boolean,
       space: space as number,
+      floor: floor as number,
     };
   }
 

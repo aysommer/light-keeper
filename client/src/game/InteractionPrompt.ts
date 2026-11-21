@@ -12,9 +12,12 @@ export interface Hands {
 export class InteractionPrompt {
   public constructor(private readonly settings: ExitSettings = GameConfig.exit) {}
 
-  /** Игрок стоит у двери (там, где работает `E`). */
-  public isNearDoor(space: Space, position: Vector2): boolean {
-    return position.distanceTo(space.exit.frontPoint()) <= this.settings.interactDistance;
+  /** Игрок стоит у двери (там, где работает `E`) и на её этаже. */
+  public isNearDoor(space: Space, position: Vector2, floor = 0): boolean {
+    return (
+      floor === space.exitFloor &&
+      position.distanceTo(space.exit.frontPoint()) <= this.settings.interactDistance
+    );
   }
 
   public resolve(
@@ -23,8 +26,9 @@ export class InteractionPrompt {
     position: Vector2,
     inTambour: boolean,
     hands: Hands = { item: 'lamp', keys: 0 },
+    floor = 0,
   ): string | null {
-    if (!exit || inTambour || !this.isNearDoor(space, position)) {
+    if (!exit || inTambour || !this.isNearDoor(space, position, floor)) {
       return null;
     }
     if (exit.open) {

@@ -27,8 +27,9 @@ export class CollisionWorld {
     }
   }
 
-  public static fromSpace(space: Space): CollisionWorld {
-    return new CollisionWorld(space.colliders);
+  /** Коллизии этажа `floor` пространства. */
+  public static fromSpace(space: Space, floor = 0): CollisionWorld {
+    return new CollisionWorld(space.floor(floor).colliders);
   }
 
   /** Коллайдеры в квадрате со стороной `2 * reach` вокруг точки. */

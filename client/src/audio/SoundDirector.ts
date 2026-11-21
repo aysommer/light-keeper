@@ -24,6 +24,10 @@ export interface SoundScene extends AudioFrame {
   /** Испуг 0–1. */
   readonly scare: number;
   readonly door: Vector2;
+  /** Этаж двери выхода. */
+  readonly doorFloor: number;
+  /** Свой этаж: напарник и привидения в кадре — на нём же. */
+  readonly floor: number;
   readonly partner: { readonly position: Vector2; readonly speed: number } | null;
   readonly ghosts: ReadonlyArray<{
     readonly id: number;
@@ -109,7 +113,11 @@ export class SoundDirector {
   private play(event: ReturnType<GameAudioEvents['update']>[number], scene: SoundScene): void {
     switch (event) {
       case 'door-open': {
-        const panner = this.engine.panner(SceneCoords.toScene(scene.door, 1.2), 2.5, 40);
+        const panner = this.engine.panner(
+          SceneCoords.toScene(scene.door, 1.2, scene.doorFloor),
+          2.5,
+          40,
+        );
         if (panner) this.synth.creak(panner);
         return;
       }
@@ -143,7 +151,11 @@ export class SoundDirector {
     const interval =
       partner && partner.speed > 0.3 ? StickmanAnimator.STRIDE_LENGTH / 2 / partner.speed : null;
     if (this.partnerSteps.update(deltaSeconds, interval) && partner) {
-      const panner = this.engine.panner(SceneCoords.toScene(partner.position, 0.1), 1.5, 30);
+      const panner = this.engine.panner(
+        SceneCoords.toScene(partner.position, 0.1, scene.floor),
+        1.5,
+        30,
+      );
       if (panner) this.synth.footstep(partner.speed > 3 ? 1.1 : 0.8, panner);
     }
   }
@@ -156,7 +168,11 @@ export class SoundDirector {
       alive.add(ghost.id);
       let voice = this.voices.get(ghost.id);
       if (!voice) {
-        const panner = this.engine.panner(SceneCoords.toScene(ghost.position, 1.5), 1.2, 30);
+        const panner = this.engine.panner(
+          SceneCoords.toScene(ghost.position, 1.5, scene.floor),
+          1.2,
+          30,
+        );
         if (!panner) continue;
         voice = {
           panner,
@@ -167,7 +183,11 @@ export class SoundDirector {
         this.voices.set(ghost.id, voice);
       }
       voice.position = ghost.position;
-      AudioEngine.place(voice.panner, SceneCoords.toScene(ghost.position, 1.5), ctx.currentTime);
+      AudioEngine.place(
+        voice.panner,
+        SceneCoords.toScene(ghost.position, 1.5, scene.floor),
+        ctx.currentTime,
+      );
       if (ghost.fading && !voice.fading) {
         this.synth.dissolve(voice.panner);
       }

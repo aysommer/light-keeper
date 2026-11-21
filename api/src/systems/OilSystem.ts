@@ -31,11 +31,13 @@ export class OilSystem implements System {
     if (player.canisters >= this.settings.maxCarried) {
       return;
     }
+    const floors = world.space.oilFloors;
     world.space.oilSpawns.forEach((spawn, index) => {
       if (
         player.canisters < this.settings.maxCarried &&
         world.space.isOilFull(index) &&
         !world.oil.isTaken(index) &&
+        floors[index] === player.floor &&
         player.position.distanceTo(spawn) <= this.settings.pickupDistance
       ) {
         world.oil.take(index);
@@ -62,13 +64,15 @@ export class OilSystem implements System {
       lamp.oil = Math.min(100, lamp.oil + this.settings.amount);
       player.canisters -= 1;
       player.refuelSeconds = 0;
-      world.oil.drop(this.dropPoint(world, player));
+      world.oil.drop(this.dropPoint(world, player), player.floor);
     }
   }
 
   /** Пустую канистру ставим чуть впереди игрока, если там нет стены, иначе — под ноги. */
   private dropPoint(world: MatchWorld, player: ServerPlayer): ServerPlayer['position'] {
     const ahead = player.position.add(PlayerMovement.forward(player.yaw).scale(0.45));
-    return world.collisions.lineOfSight(player.position, ahead) ? ahead : player.position;
+    return world.collisionsOn(player.floor).lineOfSight(player.position, ahead)
+      ? ahead
+      : player.position;
   }
 }

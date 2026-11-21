@@ -29,9 +29,9 @@ export class FloorLampView {
     if (!dropped) {
       return;
     }
-    const at = SceneCoords.toScene(new Vector2(dropped.x, dropped.y), 0.09);
+    const at = SceneCoords.toScene(new Vector2(dropped.x, dropped.y), 0.09, dropped.floor);
     this.lantern.root.position.copy(at);
-    this.ember.position.set(at.x, 0.15, at.z);
+    this.ember.position.set(at.x, at.y + 0.06, at.z);
     const heatGlow = LampFlame.heatGlow(dropped.lamp.heat);
     const level = LampFlame.level(time, LampRules.brightness(dropped.lamp)) * 0.3;
     this.lantern.setGlow(level, heatGlow);

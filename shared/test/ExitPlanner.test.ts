@@ -4,11 +4,20 @@ import type { Space } from '../src/index.ts';
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => 500 + i * 104729);
 
-const reachable = (space: Space) => {
+/** Куда можно дойти на этаже `floor` от старта (первый этаж) или от лестницы, ведущей на этаж. */
+const reachable = (space: Space, floor = 0) => {
   const grid = new OccupancyGrid(space.bounds.expand(1), 0.1);
-  space.colliders.forEach((collider) => grid.block(collider, GameConfig.player.radius));
-  return grid.reachableFrom(space.startPositions[0]);
+  space
+    .floor(floor)
+    .colliders.forEach((collider) => grid.block(collider, GameConfig.player.radius));
+  return grid.reachableFrom(
+    floor === 0 ? space.startPositions[0] : space.stairs[floor - 1]!.position,
+  );
 };
+
+/** Комната, с которой игрок начинает этаж: стартовая или та, куда приводит лестница. */
+const entryRoom = (space: Space, floor: number) =>
+  floor === 0 ? space.startRoom : space.floor(floor).roomAt(space.stairs[floor - 1]!.position)!;
 
 describe('ExitPlanner: тип двери', () => {
   it('в первом пространстве дверь всегда обычная', () => {
@@ -58,12 +67,13 @@ describe('ExitPlanner: размещение двери', () => {
     for (const seed of SEEDS) {
       const space = new SpaceGenerator(seed).generate(3);
       const { exit } = space;
-      expect(exit.roomId).not.toBe(space.startRoom.id);
-      expect(space.doors.some((door) => door.edge.key === exit.edge.key)).toBe(false);
+      const floor = space.floor(space.exitFloor);
+      expect(exit.roomId).not.toBe(entryRoom(space, space.exitFloor).id);
+      expect(floor.doors.some((door) => door.edge.key === exit.edge.key)).toBe(false);
       // На осевой линии двери — стена.
-      expect(space.walls.some((wall) => wall.bounds.containsPoint(exit.position))).toBe(true);
+      expect(floor.walls.some((wall) => wall.bounds.containsPoint(exit.position))).toBe(true);
       // Перед дверью — её комната.
-      expect(space.roomAt(exit.frontPoint())?.id).toBe(exit.roomId);
+      expect(floor.roomAt(exit.frontPoint())?.id).toBe(exit.roomId);
     }
   });
 
@@ -71,16 +81,18 @@ describe('ExitPlanner: размещение двери', () => {
     for (const seed of SEEDS) {
       const space = new SpaceGenerator(seed).generate(2);
       const front = space.exit.frontPoint(GameConfig.world.wallThickness / 2 + 0.35);
-      expect(reachable(space).contains(front), `seed ${seed}`).toBe(true);
+      expect(reachable(space, space.exitFloor).contains(front), `seed ${seed}`).toBe(true);
     }
   });
 
   it('дверь далеко: её комната среди самой дальней трети', () => {
     for (const seed of SEEDS) {
       const space = new SpaceGenerator(seed).generate(4);
-      const graph = new RoomGraph(space.rooms, space.doors);
-      const distances = [...graph.distancesFrom(space.startRoom.id).values()].sort((a, b) => b - a);
-      const exitDistance = graph.distancesFrom(space.startRoom.id).get(space.exit.roomId)!;
+      const floor = space.floor(space.exitFloor);
+      const from = entryRoom(space, space.exitFloor).id;
+      const graph = new RoomGraph(floor.rooms, floor.doors);
+      const distances = [...graph.distancesFrom(from).values()].sort((a, b) => b - a);
+      const exitDistance = graph.distancesFrom(from).get(space.exit.roomId)!;
       const threshold = distances[Math.ceil(distances.length * 0.5) - 1]!;
       expect(exitDistance).toBeGreaterThanOrEqual(threshold);
     }
@@ -114,22 +126,30 @@ describe('ExitPlanner: ключ', () => {
     for (const space of spaces) {
       const cells = new Set(space.keys.map((key) => `${key.x}:${key.y}`));
       expect(cells.size).toBe(space.keys.length);
-      for (const key of space.keys) {
-        const keyRoom = space.roomAt(key)!;
+      space.keys.forEach((key, i) => {
+        const floor = space.keyFloors[i]!;
+        const keyRoom = space.floor(floor).roomAt(key)!;
         expect(keyRoom.id).not.toBe(space.exit.roomId);
-        if (space.rooms.length > 2) expect(keyRoom.id).not.toBe(space.startRoom.id);
-        expect(reachable(space).contains(key)).toBe(true);
-      }
+        if (floor === space.exitFloor && space.floor(floor).rooms.length > 2) {
+          expect(keyRoom.id).not.toBe(entryRoom(space, floor).id);
+        }
+        expect(reachable(space, floor).contains(key)).toBe(true);
+      });
     }
   });
 
   it('ключ не на кратчайшем пути к двери (если в лабиринте есть ответвления)', () => {
     for (const space of lockedSpaces()) {
-      const graph = new RoomGraph(space.rooms, space.doors);
-      const path = graph.path(space.startRoom.id, space.exit.roomId);
-      const offPathExists = space.rooms.some((room) => !path.includes(room.id));
+      const floor = space.floor(space.exitFloor);
+      const graph = new RoomGraph(floor.rooms, floor.doors);
+      const path = graph.path(entryRoom(space, space.exitFloor).id, space.exit.roomId);
+      const offPathExists = floor.rooms.some((room) => !path.includes(room.id));
       if (offPathExists) {
-        for (const key of space.keys) expect(path).not.toContain(space.roomAt(key)!.id);
+        space.keys.forEach((key, i) => {
+          if (space.keyFloors[i] === space.exitFloor) {
+            expect(path).not.toContain(floor.roomAt(key)!.id);
+          }
+        });
       }
     }
   });
@@ -145,8 +165,8 @@ describe('ExitPlanner: записка с кодом', () => {
     const spaces = codeSpaces();
     expect(spaces.length).toBeGreaterThan(20);
     for (const space of spaces) {
-      expect(space.roomAt(space.note!)!.id).not.toBe(space.exit.roomId);
-      expect(reachable(space).contains(space.note!)).toBe(true);
+      expect(space.floor(space.noteFloor).roomAt(space.note!)!.id).not.toBe(space.exit.roomId);
+      expect(reachable(space, space.noteFloor).contains(space.note!)).toBe(true);
     }
   });
 
@@ -161,6 +181,53 @@ describe('ExitPlanner: записка с кодом', () => {
       expect(code.matches(code.symbols.slice(0, 3))).toBe(false);
     }
     expect(alphabets).toEqual(new Set(['digits', 'letters', 'shapes']));
+  });
+});
+
+describe('Этажи', () => {
+  const all = (): Space[] =>
+    SEEDS.flatMap((seed) =>
+      Array.from({ length: 6 }, (_, i) => new SpaceGenerator(seed).generate(i + 1)),
+    );
+
+  it('первое пространство одноэтажное, дальше бывает 1, 2 и 3 этажа', () => {
+    for (const seed of SEEDS) expect(new SpaceGenerator(seed).generate(0).floorCount).toBe(1);
+    const counts = new Set(all().map((space) => space.floorCount));
+    expect(counts).toEqual(new Set([1, 2, 3]));
+  });
+
+  it('лестниц на одну меньше, чем этажей; дверь — на верхнем этаже', () => {
+    for (const space of all()) {
+      expect(space.stairs).toHaveLength(space.floorCount - 1);
+      expect(space.exitFloor).toBe(space.floorCount - 1);
+      space.stairs.forEach((stair, i) => expect(stair.lower).toBe(i));
+    }
+  });
+
+  it('у лестницы свободно на обоих этажах, и на любой этаж можно дойти', () => {
+    for (const space of all().filter((s) => s.floorCount > 1)) {
+      for (const stair of space.stairs) {
+        for (const floor of [stair.lower, stair.lower + 1]) {
+          expect(space.floor(floor).colliders.some((c) => c.containsPoint(stair.position))).toBe(
+            false,
+          );
+          expect(reachable(space, floor).contains(stair.position)).toBe(true);
+        }
+      }
+      // С первого этажа до лестницы наверх можно дойти от старта.
+      expect(reachable(space, 0).contains(space.stairs[0]!.position)).toBe(true);
+      // Канистры есть на всех этажах и учтены вместе с этажом.
+      expect(space.oilFloors).toHaveLength(space.oilSpawns.length);
+    }
+  });
+
+  it('stairNear: снизу ведёт наверх, сверху — вниз, на другом этаже — ничего', () => {
+    const space = all().find((s) => s.floorCount === 3)!;
+    const [first, second] = space.stairs;
+    expect(space.stairNear(0, first!.position, 0.5)?.to).toBe(1);
+    expect(space.stairNear(1, first!.position, 0.5)?.to).toBe(0);
+    expect(space.stairNear(1, second!.position, 0.5)?.to).toBe(2);
+    expect(space.stairNear(2, first!.position, 0.5)).toBeNull();
   });
 });
 

@@ -150,6 +150,7 @@ describe('WsGateway (интеграция)', () => {
         item: 'lamp',
         refuel: false,
         space: 0,
+        floor: 0,
       })),
     });
     const moved = await guest.waitFor('match:snapshot', (m) =>

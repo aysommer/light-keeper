@@ -30,6 +30,7 @@ const forward = (seq: number, overrides: Partial<PlayerInput> = {}): PlayerInput
   item: 'lamp',
   refuel: false,
   space: 0,
+  floor: 0,
   ...overrides,
 });
 

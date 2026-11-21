@@ -27,6 +27,7 @@ const input = (overrides: Partial<PlayerInput> = {}): PlayerInput => ({
   item: 'lamp',
   refuel: false,
   space: 0,
+  floor: 0,
   ...overrides,
 });
 

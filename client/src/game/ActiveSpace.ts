@@ -7,13 +7,17 @@ import { KeyView } from '../scene/KeyView.ts';
 import { NoteView } from '../scene/NoteView.ts';
 import { MaterialLibrary } from '../scene/MaterialLibrary.ts';
 import type { SpaceDetail } from '../scene/MaterialLibrary.ts';
+import { SceneCoords } from '../scene/SceneCoords.ts';
 import { SpaceMeshBuilder } from '../scene/SpaceMeshBuilder.ts';
+import { StairView } from '../scene/StairView.ts';
 import type { SpaceView } from '../scene/SpaceView.ts';
 
-/** Источник правила движения для текущего пространства. */
+/** Источник правила движения для текущего пространства и этажа. */
 export interface MovementProvider {
   readonly movement: PlayerMovement;
   readonly spaceIndex: number;
+  /** Этаж, на котором сейчас игрок (для команд ввода). */
+  readonly floor: number;
 }
 
 /**
@@ -24,13 +28,17 @@ export class ActiveSpace implements MovementProvider {
   private readonly generator: SpaceGenerator;
   private readonly builder = new SpaceMeshBuilder();
   private currentSpace: Space;
-  private currentMovement: PlayerMovement;
-  private currentCollisions: CollisionWorld;
-  private view: SpaceView;
-  private door: ExitDoorView;
-  private keys: KeyView[];
-  private note: NoteView | null;
-  private canisters: CanisterField;
+  /** Коллизии и правило движения — по этажам. */
+  private movements: PlayerMovement[] = [];
+  private collisionWorlds: CollisionWorld[] = [];
+  private currentFloor = 0;
+  /** Этажи на сцене (стопкой по высоте). */
+  private views: SpaceView[] = [];
+  private stairs: StairView[] = [];
+  private door!: ExitDoorView;
+  private keys: KeyView[] = [];
+  private note: NoteView | null = null;
+  private canisters!: CanisterField;
   private detail: SpaceDetail;
 
   public constructor(
@@ -41,16 +49,7 @@ export class ActiveSpace implements MovementProvider {
     this.detail = detail;
     this.generator = new SpaceGenerator(matchSeed);
     this.currentSpace = this.generator.generate(0);
-    this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
-    this.currentMovement = new PlayerMovement(this.currentCollisions);
-    this.view = this.builder.build(this.currentSpace, this.detail);
-    scene.add(this.view.group);
-    this.door = this.createDoor();
-    this.keys = this.createKeys();
-    this.note = this.createNote();
-    this.canisters = new CanisterField(scene, this.currentSpace.oilSpawns, (i) =>
-      this.currentSpace.isOilFull(i),
-    );
+    this.build();
   }
 
   public get space(): Space {
@@ -61,19 +60,28 @@ export class ActiveSpace implements MovementProvider {
     return this.currentSpace.index;
   }
 
-  /** Коллизии текущего пространства (для прямой видимости при обмене). */
+  /** Этаж, на котором сейчас этот игрок. */
+  public get floor(): number {
+    return this.currentFloor;
+  }
+
+  public setFloor(floor: number): void {
+    this.currentFloor = Math.max(0, Math.min(this.currentSpace.floorCount - 1, floor));
+  }
+
+  /** Коллизии этажа игрока (для прямой видимости при обмене). */
   public get collisions(): CollisionWorld {
-    return this.currentCollisions;
+    return this.collisionWorlds[this.currentFloor] ?? this.collisionWorlds[0]!;
   }
 
   public get movement(): PlayerMovement {
-    return this.currentMovement;
+    return this.movements[this.currentFloor] ?? this.movements[0]!;
   }
 
   /** Галочки графики материалов: сразу для текущего пространства и для следующих. */
   public setDetail(detail: SpaceDetail): void {
     this.detail = detail;
-    this.view.materials.setDetail(detail);
+    this.views.forEach((view) => view.materials.setDetail(detail));
   }
 
   public enter(index: number): void {
@@ -82,19 +90,11 @@ export class ActiveSpace implements MovementProvider {
     }
     this.disposeViews();
     this.currentSpace = this.generator.generate(index);
-    this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
-    this.currentMovement = new PlayerMovement(this.currentCollisions);
-    this.view = this.builder.build(this.currentSpace, this.detail);
-    this.scene.add(this.view.group);
-    this.door = this.createDoor();
-    this.keys = this.createKeys();
-    this.note = this.createNote();
-    this.canisters = new CanisterField(this.scene, this.currentSpace.oilSpawns, (i) =>
-      this.currentSpace.isOilFull(i),
-    );
+    this.currentFloor = 0;
+    this.build();
   }
 
-  /** Анимация пространства, двери, ключа и канистр по последнему состоянию с сервера. */
+  /** Анимация пространства, двери, ключей и канистр по последнему состоянию с сервера. */
   public update(
     exit: ExitSnapshot | null,
     oilTaken: readonly number[] | null,
@@ -102,7 +102,7 @@ export class ActiveSpace implements MovementProvider {
     deltaSeconds: number,
     time: number,
   ): void {
-    this.view.update(time);
+    this.views.forEach((view) => view.update(time));
     this.door.update(exit, deltaSeconds);
     this.keys.forEach((key) => key.update(exit, time));
     this.note?.update(exit, time);
@@ -113,19 +113,46 @@ export class ActiveSpace implements MovementProvider {
     this.disposeViews();
   }
 
-  private createDoor(): ExitDoorView {
-    const door = new ExitDoorView(
-      this.currentSpace.exit,
-      this.view.materials,
-      this.currentSpace.keys.length,
+  private build(): void {
+    const space = this.currentSpace;
+    this.collisionWorlds = space.floors.map((_, floor) => CollisionWorld.fromSpace(space, floor));
+    this.movements = this.collisionWorlds.map((collisions) => new PlayerMovement(collisions));
+    this.views = space.floors.map((_, floor) => {
+      const view = this.builder.build(space, this.detail, floor);
+      this.scene.add(view.group);
+      return view;
+    });
+    this.stairs = space.stairs.map((stair) => {
+      const view = new StairView(stair);
+      this.scene.add(view.root);
+      return view;
+    });
+    this.door = this.createDoor();
+    this.keys = this.createKeys();
+    this.note = this.createNote();
+    this.canisters = new CanisterField(
+      this.scene,
+      space.oilSpawns,
+      (i) => space.isOilFull(i),
+      space.oilFloors,
     );
+  }
+
+  private createDoor(): ExitDoorView {
+    const space = this.currentSpace;
+    const door = new ExitDoorView(
+      space.exit,
+      this.views[space.exitFloor]!.materials,
+      space.keys.length,
+    );
+    door.root.position.y += SceneCoords.floorY(space.exitFloor);
     this.scene.add(door.root);
     return door;
   }
 
   private createKeys(): KeyView[] {
     return this.currentSpace.keys.map((position, index) => {
-      const key = new KeyView(position, index);
+      const key = new KeyView(position, index, this.currentSpace.keyFloors[index] ?? 0);
       this.scene.add(key.root);
       return key;
     });
@@ -135,7 +162,7 @@ export class ActiveSpace implements MovementProvider {
     if (!this.currentSpace.note) {
       return null;
     }
-    const note = new NoteView(this.currentSpace.note);
+    const note = new NoteView(this.currentSpace.note, this.currentSpace.noteFloor);
     this.scene.add(note.root);
     return note;
   }
@@ -145,6 +172,7 @@ export class ActiveSpace implements MovementProvider {
     this.keys.forEach((key) => key.dispose());
     this.note?.dispose();
     this.door.dispose();
-    this.view.dispose();
+    this.stairs.forEach((stair) => stair.dispose());
+    this.views.forEach((view) => view.dispose());
   }
 }

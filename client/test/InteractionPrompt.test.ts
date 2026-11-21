@@ -7,7 +7,8 @@ const spaceWith = (kind: ExitKind, keys = 0): Space => {
   const generator = new SpaceGenerator(31337);
   for (let index = 0; index < 80; index++) {
     const space = generator.generate(index);
-    if (space.exit.kind === kind && space.keys.length >= keys) return space;
+    if (space.exit.kind === kind && space.keys.length >= keys && space.floorCount === 1)
+      return space;
   }
   throw new Error(`Нет двери ${kind}`);
 };
@@ -57,6 +58,19 @@ describe('InteractionPrompt', () => {
     expect(prompt.resolve(locked, closed, near, false, { item: 'key', keys: 2 })).toBe(
       `Удерживай E — вставить ключи (вставлено 0 из ${required})`,
     );
+  });
+
+  it('дверь на другом этаже — без подсказки', () => {
+    const generator = new SpaceGenerator(31337);
+    let multi: Space | null = null;
+    for (let index = 1; index < 80 && !multi; index++) {
+      const space = generator.generate(index);
+      if (space.floorCount > 1) multi = space;
+    }
+    const space = multi!;
+    const near = space.exit.frontPoint(0.6);
+    expect(prompt.resolve(space, closed, near, false, undefined, space.exitFloor)).not.toBeNull();
+    expect(prompt.resolve(space, closed, near, false, undefined, space.exitFloor - 1)).toBeNull();
   });
 
   it('дверь с кодом — панель', () => {

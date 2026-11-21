@@ -23,6 +23,7 @@ import { HandLampLight } from '../scene/HandLampLight.ts';
 import { SceneManager } from '../scene/SceneManager.ts';
 import { CodePanel } from './CodePanel.ts';
 import { ExitHud } from './ExitHud.ts';
+import { FloorHud } from './FloorHud.ts';
 import { Hud } from './Hud.ts';
 import { ScareOverlay } from './ScareOverlay.ts';
 import { SettingsPanel } from './SettingsPanel.ts';
@@ -46,6 +47,8 @@ export interface GameScreenOptions {
 export class GameScreen implements Screen {
   /** Сколько держать надпись «Пространство N» после входа, с. */
   private static readonly TITLE_HOLD_SECONDS = 1.2;
+  /** Откуда работает лестница (как на сервере, StairSystem.REACH), м. */
+  private static readonly STAIR_REACH = 0.9;
   /** Сколько показывать «лампа у напарника» после нажатия 1 без лампы, с. */
   private static readonly NO_LAMP_HINT_SECONDS = 2;
 
@@ -54,6 +57,7 @@ export class GameScreen implements Screen {
   private readonly settings: SettingsPanel;
   private readonly overlay = new TransitionOverlay();
   private readonly exitHud = new ExitHud();
+  private readonly floorHud = new FloorHud();
   private submitCode: ((code: readonly string[]) => void) | null = null;
   private readonly codePanel = new CodePanel((code) => this.submitCode?.(code));
   private readonly lampHud = new LampHud();
@@ -88,6 +92,7 @@ export class GameScreen implements Screen {
       this.lampGauges.element,
       this.hud.element,
       this.exitHud.element,
+      this.floorHud.element,
       this.tambour.element,
       this.overlay.element,
       this.settings.element,
@@ -228,13 +233,16 @@ export class GameScreen implements Screen {
       space.update(session.exit, session.oilTaken, session.oilDropped, delta, time);
       const exit = session.exit;
       const partnerPosition = session.partnerPosition();
+      const partnerFloor = session.partnerFloor();
+      const floor = space.floor;
+      this.floorHud.update(floor, space.space.floorCount, partnerFloor);
       // Смотришь на напарника рядом — подсказка об обмене важнее подсказки двери.
       const exchangeHint = this.exchangePrompt.resolve(
         session.exchange,
         options.playerId,
         player.position,
         player.yaw,
-        partnerPosition ? { position: partnerPosition } : null,
+        partnerPosition && partnerFloor === floor ? { position: partnerPosition } : null,
         space.collisions,
         session.inTambour,
         session.hasLamp,
@@ -243,20 +251,36 @@ export class GameScreen implements Screen {
       const dropped = session.droppedLamp;
       const pickupHint =
         dropped &&
+        dropped.floor === floor &&
         !session.inTambour &&
         player.position.distanceTo(new Vector2(dropped.x, dropped.y)) <=
           GameConfig.lamp.pickupDistance
           ? 'E — поднять лампу'
           : null;
+      // Лестница рядом: E — на соседний этаж.
+      const stair = session.inTambour
+        ? null
+        : space.space.stairNear(floor, player.position, GameScreen.STAIR_REACH);
+      const stairHint = stair
+        ? `E — ${stair.to > floor ? 'подняться' : 'спуститься'} на ${stair.to + 1}-й этаж`
+        : null;
       this.exitHud.update(
         exit,
         options.playerId,
         pickupHint ??
           exchangeHint ??
-          this.prompt.resolve(space.space, exit, player.position, session.inTambour, {
-            item,
-            keys: session.ownKeys,
-          }),
+          stairHint ??
+          this.prompt.resolve(
+            space.space,
+            exit,
+            player.position,
+            session.inTambour,
+            {
+              item,
+              keys: session.ownKeys,
+            },
+            floor,
+          ),
         space.space.exit.kind === 'locked'
           ? {
               own: session.ownKeys,
@@ -272,9 +296,16 @@ export class GameScreen implements Screen {
         !exit.open &&
         !session.inTambour &&
         !inTransition &&
-        this.prompt.isNearDoor(space.space, player.position);
+        this.prompt.isNearDoor(space.space, player.position, floor);
       const panelCode = space.space.code;
-      if (interactPressed && atPanel && exchangeHint === null && pickupHint === null && panelCode) {
+      if (
+        interactPressed &&
+        atPanel &&
+        exchangeHint === null &&
+        pickupHint === null &&
+        stairHint === null &&
+        panelCode
+      ) {
         codeFailuresSeen = exit.codeFailures;
         this.codePanel.show(panelCode.alphabet);
         document.exitPointerLock();
@@ -355,6 +386,7 @@ export class GameScreen implements Screen {
                 session.oilTaken,
                 session.oilDropped,
                 player.position,
+                floor,
               )),
       );
       this.lampHud.updateOil(
@@ -383,6 +415,8 @@ export class GameScreen implements Screen {
         refueling: session.ownRefuelProgress > 0,
         scare,
         door: space.space.exit.position,
+        doorFloor: space.space.exitFloor,
+        floor,
         partner: session.partnerMotion(),
         ghosts: session.ghosts.list(),
       });
@@ -425,6 +459,11 @@ export class GameScreen implements Screen {
       // Сервер ставит в шаге правее канистры — смотрим налево и вниз, на неё.
       player.yaw = PlayerMovement.yawTowards(new Vector2(-1, 0));
       player.pitch = -0.6;
+    }
+    if (input.consumePress('KeyU')) {
+      session.requestGoto('stair');
+      player.yaw = PlayerMovement.yawTowards(new Vector2(1, 0));
+      player.pitch = 0;
     }
     if (input.consumePress('KeyJ')) {
       session.requestGoto('note');

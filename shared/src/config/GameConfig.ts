@@ -14,6 +14,10 @@ export interface WorldSettings {
   readonly wallThickness: number;
   /** Высота стен и потолка. */
   readonly ceilingHeight: number;
+  /** Расстояние между этажами по высоте (потолок + перекрытие), м. */
+  readonly floorHeight: number;
+  /** Вероятность двух и трёх этажей в пространстве (кроме первого). */
+  readonly floors: { readonly twoFloors: number; readonly threeFloors: number };
   readonly doorWidth: number;
   /** Вероятность дополнительной двери между уже связанными комнатами (создаёт петли). */
   readonly extraDoorChance: number;
@@ -188,6 +192,8 @@ export class GameConfig {
     },
     wallThickness: 0.2,
     ceilingHeight: 3,
+    floorHeight: 3.4,
+    floors: { twoFloors: 0.3, threeFloors: 0.15 },
     doorWidth: 1.4,
     extraDoorChance: 0.15,
     pillarSize: 0.6,

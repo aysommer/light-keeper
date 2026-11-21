@@ -21,8 +21,9 @@ export class KeyView {
   public constructor(
     position: Vector2,
     private readonly index: number,
+    private readonly floor = 0,
   ) {
-    this.root.position.copy(SceneCoords.toScene(position, KeyView.HEIGHT));
+    this.root.position.copy(SceneCoords.toScene(position, KeyView.HEIGHT, floor));
     const bow = this.mesh(new TorusGeometry(0.06, 0.018, 8, 20));
     bow.position.x = -0.1;
     const shaft = this.mesh(new BoxGeometry(0.17, 0.024, 0.02));
@@ -37,7 +38,8 @@ export class KeyView {
     // Ключ лежит, пока его никто не подобрал (подобранный ключ не теряется).
     this.root.visible = !(state?.keysTaken.includes(this.index) ?? false);
     this.root.rotation.y = time * 1.6 + this.index * 2.1;
-    this.root.position.y = KeyView.HEIGHT + Math.sin(time * 2.2) * 0.05;
+    this.root.position.y =
+      SceneCoords.floorY(this.floor) + KeyView.HEIGHT + Math.sin(time * 2.2) * 0.05;
   }
 
   public dispose(): void {

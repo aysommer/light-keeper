@@ -15,7 +15,10 @@ export class NoteView {
   private readonly texture: CanvasTexture;
   private readonly material: MeshStandardMaterial;
 
-  public constructor(position: Vector2) {
+  public constructor(
+    position: Vector2,
+    private readonly floor = 0,
+  ) {
     this.texture = NoteView.createTexture();
     this.material = new MeshStandardMaterial({
       map: this.texture,
@@ -27,13 +30,14 @@ export class NoteView {
     const sheet = new Mesh(this.geometry, this.material);
     sheet.rotation.x = -0.35;
     this.root.add(sheet);
-    this.root.position.copy(SceneCoords.toScene(position, NoteView.HEIGHT));
+    this.root.position.copy(SceneCoords.toScene(position, NoteView.HEIGHT, floor));
   }
 
   public update(state: ExitSnapshot | null, time: number): void {
     this.root.visible = (state?.noteHolderId ?? null) === null;
     this.root.rotation.y = time * 0.9;
-    this.root.position.y = NoteView.HEIGHT + Math.sin(time * 1.8) * 0.04;
+    this.root.position.y =
+      SceneCoords.floorY(this.floor) + NoteView.HEIGHT + Math.sin(time * 1.8) * 0.04;
   }
 
   public dispose(): void {

@@ -10,6 +10,8 @@ export class Ghost {
   public constructor(
     public readonly id: number,
     public position: Vector2,
+    /** Этаж привидения (между этажами оно не ходит). */
+    public readonly floor = 0,
   ) {}
 
   public get fading(): boolean {
@@ -21,6 +23,7 @@ export class Ghost {
       id: this.id,
       x: Math.round(this.position.x * 100) / 100,
       y: Math.round(this.position.y * 100) / 100,
+      floor: this.floor,
       fading: this.fading,
     };
   }
