@@ -89,8 +89,9 @@ export class LampGauges {
   /**
    * @param lamp общая лампа (`null` — ещё нет данных или идёт переход)
    * @param mine лампа у этого игрока
+   * @param onFloor лампа выпала и лежит на полу
    */
-  public update(lamp: LampSnapshot | null, mine: boolean): void {
+  public update(lamp: LampSnapshot | null, mine: boolean, onFloor = false): void {
     this.element.hidden = lamp === null;
     if (!lamp) {
       return;
@@ -103,5 +104,7 @@ export class LampGauges {
     );
     this.oil.update(lamp.oil, lamp.oil <= 0 ? 'alarm' : lamp.oil < settings.lowOil ? 'warn' : 'ok');
     this.owner.hidden = mine;
+    const owner = onFloor ? 'Лампа на полу' : 'Лампа у напарника';
+    if (this.owner.textContent !== owner) this.owner.textContent = owner;
   }
 }

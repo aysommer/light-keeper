@@ -60,6 +60,8 @@ export interface MatchSettings {
 
 /** Правила лампы: масло и нагрев. Масло и нагрев — в процентах (0–100). */
 export interface LampSettings {
+  /** С какого расстояния можно поднять выпавшую лампу (`E`), м. */
+  readonly pickupDistance: number;
   /** На сколько секунд горения хватает полной лампы. */
   readonly oilSeconds: number;
   /** Базовая скорость нагрева горящей лампы в руке, %/с. */
@@ -218,6 +220,7 @@ export class GameConfig {
   };
 
   public static readonly lamp: LampSettings = {
+    pickupDistance: 1.3,
     oilSeconds: 150,
     heatBaseRate: 1.6,
     heatMinFactor: 0.5,

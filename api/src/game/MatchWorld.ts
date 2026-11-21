@@ -5,7 +5,7 @@ import {
   SeedHasher,
   SpaceGenerator,
 } from '@light-keeper/shared';
-import type { MatchOverReason, Space, SpacePhase } from '@light-keeper/shared';
+import type { MatchOverReason, Space, SpacePhase, Vector2 } from '@light-keeper/shared';
 import { Lamp } from '../entities/Lamp.ts';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
 import { ExchangeState } from './ExchangeState.ts';
@@ -33,6 +33,8 @@ export class MatchWorld {
   private overReason: MatchOverReason | null = null;
   /** Лампа одна на двоих; кто её держит — решается заново в каждом пространстве. */
   private readonly sharedLamp = new Lamp();
+  /** Где лежит лампа, выпавшая из рук от перегрева; `null` — она у кого-то в руках. */
+  private droppedAt: Vector2 | null = null;
 
   public constructor(public readonly seed: number) {
     this.generator = new SpaceGenerator(seed);
@@ -117,8 +119,20 @@ export class MatchWorld {
     if (holder) this.giveLampTo(holder.id);
   }
 
-  /** Отдать лампу игроку (у второго она пропадает из рук). */
+  /** Где лежит выпавшая лампа; `null` — она у кого-то в руках. */
+  public get lampOnFloor(): Vector2 | null {
+    return this.droppedAt;
+  }
+
+  /** Лампа выпала из рук (перегрелась) и лежит на полу. */
+  public dropLamp(at: Vector2): void {
+    this.players.forEach((player) => (player.lamp = null));
+    this.droppedAt = at;
+  }
+
+  /** Отдать лампу игроку (у второго она пропадает из рук; с пола — поднимается). */
   public giveLampTo(playerId: string): void {
+    this.droppedAt = null;
     this.players.forEach((player) => {
       player.lamp = player.id === playerId ? this.sharedLamp : null;
     });
@@ -165,6 +179,7 @@ export class MatchWorld {
       player.placeAt(this.startPositionFor(player), this.currentSpace.startYaw),
     );
     this.sharedLamp.refill();
+    this.droppedAt = null;
     this.dealLamp();
   }
 

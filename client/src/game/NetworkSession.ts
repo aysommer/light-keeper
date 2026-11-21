@@ -4,6 +4,7 @@ import type {
   DebugGotoTarget,
   DebugLampPreset,
   DroppedCanister,
+  DroppedLampSnapshot,
   ExchangeSnapshot,
   ExitSnapshot,
   LampSnapshot,
@@ -19,6 +20,7 @@ import type { ActiveSpace } from './ActiveSpace.ts';
 import type { FirstPersonController } from './FirstPersonController.ts';
 import type { LocalPlayer } from './LocalPlayer.ts';
 import { GhostsView } from './GhostsView.ts';
+import { FloorLampView } from '../scene/FloorLampView.ts';
 import { RemotePlayerView } from './RemotePlayerView.ts';
 
 /**
@@ -34,6 +36,8 @@ export class NetworkSession {
   private readonly clock = new ServerClock();
   private readonly remotes = new Map<string, RemotePlayerView>();
   private readonly ghostsView: GhostsView;
+  private readonly floorLamp: FloorLampView;
+  private latestDroppedLamp: DroppedLampSnapshot | null = null;
   private readonly unsubscribe: Array<() => void> = [];
   private currentPhase: SpacePhase = 'playing';
   private latestExit: ExitSnapshot | null = null;
@@ -63,6 +67,7 @@ export class NetworkSession {
     // Кому достанется лампа, решает сервер (жребий в каждом пространстве);
     // до первого снимка считаем, что её нет — это скрыто заставкой пространства.
     this.ghostsView = new GhostsView(scene);
+    this.floorLamp = new FloorLampView(scene);
     this.reconciler = new PredictionReconciler(space);
     for (const info of players) {
       if (info.id !== playerId) {
@@ -132,6 +137,11 @@ export class NetworkSession {
     return this.selfHasLamp ? this.selfLamp : null;
   }
 
+  /** Лампа лежит на полу (выпала от перегрева); `null` — она у кого-то в руках. */
+  public get droppedLamp(): DroppedLampSnapshot | null {
+    return this.latestDroppedLamp;
+  }
+
   /** Лампа (одна на двоих) сейчас у этого игрока. */
   public get hasLamp(): boolean {
     return this.selfHasLamp;
@@ -199,10 +209,12 @@ export class NetworkSession {
       const renderTime = serverNow - NetworkSession.INTERPOLATION_DELAY_MS;
       this.remotes.forEach((remote) => remote.update(renderTime, time));
       this.ghostsView.update(renderTime, time, deltaSeconds, this.player.position);
+      this.floorLamp.update(this.latestDroppedLamp, time);
     }
   }
 
   public dispose(): void {
+    this.floorLamp.dispose();
     this.unsubscribe.forEach((off) => off());
     this.remotes.forEach((remote) => remote.dispose());
     this.remotes.clear();
@@ -224,7 +236,9 @@ export class NetworkSession {
       this.ghostsView.clear();
     }
     this.ghostsView.push(snapshot.serverTime, snapshot.ghosts);
-    this.latestSharedLamp = snapshot.players.find((state) => state.lamp)?.lamp ?? null;
+    this.latestDroppedLamp = snapshot.droppedLamp;
+    this.latestSharedLamp =
+      snapshot.players.find((state) => state.lamp)?.lamp ?? snapshot.droppedLamp?.lamp ?? null;
     for (const state of snapshot.players) {
       const position = new Vector2(state.x, state.y);
       if (state.id === this.playerId) {

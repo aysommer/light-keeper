@@ -10,6 +10,8 @@ export class InputController {
    * браузеры присылают ложные скачки сразу после захвата указателя.
    */
   private static readonly MAX_MOUSE_DELTA = 250;
+  /** Сколько пикселей прокрутки — один шаг колеса. */
+  private static readonly WHEEL_STEP = 50;
 
   private readonly pressed = new Set<string>();
   private readonly justPressed = new Set<string>();
@@ -50,8 +52,25 @@ export class InputController {
     this.lockListeners.forEach((listener) => listener(this.isLocked));
   };
 
+  /** Колесо мыши: шаги с прошлого чтения (+ вниз, − вверх). */
+  private wheelSteps = 0;
+  private wheelAccumulated = 0;
+  private readonly onWheel = (event: WheelEvent): void => {
+    if (!this.isLocked) {
+      return;
+    }
+    // Тачпады шлют много мелких событий — копим до «щелчка» колеса.
+    this.wheelAccumulated += event.deltaMode === 0 ? event.deltaY : event.deltaY * 40;
+    while (Math.abs(this.wheelAccumulated) >= InputController.WHEEL_STEP) {
+      const step = Math.sign(this.wheelAccumulated);
+      this.wheelSteps += step;
+      this.wheelAccumulated -= step * InputController.WHEEL_STEP;
+    }
+  };
+
   public constructor(private readonly target: HTMLElement) {
     window.addEventListener('keydown', this.onKeyDown);
+    document.addEventListener('wheel', this.onWheel);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
     document.addEventListener('mousemove', this.onMouseMove);
@@ -71,6 +90,13 @@ export class InputController {
   /** Клавишу нажали в этом кадре (не забирая нажатие у других). */
   public peekPress(code: string): boolean {
     return this.justPressed.has(code);
+  }
+
+  /** Шаги колеса с прошлого вызова: +1 — вниз (следующий предмет), −1 — вверх. */
+  public consumeWheel(): number {
+    const steps = this.wheelSteps;
+    this.wheelSteps = 0;
+    return steps;
   }
 
   public consumePress(code: string): boolean {
@@ -109,6 +135,7 @@ export class InputController {
   public dispose(): void {
     this.releasePointer();
     window.removeEventListener('keydown', this.onKeyDown);
+    document.removeEventListener('wheel', this.onWheel);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
     document.removeEventListener('mousemove', this.onMouseMove);

@@ -25,7 +25,9 @@ export class ExchangeSystem implements System {
     const players = [...world.players.values()];
     players.forEach((player) => (player.aimingAtPartner = false));
     const [a, b] = players;
-    if (world.phase !== 'playing' || !a || !b || players.length !== 2) {
+    // Лампа на полу — передавать нечего: её сначала нужно поднять.
+    const lampInHands = players.some((player) => player.lamp !== null);
+    if (world.phase !== 'playing' || !a || !b || players.length !== 2 || !lampInHands) {
       state.clearOffer();
       return;
     }

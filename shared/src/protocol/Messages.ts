@@ -47,6 +47,13 @@ export interface LampSnapshot {
   readonly overheated: boolean;
 }
 
+/** Лампа, выпавшая из рук от перегрева: лежит на полу, пока её не поднимут. */
+export interface DroppedLampSnapshot {
+  readonly x: number;
+  readonly y: number;
+  readonly lamp: LampSnapshot;
+}
+
 /** Состояние игрока в снимке мира. */
 export interface PlayerSnapshot {
   readonly id: string;
@@ -132,6 +139,8 @@ export interface MatchSnapshot {
   readonly oilTaken: readonly number[];
   /** Пустые канистры, оставленные игроками после заправки. */
   readonly oilDropped: readonly DroppedCanister[];
+  /** Общая лампа на полу (выпала от перегрева); `null` — она у кого-то в руках. */
+  readonly droppedLamp: DroppedLampSnapshot | null;
   readonly ghosts: readonly GhostSnapshot[];
   readonly players: readonly PlayerSnapshot[];
 }

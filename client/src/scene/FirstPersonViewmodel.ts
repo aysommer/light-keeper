@@ -9,9 +9,10 @@ import {
 } from 'three';
 import type { BufferGeometry, MeshStandardMaterial, Scene } from 'three';
 import { LampRules } from '@light-keeper/shared';
-import type { HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
+import type { ExitCode, HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
 import { LampFlame } from '../game/LampFlame.ts';
 import { ItemSwitcher } from '../game/ItemSwitcher.ts';
+import { HeldProps } from './HeldProps.ts';
 import { LanternModel } from './LanternModel.ts';
 import { StickmanModel } from './StickmanModel.ts';
 import { StickmanRig } from './StickmanRig.ts';
@@ -33,14 +34,21 @@ export interface ViewmodelMotion {
   readonly reach: number;
   /** Идёт заправка — фонарь опущен и наклонён. */
   readonly refueling: boolean;
+  /** Направление на напарника для стрелки компаса, рад (по часовой от «вперёд»). */
+  readonly bearing: number | null;
+  /** Сколько ключей у игрока (видно на связке). */
+  readonly keys: number;
+  /** Код из записки; `null` — записки нет. */
+  readonly code: ExitCode | null;
 }
 
 /**
  * Своя рука от первого лица: тонкая рука цвета игрока с висящим фонарём.
  * Рисуется отдельной сценой поверх мира (см. SceneManager), поэтому не утопает
  * в стенах. Рука качается при ходьбе, запаздывает при поворотах; фонарь —
- * маятник. При смене предмета рука опускается и поднимается; с компасом
- * в руке фонарь убран (сам компас — на экране, см. CompassView).
+ * маятник. При смене предмета рука опускается и поднимается. Кроме фонаря
+ * в руке бывают компас со стрелкой на напарника, связка ключей и записка
+ * с кодом, который читается прямо на листке (см. HeldProps).
  */
 export class FirstPersonViewmodel {
   private static readonly HAND = new Vector3(0.22, -0.1, -0.6);
@@ -58,6 +66,7 @@ export class FirstPersonViewmodel {
   private readonly material: MeshStandardMaterial;
   private readonly geometries: BufferGeometry[] = [];
   private readonly switcher = new ItemSwitcher();
+  private readonly props = new HeldProps();
   private swayX = 0;
   private swayY = 0;
   private swingSide = 0;
@@ -103,6 +112,13 @@ export class FirstPersonViewmodel {
     this.lantern.root.scale.setScalar(FirstPersonViewmodel.LANTERN_SCALE);
     this.glow.position.y = LanternModel.GLASS_CENTER_Y * FirstPersonViewmodel.LANTERN_SCALE;
     this.lampPivot.add(this.glow);
+
+    // Компас и ключи — в кисти; записка — перед глазами, чтобы код можно было прочитать.
+    this.props.compass.position.copy(hand).add(new Vector3(-0.05, 0.03, 0.02));
+    this.props.keys.position.copy(hand).add(new Vector3(-0.01, -0.005, 0));
+    this.props.note.position.set(0.04, -0.13, -0.42);
+    this.props.note.rotation.set(-0.42, -0.12, 0.03);
+    this.root.add(this.props.compass, this.props.keys, this.props.note);
   }
 
   private level = 0;
@@ -118,8 +134,8 @@ export class FirstPersonViewmodel {
     const lampShown = shown.item === 'lamp';
     this.lantern.root.visible = lampShown;
     this.glow.visible = lampShown;
-    // С компасом рука пустая — её не показываем, компас на экране.
-    this.root.visible = lampShown && shown.raise > 0;
+    this.root.visible = shown.raise > 0;
+    this.props.update(shown.item, time, motion.bearing, motion.keys, motion.code);
 
     // Инерция: рука отстаёт от поворота головы.
     const follow = 1 - Math.exp(-dt * 10);
@@ -171,6 +187,7 @@ export class FirstPersonViewmodel {
   public dispose(): void {
     this.root.removeFromParent();
     this.lantern.dispose();
+    this.props.dispose();
     this.glow.dispose();
     this.material.dispose();
     this.geometries.forEach((geometry) => geometry.dispose());

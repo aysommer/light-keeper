@@ -113,6 +113,8 @@ export class ExitDoorView {
     if (exit.kind === 'code') {
       this.root.add(this.createKeypad(width));
     }
+    // Над любой дверью — светильник: дверь видно и без своей лампы, издалека и в темноте.
+    this.root.add(this.createBeacon(height));
 
     // Подсказка обычной двери: полоска тёплого света из-под неё и отсвет на полу.
     this.glow = exit.kind === 'plain' ? this.createGlow(width) : null;
@@ -165,6 +167,26 @@ export class ExitDoorView {
     this.root.traverse((object) => {
       if (object instanceof PointLight) object.dispose();
     });
+  }
+
+  /** Светильник над дверью: светящийся плафон и свет, падающий на дверь. */
+  private createBeacon(height: number): Group {
+    const beacon = new Group();
+    beacon.position.set(0, height + ExitDoorView.FRAME_WIDTH + 0.12, 0);
+    const shade = new Mesh(
+      this.geometry(new BoxGeometry(0.34, 0.07, 0.08)),
+      this.own(new MeshStandardMaterial({ color: '#3a3326', metalness: 0.4, roughness: 0.6 })),
+    );
+    shade.position.z = 0.04;
+    const lamp = new Mesh(
+      this.geometry(new BoxGeometry(0.28, 0.03, 0.05)),
+      this.own(new MeshBasicMaterial({ color: '#ffe2a0' })),
+    );
+    lamp.position.set(0, -0.045, 0.05);
+    const light = new PointLight('#ffd590', 2.4, 5.5, 1.6);
+    light.position.set(0, -0.15, 0.4);
+    beacon.add(shade, lamp, light);
+    return beacon;
   }
 
   private createGlow(width: number): Group {

@@ -1,5 +1,5 @@
-import { PlayerMovement, Vector2 } from '@light-keeper/shared';
-import type { MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
+import { GameConfig, PlayerMovement, Vector2 } from '@light-keeper/shared';
+import type { HeldItem, MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
 import { AudioEngine } from '../audio/AudioEngine.ts';
 import { SoundDirector } from '../audio/SoundDirector.ts';
 import { GameLoop } from '../core/GameLoop.ts';
@@ -22,8 +22,6 @@ import { FirstPersonViewmodel } from '../scene/FirstPersonViewmodel.ts';
 import { HandLampLight } from '../scene/HandLampLight.ts';
 import { SceneManager } from '../scene/SceneManager.ts';
 import { CodePanel } from './CodePanel.ts';
-import { CompassView } from './CompassView.ts';
-import { HandItemHud } from './HandItemHud.ts';
 import { ExitHud } from './ExitHud.ts';
 import { Hud } from './Hud.ts';
 import { ScareOverlay } from './ScareOverlay.ts';
@@ -56,8 +54,6 @@ export class GameScreen implements Screen {
   private readonly settings: SettingsPanel;
   private readonly overlay = new TransitionOverlay();
   private readonly exitHud = new ExitHud();
-  private readonly compass = new CompassView();
-  private readonly handItem = new HandItemHud();
   private submitCode: ((code: readonly string[]) => void) | null = null;
   private readonly codePanel = new CodePanel((code) => this.submitCode?.(code));
   private readonly lampHud = new LampHud();
@@ -92,7 +88,6 @@ export class GameScreen implements Screen {
       this.lampGauges.element,
       this.hud.element,
       this.exitHud.element,
-      this.compass.element,
       this.tambour.element,
       this.overlay.element,
       this.settings.element,
@@ -166,7 +161,7 @@ export class GameScreen implements Screen {
     let flash: { text: string; until: number } | null = null;
     let codeFailuresSeen = 0;
     this.submitCode = (code) => session.submitCode(code);
-    this.element.append(this.handItem.element, this.codePanel.element);
+    this.element.append(this.codePanel.element);
     this.loop = new GameLoop((delta, time) => {
       if (import.meta.env.DEV) {
         this.handleDebugKeys(input, session, player, space);
@@ -203,6 +198,16 @@ export class GameScreen implements Screen {
           askedForLampUntil = time + GameScreen.NO_LAMP_HINT_SECONDS;
         }
       }
+      // Колесо мыши листает доступные предметы (как в других играх).
+      const wheel = input.consumeWheel();
+      if (wheel !== 0 && !this.codePanel.visible) {
+        const available: HeldItem[] = [session.hasLamp ? 'lamp' : 'compass', 'compass'];
+        if (session.ownKeys > 0) available.push('key');
+        if (session.hasNote) available.push('note');
+        const shown =
+          this.held.current === 'lamp' && !session.hasLamp ? 'compass' : this.held.current;
+        this.held.select(HeldItems.cycle(shown, wheel, available));
+      }
       // Лампу только что передали — она сразу в руке.
       if (session.hasLamp && !hadLamp) this.held.select('lamp');
       hadLamp = session.hasLamp;
@@ -234,10 +239,20 @@ export class GameScreen implements Screen {
         session.inTambour,
         session.hasLamp,
       );
+      // Лампа на полу рядом — поднять её важнее всего остального.
+      const dropped = session.droppedLamp;
+      const pickupHint =
+        dropped &&
+        !session.inTambour &&
+        player.position.distanceTo(new Vector2(dropped.x, dropped.y)) <=
+          GameConfig.lamp.pickupDistance
+          ? 'E — поднять лампу'
+          : null;
       this.exitHud.update(
         exit,
         options.playerId,
-        exchangeHint ??
+        pickupHint ??
+          exchangeHint ??
           this.prompt.resolve(space.space, exit, player.position, session.inTambour, {
             item,
             keys: session.ownKeys,
@@ -259,7 +274,7 @@ export class GameScreen implements Screen {
         !inTransition &&
         this.prompt.isNearDoor(space.space, player.position);
       const panelCode = space.space.code;
-      if (interactPressed && atPanel && exchangeHint === null && panelCode) {
+      if (interactPressed && atPanel && exchangeHint === null && pickupHint === null && panelCode) {
         codeFailuresSeen = exit.codeFailures;
         this.codePanel.show(panelCode.alphabet);
         document.exitPointerLock();
@@ -272,7 +287,6 @@ export class GameScreen implements Screen {
           this.codePanel.showWrong();
         }
       }
-      this.handItem.update(item, session.ownKeys, session.hasNote ? space.space.code : null);
       this.tambour.update(session.inTambour && !inTransition, exit?.secondsLeft ?? null);
       // Рука с фонарём от первого лица; лампа светит в мир, только пока фонарь поднят.
       const yawDelta = Math.atan2(
@@ -289,6 +303,11 @@ export class GameScreen implements Screen {
         lamp: session.ownLamp,
         reach: this.handOver.update(delta, session.exchange?.count ?? null),
         refueling: session.ownRefuelProgress > 0,
+        bearing: partnerPosition
+          ? PartnerBearing.clockwiseFromForward(player.position, player.yaw, partnerPosition)
+          : null,
+        keys: session.ownKeys,
+        code: session.hasNote ? space.space.code : null,
       });
       previousYaw = player.yaw;
       previousPitch = player.pitch;
@@ -312,6 +331,7 @@ export class GameScreen implements Screen {
       this.lampGauges.update(
         session.inTambour || inTransition ? null : session.sharedLamp,
         session.hasLamp,
+        session.droppedLamp !== null,
       );
       this.lampHud.update(
         session.inTambour ? 0 : (ownLamp?.heat ?? 0),
@@ -326,6 +346,7 @@ export class GameScreen implements Screen {
                 session.inTambour,
                 session.ownCanisters,
                 time < askedForLampUntil,
+                session.droppedLamp !== null,
               )) ??
           (session.inTambour
             ? null
@@ -340,13 +361,6 @@ export class GameScreen implements Screen {
         session.inTambour ? 0 : session.ownCanisters,
         session.ownRefuelProgress,
       );
-      const compassInHand = item === 'compass' && !session.inTambour;
-      this.compass.update(
-        compassInHand,
-        partnerPosition
-          ? PartnerBearing.clockwiseFromForward(player.position, player.yaw, partnerPosition)
-          : null,
-      );
       if (input.consumePress('KeyM')) {
         this.hud.setMuted(audio.toggleMute());
       }
@@ -359,7 +373,7 @@ export class GameScreen implements Screen {
         exitOpen: session.exit?.open ?? false,
         pickups: (session.exit?.keysTaken.length ?? 0) + (session.exit?.noteHolderId ? 1 : 0),
         canisters: session.ownCanisters,
-        overheated: ownLampState?.overheated ?? false,
+        overheated: session.sharedLamp?.overheated ?? false,
         exchangeCount: session.exchange?.count ?? 0,
         bobPhase: controller.bobPhase,
         moving: player.isMoving,

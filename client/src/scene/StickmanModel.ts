@@ -1,6 +1,16 @@
-import { CylinderGeometry, Group, Mesh, MeshStandardMaterial, PointLight } from 'three';
+import {
+  BoxGeometry,
+  CylinderGeometry,
+  DoubleSide,
+  Group,
+  Mesh,
+  MeshStandardMaterial,
+  PlaneGeometry,
+  PointLight,
+} from 'three';
 import { LampRules } from '@light-keeper/shared';
 import type { HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
+import { Blinker } from '../game/Blinker.ts';
 import { LampFlame } from '../game/LampFlame.ts';
 import { StickmanAnimator } from '../game/StickmanAnimator.ts';
 import { GroundShadow } from './GroundShadow.ts';
@@ -21,12 +31,21 @@ export class StickmanModel {
   public readonly root: Group;
   private readonly rig: StickmanRig;
   private readonly animator = new StickmanAnimator();
+  private readonly blinker = new Blinker();
   private readonly bodyMaterial: MeshStandardMaterial;
   private readonly lampSwing = new Group();
   private readonly lantern = new LanternModel();
   private readonly lampLight: PointLight;
   private readonly compass: Mesh;
   private readonly shadow = new GroundShadow(0.85);
+  /** Ключ и записка в руке напарника (издалека — просто латунь и белый листок). */
+  private readonly key: Mesh;
+  private readonly note: Mesh;
+  private readonly noteMaterial = new MeshStandardMaterial({
+    color: '#f1ead2',
+    roughness: 0.9,
+    side: DoubleSide,
+  });
   private readonly compassMaterial = new MeshStandardMaterial({
     color: '#c9a227',
     metalness: 0.8,
@@ -49,6 +68,14 @@ export class StickmanModel {
     this.compass.position.set(0, -0.02, -0.03);
     this.compass.rotation.x = Math.PI / 2;
     this.rig.rightHand.add(this.compass);
+
+    this.key = new Mesh(new BoxGeometry(0.02, 0.1, 0.01), this.compassMaterial);
+    this.key.position.set(0, -0.06, -0.02);
+    this.rig.rightHand.add(this.key);
+    this.note = new Mesh(new PlaneGeometry(0.15, 0.1), this.noteMaterial);
+    this.note.position.set(0, -0.02, -0.06);
+    this.note.rotation.x = -0.6;
+    this.rig.rightHand.add(this.note);
 
     this.shadow.attach(this.root, 0.9);
   }
@@ -74,11 +101,14 @@ export class StickmanModel {
       rightElbow: animated.rightElbow * (1 - reach * 0.7),
     };
     this.rig.applyPose(pose);
+    this.rig.setEyesOpen(this.blinker.update(deltaSeconds));
     this.lampSwing.rotation.x = pose.lampSwing;
 
     const lampInHand = item === 'lamp';
     this.lantern.root.visible = lampInHand;
     this.compass.visible = item === 'compass';
+    this.key.visible = item === 'key';
+    this.note.visible = item === 'note';
     const brightness = lampInHand && lamp ? LampRules.brightness(lamp) : 0;
     const level = LampFlame.level(time, brightness, 1.3);
     this.lampLight.visible = level > 0;
@@ -89,6 +119,9 @@ export class StickmanModel {
 
   public dispose(): void {
     this.shadow.dispose();
+    this.key.geometry.dispose();
+    this.note.geometry.dispose();
+    this.noteMaterial.dispose();
     this.rig.dispose();
     this.lantern.dispose();
     this.lampLight.dispose();

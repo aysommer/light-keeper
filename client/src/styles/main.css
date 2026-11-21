@@ -561,86 +561,9 @@ kbd {
 
 /* Компас */
 
-.compass {
-  position: absolute;
-  right: 28px;
-  bottom: 28px;
-  pointer-events: none;
-}
-
-.compass[hidden] {
-  display: none;
-}
-
-.compass__ring {
-  position: relative;
-  width: 104px;
-  height: 104px;
-  border: 3px solid #c9a227;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgb(40 32 12 / 0.9) 0%, rgb(15 12 4 / 0.92) 100%);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.6);
-}
-
 /* Метка «прямо по курсу» наверху циферблата. */
-.compass__mark {
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  width: 4px;
-  height: 10px;
-  margin-left: -2px;
-  border-radius: 2px;
-  background: rgb(243 231 176 / 0.7);
-}
-
-.compass__needle {
-  position: absolute;
-  inset: 0;
-  transition: transform 0.08s linear;
-}
-
-.compass__needle::before {
-  content: '';
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  width: 0;
-  height: 0;
-  margin-left: -8px;
-  border-right: 8px solid transparent;
-  border-bottom: 38px solid #ff5a4d;
-  border-left: 8px solid transparent;
-}
-
-.compass__needle::after {
-  content: '';
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  width: 0;
-  height: 0;
-  margin-left: -6px;
-  border-top: 28px solid rgb(243 231 176 / 0.35);
-  border-right: 6px solid transparent;
-  border-left: 6px solid transparent;
-}
-
-.compass__hub {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 12px;
-  height: 12px;
-  margin: -6px 0 0 -6px;
-  border-radius: 50%;
-  background: #c9a227;
-}
 
 /* Напарник неизвестен (в тамбуре или ещё не виден): стрелки нет. */
-.compass--lost .compass__needle {
-  display: none;
-}
 
 /* Лампа: нагрев и подсказки */
 
@@ -1015,73 +938,6 @@ kbd {
 
 .settings__close {
   align-self: flex-end;
-}
-
-/* Предмет в руке: ключи и записка */
-
-.hand-item {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  color: #f3e7b0;
-}
-
-.hand-item__keys {
-  position: absolute;
-  right: 28px;
-  bottom: 40px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgb(20 17 10 / 0.6);
-  color: #d4ad2f;
-}
-
-.hand-item__keys svg {
-  width: 64px;
-  height: 32px;
-}
-
-.hand-item__count {
-  font-size: 22px;
-  font-weight: 700;
-  color: #f3e7b0;
-}
-
-.hand-item__note {
-  position: absolute;
-  left: 50%;
-  bottom: 96px;
-  width: min(320px, calc(100% - 32px));
-  padding: 14px 18px 18px;
-  transform: translateX(-50%) rotate(-1.5deg);
-  border-radius: 4px;
-  background:
-    repeating-linear-gradient(transparent 0 23px, rgb(80 110 160 / 0.25) 23px 24px), #f1ead2;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
-  color: #262333;
-  text-align: center;
-}
-
-.hand-item__keys[hidden],
-.hand-item__note[hidden] {
-  display: none;
-}
-
-.hand-item__note-title {
-  margin: 0 0 8px;
-  font-size: 14px;
-  opacity: 0.7;
-}
-
-.hand-item__note-code {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  font-size: 40px;
-  font-weight: 700;
 }
 
 .code-symbol {

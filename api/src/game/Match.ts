@@ -3,6 +3,7 @@ import type {
   DebugGotoTarget,
   DebugLampPreset,
   MatchPlayerInfo,
+  MatchSnapshot,
   PlayerColor,
   PlayerInput,
   ServerMessage,
@@ -234,11 +235,17 @@ export class Match {
         exchange: this.world.exchange.snapshot(),
         oilTaken: this.world.oil.snapshot(),
         oilDropped: this.world.oil.droppedSnapshot(),
+        droppedLamp: this.droppedLampSnapshot(),
         ghosts: this.world.ghostPopulation.ghosts.map((ghost) => ghost.snapshot()),
         players: [...this.world.players.values()].map((player) => player.snapshot()),
       },
     };
     this.broadcast(message);
+  }
+
+  private droppedLampSnapshot(): MatchSnapshot['droppedLamp'] {
+    const at = this.world.lampOnFloor;
+    return at ? { x: at.x, y: at.y, lamp: this.world.lamp.snapshot() } : null;
   }
 
   private broadcast(message: ServerMessage): void {

@@ -40,6 +40,21 @@ export class HeldItems {
     return HeldItems.KEYS[code];
   }
 
+  /**
+   * Следующий предмет по колесу мыши среди доступных (по кругу, в порядке слотов).
+   * @param steps шаги колеса: + вперёд, − назад
+   */
+  public static cycle(current: HeldItem, steps: number, available: readonly HeldItem[]): HeldItem {
+    const order: readonly HeldItem[] = ['lamp', 'compass', 'key', 'note'];
+    const slots = order.filter((item) => available.includes(item));
+    if (slots.length === 0 || steps === 0) {
+      return current;
+    }
+    const at = Math.max(0, slots.indexOf(current));
+    const next = (((at + steps) % slots.length) + slots.length) % slots.length;
+    return slots[next] ?? current;
+  }
+
   public static get keyCodes(): string[] {
     return Object.keys(HeldItems.KEYS);
   }

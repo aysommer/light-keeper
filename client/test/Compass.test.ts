@@ -48,3 +48,21 @@ describe('HeldItems', () => {
     expect(items.current).toBe('lamp');
   });
 });
+
+describe('HeldItems.cycle: колесо мыши', () => {
+  it('листает доступные предметы по кругу в обе стороны', () => {
+    const all = ['lamp', 'compass', 'key', 'note'] as const;
+    expect(HeldItems.cycle('lamp', 1, all)).toBe('compass');
+    expect(HeldItems.cycle('compass', 1, all)).toBe('key');
+    expect(HeldItems.cycle('note', 1, all)).toBe('lamp');
+    expect(HeldItems.cycle('lamp', -1, all)).toBe('note');
+    expect(HeldItems.cycle('lamp', 2, all)).toBe('key');
+  });
+
+  it('пропускает то, чего нет', () => {
+    expect(HeldItems.cycle('lamp', 1, ['lamp', 'compass'])).toBe('compass');
+    expect(HeldItems.cycle('compass', 1, ['lamp', 'compass'])).toBe('lamp');
+    expect(HeldItems.cycle('compass', 1, ['compass', 'note'])).toBe('note');
+    expect(HeldItems.cycle('compass', 0, ['lamp', 'compass'])).toBe('compass');
+  });
+});

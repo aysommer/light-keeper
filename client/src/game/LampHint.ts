@@ -21,9 +21,13 @@ export class LampHint {
     inTambour: boolean,
     canisters: number,
     askedForLamp: boolean,
+    onFloor = false,
   ): string | null {
     if (!lamp || inTambour) {
       return null;
+    }
+    if (onFloor) {
+      return 'Лампа перегрелась и упала — подними её (E)';
     }
     const refuelHint = canisters > 0 ? ' — возьми её и заправь (R)' : '';
     if (lamp.overheated) {

@@ -186,14 +186,51 @@ describe('ExchangeSystem', () => {
     expect(ctx.match.world.exchange.count).toBe(2);
   });
 
-  it('перегретая лампа после обмена может сразу загореться, если остыла достаточно', () => {
+  it('перегретая лампа выпадает из рук на пол — передавать нечего', () => {
     const ctx = setup();
     ctx.faceEachOther();
     const lamp = ctx.player('red').lamp!;
-    lamp.heat = GameConfig.lamp.relightHeat + settings.heatRelief - 5;
-    lamp.overheated = true;
+    lamp.heat = 99.99;
+    ctx.tick();
+    expect(lamp.overheated).toBe(true);
+    expect(ctx.player('red').lamp).toBeNull();
+    expect(ctx.player('blue').lamp).toBeNull();
+    expect(ctx.match.world.lampOnFloor).not.toBeNull();
     ctx.tick({ red: true, blue: true });
-    expect(lamp.overheated).toBe(false);
+    expect(ctx.match.world.exchange.count).toBe(0);
+  });
+
+  it('лампу с пола поднимает тот, кто рядом нажал E; она остывает на полу', () => {
+    const ctx = setup();
+    ctx.faceEachOther();
+    const lamp = ctx.player('red').lamp!;
+    lamp.heat = 99.99;
+    ctx.tick();
+    const floor = ctx.match.world.lampOnFloor!;
+    const heatOnFloor = lamp.heat;
+    for (let i = 0; i < 20; i++) ctx.tick();
+    expect(lamp.heat).toBeLessThan(heatOnFloor);
+    // Просто стоять рядом мало — нужно нажать E.
+    ctx.player('blue').position = floor;
+    ctx.tick();
+    expect(ctx.player('blue').lamp).toBeNull();
+    ctx.press('blue');
+    expect(ctx.player('blue').lamp).toBe(lamp);
+    expect(ctx.match.world.lampOnFloor).toBeNull();
+    // Подняв, обмена этим же нажатием не случилось.
+    expect(ctx.match.world.exchange.count).toBe(0);
+  });
+
+  it('снимок сообщает, что лампа лежит на полу', () => {
+    const ctx = setup();
+    ctx.player('red').lamp!.heat = 99.99;
+    ctx.tick();
+    const snapshot = (ctx.player('red').participant as FakeParticipant).inbox
+      .filter((m) => m.type === 'match:snapshot')
+      .at(-1);
+    if (snapshot?.type !== 'match:snapshot') throw new Error('нет снимка');
+    expect(snapshot.snapshot.droppedLamp).toMatchObject({ lamp: { overheated: true } });
+    expect(snapshot.snapshot.players.every((p) => p.lamp === null)).toBe(true);
   });
 
   it('снимок сообщает о предложении и количестве обменов', () => {

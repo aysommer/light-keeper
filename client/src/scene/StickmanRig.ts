@@ -28,6 +28,9 @@ export class StickmanRig {
   private readonly leftElbow = new Group();
   private readonly rightElbow = new Group();
   private readonly geometries: BufferGeometry[] = [];
+  private static readonly EYE_HEIGHT = 0.034;
+  private readonly eyeMaterial = new MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.4 });
+  private readonly eyes: Mesh[] = [];
 
   public constructor(private readonly material: Material) {
     this.body.position.y = StickmanRig.HIP_HEIGHT;
@@ -37,6 +40,16 @@ export class StickmanRig {
     const head = new Mesh(this.geometry(new SphereGeometry(0.15, 20, 14)), material);
     head.position.y = 0.7;
     this.body.add(head);
+    // Глаза — тёмно-серые овалы спереди головы (модель смотрит в −Z); моргают.
+    const eyeGeometry = this.geometry(new SphereGeometry(1, 12, 8));
+    for (const side of [-1, 1]) {
+      const eye = new Mesh(eyeGeometry, this.eyeMaterial);
+      eye.scale.set(0.024, StickmanRig.EYE_HEIGHT, 0.012);
+      eye.position.set(side * 0.055, 0.03, -0.138);
+      eye.rotation.y = -side * 0.35;
+      head.add(eye);
+      this.eyes.push(eye);
+    }
 
     this.leg(this.leftHip, this.leftKnee, -0.07);
     this.leg(this.rightHip, this.rightKnee, 0.07);
@@ -44,6 +57,11 @@ export class StickmanRig {
     this.arm(this.rightShoulder, this.rightElbow, 0.04, 0.12);
     this.rightHand.position.y = -StickmanRig.FOREARM;
     this.rightElbow.add(this.rightHand);
+  }
+
+  /** @param open насколько открыты глаза: 1 — открыты, 0 — закрыты. */
+  public setEyesOpen(open: number): void {
+    this.eyes.forEach((eye) => (eye.scale.y = StickmanRig.EYE_HEIGHT * Math.max(0.06, open)));
   }
 
   public applyPose(pose: StickmanPose): void {
@@ -60,6 +78,7 @@ export class StickmanRig {
   }
 
   public dispose(): void {
+    this.eyeMaterial.dispose();
     this.root.removeFromParent();
     this.geometries.forEach((geometry) => geometry.dispose());
   }
