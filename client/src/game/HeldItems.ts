@@ -2,13 +2,17 @@ import type { HeldItem } from '@light-keeper/shared';
 
 export type { HeldItem };
 
-/** Что игрок держит в руках: клавиша 1 — лампа, клавиша 2 — компас. */
+/** Что игрок держит в руках: 1 — лампа, 2 — компас, 3 — ключи, 4 — записка. */
 export class HeldItems {
   private static readonly KEYS: Readonly<Record<string, HeldItem>> = {
     Digit1: 'lamp',
     Numpad1: 'lamp',
     Digit2: 'compass',
     Numpad2: 'compass',
+    Digit3: 'key',
+    Numpad3: 'key',
+    Digit4: 'note',
+    Numpad4: 'note',
   };
 
   private selected: HeldItem = 'lamp';
@@ -29,6 +33,11 @@ export class HeldItems {
     }
     this.selected = item;
     return true;
+  }
+
+  /** Какой предмет означает клавиша (без выбора). */
+  public static itemFor(code: string): HeldItem | undefined {
+    return HeldItems.KEYS[code];
   }
 
   public static get keyCodes(): string[] {

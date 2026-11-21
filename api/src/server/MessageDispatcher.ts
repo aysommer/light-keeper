@@ -97,6 +97,9 @@ export class MessageDispatcher {
           this.lobbies.lobbyOf(connection.id)?.match?.debugGoto(connection.id, message.target);
         }
         return;
+      case 'exit:code':
+        this.lobbies.lobbyOf(connection.id)?.match?.submitCode(connection.id, message.code);
+        return;
       case 'input':
         // Команды, долетевшие после конца партии, просто отбрасываются.
         this.lobbies.lobbyOf(connection.id)?.match?.receiveInput(connection.id, message.commands);

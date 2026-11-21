@@ -2,6 +2,7 @@ import { GameConfig } from '../config/GameConfig.ts';
 import type { ExitSettings } from '../config/GameConfig.ts';
 import { Vector2 } from '../math/Vector2.ts';
 import type { SeededRandom } from '../random/SeededRandom.ts';
+import { ExitCode } from './ExitCode.ts';
 import type { Door } from './Door.ts';
 import { ExitDoor } from './ExitDoor.ts';
 import type { ExitKind } from './ExitDoor.ts';
@@ -13,18 +14,25 @@ import type { SpaceGrid } from './SpaceGrid.ts';
 
 export interface ExitPlan {
   readonly exit: ExitDoor;
-  /** Где лежит ключ; `null`, если дверь без ключа. */
-  readonly key: Vector2 | null;
+  /** Где лежат ключи (только у запертой двери; их 1–3). */
+  readonly keys: readonly Vector2[];
+  /** Где лежит записка с кодом (только у двери с панелью). */
+  readonly note: Vector2 | null;
+  /** Код двери с панелью. */
+  readonly code: ExitCode | null;
 }
 
 /**
- * Прячет дверь выхода и ключ.
+ * Прячет дверь выхода, ключи и записку с кодом.
  * Дверь — в одной из самых дальних от старта комнат (лучше тупиковой), на сплошной
- * стене. Ключ — в другой ветке лабиринта: не на кратчайшем пути от старта к двери,
- * но тоже далеко от старта.
+ * стене. Ключи и записка — в других ветках лабиринта: не на кратчайшем пути от
+ * старта к двери, но тоже далеко от старта; ключи — по возможности в разных комнатах.
  */
 export class ExitPlanner {
-  private static readonly KINDS: readonly ExitKind[] = ['plain', 'hidden', 'locked'];
+  private static readonly KINDS: readonly ExitKind[] = ['plain', 'locked', 'code'];
+  /** Сколько ключей бывает у запертой двери. */
+  public static readonly MIN_KEYS = 1;
+  public static readonly MAX_KEYS = 3;
 
   public constructor(private readonly settings: ExitSettings = GameConfig.exit) {}
 
@@ -52,18 +60,58 @@ export class ExitPlanner {
       this.pickFarthest(deadEnds.length > 0 ? deadEnds : others, distanceOf, rng) ?? startRoom;
     const exit = this.placeDoor(kind, exitRoom, grid, layout, rooms, doors, rng);
 
-    let key: Vector2 | null = null;
+    const path = new Set(graph.path(startRoom.id, exitRoom.id));
+    const offPath = others.filter((room) => !path.has(room.id));
+    const fallback = others.filter((room) => room !== exitRoom);
+    const hidingRooms = offPath.length > 0 ? offPath : fallback;
+
     if (kind === 'locked') {
-      const path = new Set(graph.path(startRoom.id, exitRoom.id));
-      const offPath = others.filter((room) => !path.has(room.id));
-      const fallback = others.filter((room) => room !== exitRoom);
-      const keyRoom =
-        this.pickFarthest(offPath.length > 0 ? offPath : fallback, distanceOf, rng) ?? startRoom;
-      const col = keyRoom.cells.col + rng.int(0, keyRoom.cells.width - 1);
-      const row = keyRoom.cells.row + rng.int(0, keyRoom.cells.height - 1);
-      key = grid.cellCenter(col, row);
+      const count = rng.int(ExitPlanner.MIN_KEYS, ExitPlanner.MAX_KEYS);
+      return {
+        exit,
+        keys: this.hide(count, hidingRooms, grid, distanceOf, rng, startRoom),
+        note: null,
+        code: null,
+      };
     }
-    return { exit, key };
+    if (kind === 'code') {
+      const [note] = this.hide(1, hidingRooms, grid, distanceOf, rng, startRoom);
+      return { exit, keys: [], note: note ?? null, code: ExitCode.generate(rng) };
+    }
+    return { exit, keys: [], note: null, code: null };
+  }
+
+  /**
+   * Прячет `count` предметов в дальних комнатах-кандидатах — по возможности в разных,
+   * и всегда в разных клетках.
+   */
+  private hide(
+    count: number,
+    candidates: readonly Room[],
+    grid: SpaceGrid,
+    distanceOf: (room: Room) => number,
+    rng: SeededRandom,
+    startRoom: Room,
+  ): Vector2[] {
+    const spots: Vector2[] = [];
+    const usedCells = new Set<string>();
+    let pool = [...candidates];
+    for (let i = 0; i < count; i++) {
+      if (pool.length === 0) pool = [...candidates];
+      const room = this.pickFarthest(pool, distanceOf, rng) ?? startRoom;
+      pool = pool.filter((candidate) => candidate !== room);
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const col = room.cells.col + rng.int(0, room.cells.width - 1);
+        const row = room.cells.row + rng.int(0, room.cells.height - 1);
+        const cell = `${col}:${row}`;
+        if (!usedCells.has(cell) || attempt === 11) {
+          usedCells.add(cell);
+          spots.push(grid.cellCenter(col, row));
+          break;
+        }
+      }
+    }
+    return spots;
   }
 
   /** Случайная комната среди самой дальней доли кандидатов. */

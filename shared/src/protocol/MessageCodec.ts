@@ -1,3 +1,5 @@
+import { ExitCode } from '../generation/ExitCode.ts';
+import { HELD_ITEMS } from '../simulation/HeldItem.ts';
 import { LobbyCode } from './LobbyCode.ts';
 import type { HeldItem } from '../simulation/HeldItem.ts';
 import type { PlayerInput } from '../simulation/PlayerInput.ts';
@@ -66,6 +68,19 @@ export class MessageCodec {
           : null;
       case 'input':
         return this.decodeInput(data['commands']);
+      case 'exit:code': {
+        const code = data['code'];
+        const valid =
+          Array.isArray(code) &&
+          code.length <= ExitCode.LENGTH * 2 &&
+          code.every(
+            (symbol) =>
+              typeof symbol === 'string' &&
+              symbol.length > 0 &&
+              symbol.length <= ExitCode.MAX_SYMBOL_LENGTH,
+          );
+        return valid ? { type: 'exit:code', code: code as string[] } : null;
+      }
       case 'debug:next-space':
         return { type: 'debug:next-space' };
       case 'debug:ghost':
@@ -75,7 +90,10 @@ export class MessageCodec {
           ? { type: 'debug:lamp', preset: data['preset'] }
           : null;
       case 'debug:goto':
-        return data['target'] === 'exit' || data['target'] === 'key' || data['target'] === 'oil'
+        return data['target'] === 'exit' ||
+          data['target'] === 'key' ||
+          data['target'] === 'note' ||
+          data['target'] === 'oil'
           ? { type: 'debug:goto', target: data['target'] }
           : null;
       default:
@@ -127,7 +145,7 @@ export class MessageCodec {
       this.inRange(pitch, -Math.PI, Math.PI) &&
       typeof run === 'boolean' &&
       typeof interact === 'boolean' &&
-      (item === 'lamp' || item === 'compass') &&
+      HELD_ITEMS.includes(item as HeldItem) &&
       typeof refuel === 'boolean' &&
       Number.isInteger(space) &&
       (space as number) >= 0 &&

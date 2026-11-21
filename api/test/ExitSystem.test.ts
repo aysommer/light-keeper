@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { GameConfig, SpaceGenerator, Vector2 } from '@light-keeper/shared';
-import type { ExitKind, PlayerInput, ServerMessage, ServerMessageOf } from '@light-keeper/shared';
+import { ExitCode, GameConfig, SpaceGenerator, Vector2 } from '@light-keeper/shared';
+import type {
+  ExitKind,
+  HeldItem,
+  PlayerInput,
+  ServerMessage,
+  ServerMessageOf,
+} from '@light-keeper/shared';
 import { Match } from '../src/game/Match.ts';
 import type { LobbyParticipant } from '../src/lobby/LobbyParticipant.ts';
 
@@ -18,10 +24,11 @@ class FakeParticipant implements LobbyParticipant {
 const SEED = 4242;
 
 /** Номер первого пространства с дверью нужного типа. */
-const indexWithKind = (kind: ExitKind): number => {
+const indexWithKind = (kind: ExitKind, minKeys = 0): number => {
   const generator = new SpaceGenerator(SEED);
-  for (let index = 0; index < 50; index++) {
-    if (generator.generate(index).exit.kind === kind) return index;
+  for (let index = 0; index < 80; index++) {
+    const space = generator.generate(index);
+    if (space.exit.kind === kind && space.keys.length >= minKeys) return index;
   }
   throw new Error(`Нет двери ${kind}`);
 };
@@ -43,6 +50,8 @@ const setup = (spaceIndex = 0) => {
   if (spaceIndex > 0) match.world.enterSpace(spaceIndex);
   match.world.giveLampTo('red');
   const seq = { red: 0, blue: 0 };
+  /** Что каждый держит в руке (слоты 1–4). */
+  const items: Record<'red' | 'blue', HeldItem> = { red: 'lamp', blue: 'lamp' };
   const space = () => match.world.space;
   const player = (id: 'red' | 'blue') => match.world.players.get(id)!;
 
@@ -62,7 +71,7 @@ const setup = (spaceIndex = 0) => {
         pitch: 0,
         run: false,
         interact: interact[id] ?? false,
-        item: 'lamp',
+        item: items[id],
         refuel: false,
         space: space().index,
       };
@@ -73,7 +82,19 @@ const setup = (spaceIndex = 0) => {
   };
   const ticksFor = (seconds: number): number => Math.round(seconds * 20);
   const exitState = () => red.last('match:snapshot')!.snapshot.exit;
-  return { match, red, blue, player, toDoor, tick, ticksFor, exitState, space, ended: () => ended };
+  return {
+    match,
+    red,
+    blue,
+    items,
+    player,
+    toDoor,
+    tick,
+    ticksFor,
+    exitState,
+    space,
+    ended: () => ended,
+  };
 };
 
 describe('ExitSystem: открытие', () => {
@@ -202,59 +223,138 @@ describe('ExitSystem: тамбур и таймер', () => {
   });
 });
 
-describe('ExitSystem: ключ и скрытая дверь', () => {
-  it('запертая дверь: без ключа не открыть, ключ личный', () => {
+describe('ExitSystem: запертая дверь и ключи', () => {
+  const hold = (ctx: ReturnType<typeof setup>, id: 'red' | 'blue'): void => {
+    for (let i = 0; i < ctx.ticksFor(GameConfig.exit.openSeconds); i++) ctx.tick({ [id]: true });
+  };
+
+  it('без ключа не открыть; ключ должен быть в руке (слот 3)', () => {
     const ctx = setup(indexWithKind('locked'));
-    const key = ctx.space().key!;
+    const keys = ctx.space().keys;
     ctx.toDoor('red');
     for (let i = 0; i < ctx.ticksFor(4); i++) ctx.tick({ red: true });
     expect(ctx.exitState().open).toBe(false);
 
-    // Голубой подбирает ключ.
-    ctx.player('blue').position = key;
-    ctx.tick();
-    expect(ctx.exitState().keyHolderId).toBe('blue');
-
-    // Красный у двери всё равно не откроет — ключ у голубого.
-    for (let i = 0; i < ctx.ticksFor(4); i++) ctx.tick({ red: true });
+    // Красный собирает все ключи, но держит лампу — дверь не открывается.
+    for (const key of keys) {
+      ctx.player('red').position = key;
+      ctx.tick();
+    }
+    expect(ctx.player('red').keys).toBe(keys.length);
+    expect(ctx.exitState().keysTaken).toEqual(keys.map((_, index) => index));
+    ctx.toDoor('red');
+    hold(ctx, 'red');
     expect(ctx.exitState().open).toBe(false);
+    expect(ctx.exitState().keysInserted).toBe(0);
 
-    // Голубой подходит и открывает.
-    ctx.toDoor('blue', 0.9);
-    for (let i = 0; i < ctx.ticksFor(GameConfig.exit.openSeconds); i++) ctx.tick({ blue: true });
+    // Взял ключи в руку — вставил все и открыл.
+    ctx.items.red = 'key';
+    hold(ctx, 'red');
+    expect(ctx.exitState().keysInserted).toBe(keys.length);
+    expect(ctx.player('red').keys).toBe(0);
     expect(ctx.exitState().open).toBe(true);
   });
 
-  it('скрытая дверь проявляется, когда игрок подходит ближе 3 м, и остаётся видимой', () => {
-    const ctx = setup(indexWithKind('hidden'));
+  it('нужны все ключи: если они у разных игроков, вставляют оба', () => {
+    const ctx = setup(indexWithKind('locked', 2));
+    const keys = ctx.space().keys;
+    expect(keys.length).toBeGreaterThanOrEqual(2);
+    ctx.player('red').position = keys[0]!;
     ctx.tick();
-    expect(ctx.exitState().revealed).toBe(false);
-    ctx.toDoor('red', 2.5);
-    ctx.tick();
-    expect(ctx.exitState().revealed).toBe(true);
+    for (const key of keys.slice(1)) {
+      ctx.player('blue').position = key;
+      ctx.tick();
+    }
+    expect(ctx.player('red').keys).toBe(1);
+    expect(ctx.player('blue').keys).toBe(keys.length - 1);
+
+    ctx.items.red = 'key';
+    ctx.toDoor('red');
+    hold(ctx, 'red');
+    expect(ctx.exitState().keysInserted).toBe(1);
+    expect(ctx.exitState().open).toBe(false);
+    // Ключей больше нет — повторное удержание ничего не даёт.
+    hold(ctx, 'red');
+    expect(ctx.exitState().keysInserted).toBe(1);
+
     ctx.player('red').position = ctx.space().startPositions[0];
+    ctx.items.blue = 'key';
+    ctx.toDoor('blue', 0.9);
+    hold(ctx, 'blue');
+    expect(ctx.exitState().keysInserted).toBe(keys.length);
+    expect(ctx.exitState().open).toBe(true);
+  });
+
+  it('в снимке игрока — сколько у него ключей', () => {
+    const ctx = setup(indexWithKind('locked'));
+    ctx.player('blue').position = ctx.space().keys[0]!;
     ctx.tick();
-    expect(ctx.exitState().revealed).toBe(true);
+    const blue = ctx.red.last('match:snapshot')!.snapshot.players.find((p) => p.id === 'blue')!;
+    expect(blue.keys).toBe(1);
+  });
+});
+
+describe('ExitSystem: дверь с кодовой панелью', () => {
+  const codeSetup = () => {
+    const ctx = setup(indexWithKind('code'));
+    return { ...ctx, code: ctx.space().code! };
+  };
+  const wrongOf = (symbols: readonly string[], keypad: readonly string[]): string[] =>
+    symbols.map((symbol, index) =>
+      index === 0 ? keypad.find((other) => other !== symbol)! : symbol,
+    );
+
+  it('записку подбирает тот, кто подошёл к ней', () => {
+    const ctx = codeSetup();
+    ctx.player('blue').position = ctx.space().note!;
+    ctx.tick();
+    expect(ctx.exitState().noteHolderId).toBe('blue');
   });
 
-  it('скрытую дверь проявляет только горящая лампа в руке', () => {
-    const ctx = setup(indexWithKind('hidden'));
-    // С компасом в руке лампа убрана — дверь не проявится.
-    ctx.player('red').item = 'compass';
-    ctx.toDoor('red', 2);
-    ctx.match.step();
-    expect(ctx.player('red').lampShining).toBe(false);
-    expect(ctx.match.world.exit.revealed).toBe(false);
-    // Погасшая лампа тоже не проявит.
-    ctx.player('red').item = 'lamp';
-    ctx.player('red').lamp!.oil = 0;
-    ctx.match.step();
-    expect(ctx.match.world.exit.revealed).toBe(false);
-    ctx.player('red').lamp!.oil = 50;
-    ctx.match.step();
-    expect(ctx.match.world.exit.revealed).toBe(true);
+  it('удержание E такую дверь не открывает', () => {
+    const ctx = codeSetup();
+    ctx.toDoor('red');
+    for (let i = 0; i < ctx.ticksFor(4); i++) ctx.tick({ red: true });
+    expect(ctx.exitState().open).toBe(false);
   });
 
+  it('верный код у панели открывает дверь (знать код можно и без записки)', () => {
+    const ctx = codeSetup();
+    ctx.toDoor('red');
+    ctx.match.submitCode('red', ctx.code.symbols);
+    ctx.tick();
+    expect(ctx.exitState().open).toBe(true);
+    expect(ctx.exitState().secondsLeft).toBeCloseTo(GameConfig.exit.timerSeconds, 0);
+  });
+
+  it('неверный код — ошибка и пауза перед следующей попыткой', () => {
+    const ctx = codeSetup();
+    const keypad = ExitCode.keypad(ctx.code.alphabet);
+    ctx.toDoor('red');
+    ctx.match.submitCode('red', wrongOf(ctx.code.symbols, keypad));
+    ctx.tick();
+    expect(ctx.exitState().open).toBe(false);
+    expect(ctx.exitState().codeFailures).toBe(1);
+    // Во время паузы даже верный код не принимается.
+    ctx.match.submitCode('red', ctx.code.symbols);
+    ctx.tick();
+    expect(ctx.exitState().open).toBe(false);
+    for (let i = 0; i < ctx.ticksFor(GameConfig.exit.codeCooldownSeconds); i++) ctx.tick();
+    ctx.match.submitCode('red', ctx.code.symbols);
+    ctx.tick();
+    expect(ctx.exitState().open).toBe(true);
+  });
+
+  it('вдали от панели код не принимается', () => {
+    const ctx = codeSetup();
+    ctx.match.submitCode('red', ctx.code.symbols);
+    ctx.tick();
+    expect(ctx.exitState().open).toBe(false);
+    expect(ctx.exitState().codeFailures).toBe(0);
+  });
+});
+
+describe('ExitSystem: лампа', () => {
   it('новое пространство — лампа снова полная и холодная', () => {
     const ctx = setup();
     ctx.player('red').lamp!.oil = 10;
@@ -313,11 +413,12 @@ describe('ExitSystem: ключ и скрытая дверь', () => {
     expect(firstHolders).toEqual(new Set(['red', 'blue']));
   });
 
-  it('у обычной двери ключа нет и она видна сразу', () => {
+  it('у обычной двери нет ни ключей, ни записки', () => {
     const ctx = setup();
     ctx.tick();
-    expect(ctx.space().key).toBeNull();
-    expect(ctx.exitState().revealed).toBe(true);
-    expect(ctx.exitState().keyHolderId).toBeNull();
+    expect(ctx.space().keys).toEqual([]);
+    expect(ctx.space().note).toBeNull();
+    expect(ctx.exitState().keysTaken).toEqual([]);
+    expect(ctx.exitState().noteHolderId).toBeNull();
   });
 });

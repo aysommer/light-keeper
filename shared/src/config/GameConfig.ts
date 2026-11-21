@@ -156,7 +156,7 @@ export interface ExchangeSettings {
   readonly heatRelief: number;
 }
 
-/** Правила двери выхода и ключа. */
+/** Правила двери выхода, ключей и кодовой панели. */
 export interface ExitSettings {
   /** Сколько удерживать `E`, чтобы открыть дверь, с. */
   readonly openSeconds: number;
@@ -164,10 +164,10 @@ export interface ExitSettings {
   readonly timerSeconds: number;
   /** С какого расстояния (от точки перед дверью) можно открыть дверь и войти, м. */
   readonly interactDistance: number;
-  /** С какого расстояния горящая лампа проявляет скрытую дверь, м. */
-  readonly revealDistance: number;
-  /** С какого расстояния игрок подбирает ключ, м. */
+  /** С какого расстояния игрок подбирает ключ или записку, м. */
   readonly keyPickupDistance: number;
+  /** Пауза между попытками ввести код на панели, с. */
+  readonly codeCooldownSeconds: number;
   /** Ширина и высота дверного полотна, м. */
   readonly doorWidth: number;
   readonly doorHeight: number;
@@ -276,8 +276,8 @@ export class GameConfig {
     openSeconds: 3,
     timerSeconds: 30,
     interactDistance: 1.3,
-    revealDistance: 3,
     keyPickupDistance: 0.9,
+    codeCooldownSeconds: 1,
     doorWidth: 1,
     doorHeight: 2.1,
     farthestShare: 0.3,

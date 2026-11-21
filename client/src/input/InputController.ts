@@ -68,6 +68,11 @@ export class InputController {
   }
 
   /** Была ли клавиша нажата с прошлого вызова (однократное срабатывание). */
+  /** Клавишу нажали в этом кадре (не забирая нажатие у других). */
+  public peekPress(code: string): boolean {
+    return this.justPressed.has(code);
+  }
+
   public consumePress(code: string): boolean {
     return this.justPressed.delete(code);
   }

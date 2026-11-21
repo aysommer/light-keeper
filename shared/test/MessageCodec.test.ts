@@ -82,3 +82,55 @@ describe('LobbyCode', () => {
     expect(LobbyCode.isValid('abcd')).toBe(false);
   });
 });
+
+describe('MessageCodec: код двери и предметы в руке', () => {
+  const codec = new MessageCodec();
+
+  it('ввод кода: массив коротких строк', () => {
+    expect(codec.decodeClientMessage('{"type":"exit:code","code":["1","2","3","4"]}')).toEqual({
+      type: 'exit:code',
+      code: ['1', '2', '3', '4'],
+    });
+    expect(
+      codec.decodeClientMessage('{"type":"exit:code","code":["circle","star","moon","heart"]}'),
+    ).not.toBeNull();
+  });
+
+  it('ввод кода: мусор отбрасывается', () => {
+    for (const raw of [
+      '{"type":"exit:code"}',
+      '{"type":"exit:code","code":"1234"}',
+      '{"type":"exit:code","code":[1,2,3,4]}',
+      '{"type":"exit:code","code":[""]}',
+      '{"type":"exit:code","code":["very-long-symbol"]}',
+      `{"type":"exit:code","code":${JSON.stringify(Array(20).fill('1'))}}`,
+    ]) {
+      expect(codec.decodeClientMessage(raw), raw).toBeNull();
+    }
+  });
+
+  it('в руке может быть ключ или записка, но не что попало', () => {
+    const command = (item: string) =>
+      JSON.stringify({
+        type: 'input',
+        commands: [
+          {
+            seq: 1,
+            dt: 0.05,
+            moveX: 0,
+            moveY: 0,
+            yaw: 0,
+            pitch: 0,
+            run: false,
+            interact: false,
+            item,
+            refuel: false,
+            space: 0,
+          },
+        ],
+      });
+    expect(codec.decodeClientMessage(command('key'))).not.toBeNull();
+    expect(codec.decodeClientMessage(command('note'))).not.toBeNull();
+    expect(codec.decodeClientMessage(command('sword'))).toBeNull();
+  });
+});

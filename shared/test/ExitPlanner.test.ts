@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GameConfig, OccupancyGrid, RoomGraph, SpaceGenerator } from '../src/index.ts';
+import { ExitCode, GameConfig, OccupancyGrid, RoomGraph, SpaceGenerator } from '../src/index.ts';
 import type { Space } from '../src/index.ts';
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => 500 + i * 104729);
@@ -18,7 +18,7 @@ describe('ExitPlanner: тип двери', () => {
   });
 
   it('дальше встречаются все три типа примерно поровну', () => {
-    const counts = { plain: 0, hidden: 0, locked: 0 };
+    const counts = { plain: 0, locked: 0, code: 0 };
     for (const seed of SEEDS) {
       for (let index = 1; index <= 6; index++) {
         counts[new SpaceGenerator(seed).generate(index).exit.kind] += 1;
@@ -31,11 +31,23 @@ describe('ExitPlanner: тип двери', () => {
     }
   });
 
-  it('ключ есть только у запертой двери', () => {
+  it('ключи есть только у запертой двери, записка и код — только у двери с панелью', () => {
     for (const seed of SEEDS) {
       for (let index = 0; index <= 4; index++) {
         const space = new SpaceGenerator(seed).generate(index);
-        expect(space.key !== null).toBe(space.exit.kind === 'locked');
+        expect(space.keys.length > 0).toBe(space.exit.kind === 'locked');
+        expect(space.note !== null).toBe(space.exit.kind === 'code');
+        expect(space.code !== null).toBe(space.exit.kind === 'code');
+      }
+    }
+  });
+
+  it('невидимых дверей нет: только обычная, запертая и с панелью', () => {
+    for (const seed of SEEDS) {
+      for (let index = 0; index <= 8; index++) {
+        expect(['plain', 'locked', 'code']).toContain(
+          new SpaceGenerator(seed).generate(index).exit.kind,
+        );
       }
     }
   });
@@ -78,7 +90,9 @@ describe('ExitPlanner: размещение двери', () => {
     const a = new SpaceGenerator(9).generate(5);
     const b = new SpaceGenerator(9).generate(5);
     expect(a.exit).toEqual(b.exit);
-    expect(a.key).toEqual(b.key);
+    expect(a.keys).toEqual(b.keys);
+    expect(a.note).toEqual(b.note);
+    expect(a.code).toEqual(b.code);
   });
 });
 
@@ -88,14 +102,24 @@ describe('ExitPlanner: ключ', () => {
       Array.from({ length: 8 }, (_, i) => new SpaceGenerator(seed).generate(i + 1)),
     ).filter((space) => space.exit.kind === 'locked');
 
-  it('ключ достижим и лежит не в стартовой комнате и не в комнате двери', () => {
+  it('ключей от 1 до 3, встречается каждое количество', () => {
+    const spaces = lockedSpaces();
+    const counts = new Set(spaces.map((space) => space.keys.length));
+    expect(counts).toEqual(new Set([1, 2, 3]));
+  });
+
+  it('ключи достижимы, лежат в разных клетках, не в стартовой комнате и не в комнате двери', () => {
     const spaces = lockedSpaces();
     expect(spaces.length).toBeGreaterThan(20);
     for (const space of spaces) {
-      const keyRoom = space.roomAt(space.key!)!;
-      expect(keyRoom.id).not.toBe(space.startRoom.id);
-      expect(keyRoom.id).not.toBe(space.exit.roomId);
-      expect(reachable(space).contains(space.key!)).toBe(true);
+      const cells = new Set(space.keys.map((key) => `${key.x}:${key.y}`));
+      expect(cells.size).toBe(space.keys.length);
+      for (const key of space.keys) {
+        const keyRoom = space.roomAt(key)!;
+        expect(keyRoom.id).not.toBe(space.exit.roomId);
+        if (space.rooms.length > 2) expect(keyRoom.id).not.toBe(space.startRoom.id);
+        expect(reachable(space).contains(key)).toBe(true);
+      }
     }
   });
 
@@ -105,9 +129,38 @@ describe('ExitPlanner: ключ', () => {
       const path = graph.path(space.startRoom.id, space.exit.roomId);
       const offPathExists = space.rooms.some((room) => !path.includes(room.id));
       if (offPathExists) {
-        expect(path).not.toContain(space.roomAt(space.key!)!.id);
+        for (const key of space.keys) expect(path).not.toContain(space.roomAt(key)!.id);
       }
     }
+  });
+});
+
+describe('ExitPlanner: записка с кодом', () => {
+  const codeSpaces = (): Space[] =>
+    SEEDS.flatMap((seed) =>
+      Array.from({ length: 8 }, (_, i) => new SpaceGenerator(seed).generate(i + 1)),
+    ).filter((space) => space.exit.kind === 'code');
+
+  it('записка достижима и лежит не в комнате двери', () => {
+    const spaces = codeSpaces();
+    expect(spaces.length).toBeGreaterThan(20);
+    for (const space of spaces) {
+      expect(space.roomAt(space.note!)!.id).not.toBe(space.exit.roomId);
+      expect(reachable(space).contains(space.note!)).toBe(true);
+    }
+  });
+
+  it('код из 4 символов одного алфавита; встречаются цифры, буквы и фигуры', () => {
+    const alphabets = new Set<string>();
+    for (const space of codeSpaces()) {
+      const code = space.code!;
+      alphabets.add(code.alphabet);
+      expect(code.symbols).toHaveLength(ExitCode.LENGTH);
+      for (const symbol of code.symbols) expect(ExitCode.keypad(code.alphabet)).toContain(symbol);
+      expect(code.matches(code.symbols)).toBe(true);
+      expect(code.matches(code.symbols.slice(0, 3))).toBe(false);
+    }
+    expect(alphabets).toEqual(new Set(['digits', 'letters', 'shapes']));
   });
 });
 

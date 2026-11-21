@@ -35,6 +35,10 @@ export class ServerPlayer extends Entity {
   public moving = false;
   /** Сколько канистр несёт. */
   public canisters = 0;
+  /** Сколько ключей несёт (ещё не вставленных в замок). */
+  public keys = 0;
+  /** Код, введённый на панели двери и ещё не проверенный сервером. */
+  public pendingCode: readonly string[] | null = null;
   /** Сколько секунд уже идёт заправка. */
   public refuelSeconds = 0;
   /** Общая лампа, если она сейчас у этого игрока (лампа одна на двоих). */
@@ -76,6 +80,8 @@ export class ServerPlayer extends Entity {
     this.inTambour = false;
     this.interactPressed = false;
     this.canisters = 0;
+    this.keys = 0;
+    this.pendingCode = null;
     this.refuelSeconds = 0;
   }
 
@@ -116,9 +122,11 @@ export class ServerPlayer extends Entity {
       pitch: this.pitch,
       lastSeq: this.lastSeq,
       inTambour: this.inTambour,
-      item: this.lamp ? this.item : 'compass',
+      // Без лампы вместо неё в руке компас.
+      item: this.item === 'lamp' && !this.lamp ? 'compass' : this.item,
       lamp: this.lamp?.snapshot() ?? null,
       canisters: this.canisters,
+      keys: this.keys,
       refuelProgress: Math.min(1, this.refuelSeconds / GameConfig.canister.refuelSeconds),
     };
   }

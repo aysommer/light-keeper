@@ -3,22 +3,24 @@ import { SpaceGenerator } from '@light-keeper/shared';
 import type { ExitKind, ExitSnapshot, Space } from '@light-keeper/shared';
 import { InteractionPrompt } from '../src/game/InteractionPrompt.ts';
 
-const spaceWith = (kind: ExitKind): Space => {
+const spaceWith = (kind: ExitKind, keys = 0): Space => {
   const generator = new SpaceGenerator(31337);
-  for (let index = 0; index < 60; index++) {
+  for (let index = 0; index < 80; index++) {
     const space = generator.generate(index);
-    if (space.exit.kind === kind) return space;
+    if (space.exit.kind === kind && space.keys.length >= keys) return space;
   }
   throw new Error(`Нет двери ${kind}`);
 };
 
 const closed: ExitSnapshot = {
   open: false,
-  revealed: true,
   openerId: null,
   openProgress: 0,
   secondsLeft: null,
-  keyHolderId: null,
+  keysTaken: [],
+  keysInserted: 0,
+  noteHolderId: null,
+  codeFailures: 0,
 };
 
 describe('InteractionPrompt', () => {
@@ -27,28 +29,40 @@ describe('InteractionPrompt', () => {
   const atDoor = plain.exit.frontPoint(0.6);
 
   it('у закрытой двери — открыть, у открытой — войти', () => {
-    expect(prompt.resolve(plain, closed, 'me', atDoor, false)).toBe('Удерживай E — открыть дверь');
-    expect(
-      prompt.resolve(plain, { ...closed, open: true, secondsLeft: 20 }, 'me', atDoor, false),
-    ).toBe('Нажми E — войти');
-  });
-
-  it('вдалеке, в тамбуре или у непроявленной двери — без подсказки', () => {
-    expect(prompt.resolve(plain, closed, 'me', plain.startPositions[0], false)).toBeNull();
-    expect(prompt.resolve(plain, closed, 'me', atDoor, true)).toBeNull();
-    expect(prompt.resolve(plain, { ...closed, revealed: false }, 'me', atDoor, false)).toBeNull();
-    expect(prompt.resolve(plain, null, 'me', atDoor, false)).toBeNull();
-  });
-
-  it('запертая дверь: нужен ключ, ключ у напарника, ключ у тебя', () => {
-    const locked = spaceWith('locked');
-    const near = locked.exit.frontPoint(0.6);
-    expect(prompt.resolve(locked, closed, 'me', near, false)).toBe('Заперто. Нужен ключ');
-    expect(prompt.resolve(locked, { ...closed, keyHolderId: 'mate' }, 'me', near, false)).toBe(
-      'Ключ у напарника',
+    expect(prompt.resolve(plain, closed, atDoor, false)).toBe('Удерживай E — открыть дверь');
+    expect(prompt.resolve(plain, { ...closed, open: true, secondsLeft: 20 }, atDoor, false)).toBe(
+      'Нажми E — войти',
     );
-    expect(prompt.resolve(locked, { ...closed, keyHolderId: 'me' }, 'me', near, false)).toBe(
-      'Удерживай E — открыть дверь',
+  });
+
+  it('вдалеке, в тамбуре или без данных — без подсказки', () => {
+    expect(prompt.resolve(plain, closed, plain.startPositions[0], false)).toBeNull();
+    expect(prompt.resolve(plain, closed, atDoor, true)).toBeNull();
+    expect(prompt.resolve(plain, null, atDoor, false)).toBeNull();
+  });
+
+  it('запертая дверь: без ключа, ключ не в руке, ключ в руке', () => {
+    const locked = spaceWith('locked', 2);
+    const required = locked.keys.length;
+    const near = locked.exit.frontPoint(0.6);
+    expect(prompt.resolve(locked, closed, near, false, { item: 'lamp', keys: 0 })).toBe(
+      `Заперто: нужно ключей — ${required}, вставлено 0 из ${required}`,
+    );
+    expect(prompt.resolve(locked, closed, near, false, { item: 'lamp', keys: 1 })).toBe(
+      'Возьми ключ в руку (3)',
+    );
+    expect(
+      prompt.resolve(locked, { ...closed, keysInserted: 1 }, near, false, { item: 'key', keys: 1 }),
+    ).toBe(`Удерживай E — вставить ключ (вставлено 1 из ${required})`);
+    expect(prompt.resolve(locked, closed, near, false, { item: 'key', keys: 2 })).toBe(
+      `Удерживай E — вставить ключи (вставлено 0 из ${required})`,
+    );
+  });
+
+  it('дверь с кодом — панель', () => {
+    const code = spaceWith('code');
+    expect(prompt.resolve(code, closed, code.exit.frontPoint(0.6), false)).toBe(
+      'E — кодовая панель',
     );
   });
 });

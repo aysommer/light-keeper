@@ -6,7 +6,8 @@ export interface AudioFrame {
   readonly phase: SpacePhase;
   readonly inTambour: boolean;
   readonly exitOpen: boolean;
-  readonly keyHolderId: string | null;
+  /** Сколько ключей и записок уже подобрано в пространстве (кем угодно). */
+  readonly pickups: number;
   readonly canisters: number;
   readonly overheated: boolean;
   readonly exchangeCount: number;
@@ -46,7 +47,7 @@ export class GameAudioEvents {
     }
     if (frame.exitOpen && !before.exitOpen) events.push('door-open');
     if (frame.inTambour && !before.inTambour) events.push('tambour');
-    if (frame.keyHolderId !== null && before.keyHolderId === null) events.push('key');
+    if (frame.pickups > before.pickups) events.push('key');
     if (frame.canisters > before.canisters) events.push('canister-pickup');
     if (frame.canisters < before.canisters) events.push('refuel-done');
     if (frame.overheated && !before.overheated) events.push('overheat');

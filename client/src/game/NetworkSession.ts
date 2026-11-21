@@ -47,6 +47,7 @@ export class NetworkSession {
   private latestOilTaken: readonly number[] | null = null;
   private latestOilDropped: readonly DroppedCanister[] | null = null;
   private selfCanisters = 0;
+  private selfKeys = 0;
   private selfRefuel = 0;
 
   public constructor(
@@ -104,6 +105,21 @@ export class NetworkSession {
   /** Сколько канистр несёт этот игрок. */
   public get ownCanisters(): number {
     return this.selfCanisters;
+  }
+
+  /** Сколько ключей несёт этот игрок (ещё не вставленных). */
+  public get ownKeys(): number {
+    return this.selfKeys;
+  }
+
+  /** Записка с кодом у этого игрока. */
+  public get hasNote(): boolean {
+    return this.latestExit?.noteHolderId === this.playerId;
+  }
+
+  /** Отправить код, набранный на панели двери. */
+  public submitCode(code: readonly string[]): void {
+    this.network.send({ type: 'exit:code', code });
   }
 
   /** Прогресс заправки своей лампы, 0–1. */
@@ -216,6 +232,7 @@ export class NetworkSession {
         this.selfLamp = state.lamp;
         this.selfHasLamp = state.lamp !== null;
         this.selfCanisters = state.canisters;
+        this.selfKeys = state.keys;
         this.selfRefuel = state.refuelProgress;
         if (enteredNewSpace) {
           this.player.teleport(position, this.space.space.startYaw);

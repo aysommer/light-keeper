@@ -2,6 +2,7 @@ import type { SpacePalette } from '../appearance/SpacePalette.ts';
 import type { AABB } from '../math/AABB.ts';
 import type { Vector2 } from '../math/Vector2.ts';
 import type { Door } from './Door.ts';
+import type { ExitCode } from './ExitCode.ts';
 import type { ExitDoor } from './ExitDoor.ts';
 import type { Obstacle } from './Obstacle.ts';
 import type { Room } from './Room.ts';
@@ -28,8 +29,12 @@ export class Space {
     public readonly startYaw: number,
     /** Спрятанная дверь выхода в следующее пространство. */
     public readonly exit: ExitDoor,
-    /** Где лежит ключ (только для двери `locked`). */
-    public readonly key: Vector2 | null,
+    /** Где лежат ключи (только у двери `locked`; их 1–3, нужны все). */
+    public readonly keys: readonly Vector2[],
+    /** Где лежит записка с кодом (только у двери `code`). */
+    public readonly note: Vector2 | null,
+    /** Код двери `code`. */
+    public readonly code: ExitCode | null,
     /** Какие канистры пустые (обманки) — по индексам `oilSpawns`. */
     public readonly oilEmpty: readonly boolean[] = [],
   ) {}

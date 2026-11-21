@@ -128,8 +128,12 @@ export class Match {
       target === 'exit'
         ? space.exit.frontPoint(0.6)
         : target === 'key'
-          ? space.key?.add(Match.KEY_GOTO_OFFSET)
-          : this.nearestCanister(player?.position)?.add(Match.KEY_GOTO_OFFSET);
+          ? space.keys
+              .find((_, index) => !this.world.exit.keysTaken.has(index))
+              ?.add(Match.KEY_GOTO_OFFSET)
+          : target === 'note'
+            ? space.note?.add(Match.KEY_GOTO_OFFSET)
+            : this.nearestCanister(player?.position)?.add(Match.KEY_GOTO_OFFSET);
     if (player && !player.inTambour && destination) {
       player.position = destination;
     }
@@ -174,6 +178,12 @@ export class Match {
       if (!best || spawn.distanceTo(from) < best.distanceTo(from)) best = spawn;
     });
     return best;
+  }
+
+  /** Игрок ввёл код на панели двери — сервер проверит его в ближайший тик. */
+  public submitCode(playerId: string, code: readonly string[]): void {
+    const player = this.world.players.get(playerId);
+    if (player) player.pendingCode = code;
   }
 
   public receiveInput(playerId: string, commands: readonly PlayerInput[]): void {

@@ -21,7 +21,9 @@ import type { NetworkClient } from '../network/NetworkClient.ts';
 import { FirstPersonViewmodel } from '../scene/FirstPersonViewmodel.ts';
 import { HandLampLight } from '../scene/HandLampLight.ts';
 import { SceneManager } from '../scene/SceneManager.ts';
+import { CodePanel } from './CodePanel.ts';
 import { CompassView } from './CompassView.ts';
+import { HandItemHud } from './HandItemHud.ts';
 import { ExitHud } from './ExitHud.ts';
 import { Hud } from './Hud.ts';
 import { ScareOverlay } from './ScareOverlay.ts';
@@ -54,6 +56,9 @@ export class GameScreen implements Screen {
   private readonly overlay = new TransitionOverlay();
   private readonly exitHud = new ExitHud();
   private readonly compass = new CompassView();
+  private readonly handItem = new HandItemHud();
+  private submitCode: ((code: readonly string[]) => void) | null = null;
+  private readonly codePanel = new CodePanel((code) => this.submitCode?.(code));
   private readonly lampHud = new LampHud();
   private readonly scare = new ScareLevel();
   private readonly scareOverlay = new ScareOverlay();
@@ -154,6 +159,11 @@ export class GameScreen implements Screen {
 
     let hadLamp = session.hasLamp;
     let askedForLampUntil = 0;
+    /** Короткая подсказка по нажатию клавиши предмета, которого нет. */
+    let flash: { text: string; until: number } | null = null;
+    let codeFailuresSeen = 0;
+    this.submitCode = (code) => session.submitCode(code);
+    this.element.append(this.handItem.element, this.codePanel.element);
     this.loop = new GameLoop((delta, time) => {
       if (import.meta.env.DEV) {
         this.handleDebugKeys(input, session, player, space);
@@ -169,12 +179,22 @@ export class GameScreen implements Screen {
       } else if (time >= titleUntil) {
         this.overlay.hide();
       }
-      controller.frozen = inTransition || session.inTambour;
+      // Пока открыта кодовая панель, игрок стоит на месте.
+      controller.frozen = inTransition || session.inTambour || this.codePanel.visible;
 
-      // Предмет в руке: 1 — лампа, 2 — компас. Уходит на сервер вместе с командой.
-      // Лампа одна на двоих: без неё в руке всегда компас.
+      // Предмет в руке: 1 — лампа, 2 — компас, 3 — ключи, 4 — записка.
+      // Уходит на сервер вместе с командой. Лампа одна на двоих: без неё — компас.
       for (const code of HeldItems.keyCodes) {
         if (!input.consumePress(code)) continue;
+        const wanted = HeldItems.itemFor(code);
+        if (wanted === 'key' && session.ownKeys === 0) {
+          flash = { text: 'Ключей нет — найди их', until: time + GameScreen.NO_LAMP_HINT_SECONDS };
+          continue;
+        }
+        if (wanted === 'note' && !session.hasNote) {
+          flash = { text: 'Записки нет — найди её', until: time + GameScreen.NO_LAMP_HINT_SECONDS };
+          continue;
+        }
         this.held.selectByKey(code);
         if (!session.hasLamp && this.held.current === 'lamp') {
           askedForLampUntil = time + GameScreen.NO_LAMP_HINT_SECONDS;
@@ -183,8 +203,17 @@ export class GameScreen implements Screen {
       // Лампу только что передали — она сразу в руке.
       if (session.hasLamp && !hadLamp) this.held.select('lamp');
       hadLamp = session.hasLamp;
-      const item = session.hasLamp ? this.held.current : 'compass';
+      // Ключи вставлены или записка пропала (новое пространство) — рука возвращается к лампе.
+      if (
+        (this.held.current === 'key' && session.ownKeys === 0) ||
+        (this.held.current === 'note' && !session.hasNote)
+      ) {
+        this.held.select('lamp');
+      }
+      const item = this.held.current === 'lamp' && !session.hasLamp ? 'compass' : this.held.current;
       controller.item = item;
+      // Нажатие E — до того, как его заберёт управление (для кодовой панели).
+      const interactPressed = input.peekPress('KeyE');
       controller.update(delta);
       session.update(delta, time);
       controller.applyToCamera(sceneManager.camera);
@@ -206,14 +235,41 @@ export class GameScreen implements Screen {
         exit,
         options.playerId,
         exchangeHint ??
-          this.prompt.resolve(
-            space.space,
-            exit,
-            options.playerId,
-            player.position,
-            session.inTambour,
-          ),
+          this.prompt.resolve(space.space, exit, player.position, session.inTambour, {
+            item,
+            keys: session.ownKeys,
+          }),
+        space.space.exit.kind === 'locked'
+          ? {
+              own: session.ownKeys,
+              inserted: exit?.keysInserted ?? 0,
+              required: space.space.keys.length,
+            }
+          : null,
       );
+      // Кодовая панель: E у двери с панелью открывает её; набранный код проверяет сервер.
+      const atPanel =
+        space.space.exit.kind === 'code' &&
+        exit !== null &&
+        !exit.open &&
+        !session.inTambour &&
+        !inTransition &&
+        this.prompt.isNearDoor(space.space, player.position);
+      const panelCode = space.space.code;
+      if (interactPressed && atPanel && exchangeHint === null && panelCode) {
+        codeFailuresSeen = exit.codeFailures;
+        this.codePanel.show(panelCode.alphabet);
+        document.exitPointerLock();
+      }
+      if (this.codePanel.visible) {
+        if (!atPanel) {
+          this.codePanel.hide();
+        } else if (exit.codeFailures > codeFailuresSeen) {
+          codeFailuresSeen = exit.codeFailures;
+          this.codePanel.showWrong();
+        }
+      }
+      this.handItem.update(item, session.ownKeys, session.hasNote ? space.space.code : null);
       this.tambour.update(session.inTambour && !inTransition, exit?.secondsLeft ?? null);
       // Рука с фонарём от первого лица; лампа светит в мир, только пока фонарь поднят.
       const yawDelta = Math.atan2(
@@ -251,17 +307,18 @@ export class GameScreen implements Screen {
       const ownLamp = session.ownLamp;
       this.lampHud.update(
         session.inTambour ? 0 : (ownLamp?.heat ?? 0),
-        (session.hasLamp
-          ? this.lampHint.resolve(ownLamp, item, session.inTambour, {
-              canisters: session.ownCanisters,
-              refueling: session.ownRefuelProgress > 0,
-            })
-          : this.lampHint.resolvePartnerLamp(
-              session.sharedLamp,
-              session.inTambour,
-              session.ownCanisters,
-              time < askedForLampUntil,
-            )) ??
+        (flash !== null && time < flash.until ? flash.text : null) ??
+          (session.hasLamp
+            ? this.lampHint.resolve(ownLamp, item, session.inTambour, {
+                canisters: session.ownCanisters,
+                refueling: session.ownRefuelProgress > 0,
+              })
+            : this.lampHint.resolvePartnerLamp(
+                session.sharedLamp,
+                session.inTambour,
+                session.ownCanisters,
+                time < askedForLampUntil,
+              )) ??
           (session.inTambour
             ? null
             : this.canisterHint.resolve(
@@ -292,7 +349,7 @@ export class GameScreen implements Screen {
         phase: session.phase,
         inTambour: session.inTambour,
         exitOpen: session.exit?.open ?? false,
-        keyHolderId: session.exit?.keyHolderId ?? null,
+        pickups: (session.exit?.keysTaken.length ?? 0) + (session.exit?.noteHolderId ? 1 : 0),
         canisters: session.ownCanisters,
         overheated: ownLampState?.overheated ?? false,
         exchangeCount: session.exchange?.count ?? 0,
@@ -346,6 +403,11 @@ export class GameScreen implements Screen {
       // Сервер ставит в шаге правее канистры — смотрим налево и вниз, на неё.
       player.yaw = PlayerMovement.yawTowards(new Vector2(-1, 0));
       player.pitch = -0.6;
+    }
+    if (input.consumePress('KeyJ')) {
+      session.requestGoto('note');
+      player.yaw = PlayerMovement.yawTowards(new Vector2(-1, 0));
+      player.pitch = 0;
     }
     if (input.consumePress('KeyK')) {
       session.requestGoto('key');

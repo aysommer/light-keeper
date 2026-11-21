@@ -3,7 +3,7 @@ import type { BufferGeometry } from 'three';
 import type { ExitSnapshot, Vector2 } from '@light-keeper/shared';
 import { SceneCoords } from './SceneCoords.ts';
 
-/** Ключ от запертой двери: латунный, слегка светится, парит и вращается. */
+/** Один из ключей запертой двери: латунный, слегка светится, парит и вращается. */
 export class KeyView {
   private static readonly HEIGHT = 0.9;
 
@@ -17,7 +17,11 @@ export class KeyView {
     roughness: 0.3,
   });
 
-  public constructor(position: Vector2) {
+  /** @param index номер ключа в `Space.keys` */
+  public constructor(
+    position: Vector2,
+    private readonly index: number,
+  ) {
     this.root.position.copy(SceneCoords.toScene(position, KeyView.HEIGHT));
     const bow = this.mesh(new TorusGeometry(0.06, 0.018, 8, 20));
     bow.position.x = -0.1;
@@ -31,8 +35,8 @@ export class KeyView {
 
   public update(state: ExitSnapshot | null, time: number): void {
     // Ключ лежит, пока его никто не подобрал (подобранный ключ не теряется).
-    this.root.visible = state?.keyHolderId === null || state === null;
-    this.root.rotation.y = time * 1.6;
+    this.root.visible = !(state?.keysTaken.includes(this.index) ?? false);
+    this.root.rotation.y = time * 1.6 + this.index * 2.1;
     this.root.position.y = KeyView.HEIGHT + Math.sin(time * 2.2) * 0.05;
   }
 

@@ -40,7 +40,7 @@ describe('GameAudioEvents', () => {
     phase: 'playing',
     inTambour: false,
     exitOpen: false,
-    keyHolderId: null,
+    pickups: 0,
     canisters: 0,
     overheated: false,
     exchangeCount: 0,
@@ -54,18 +54,18 @@ describe('GameAudioEvents', () => {
     const events = new GameAudioEvents();
     events.update(base);
     expect(events.update({ ...base, exitOpen: true })).toEqual(['door-open']);
-    expect(events.update({ ...base, exitOpen: true, canisters: 1, keyHolderId: 'x' })).toEqual([
+    expect(events.update({ ...base, exitOpen: true, canisters: 1, pickups: 1 })).toEqual([
       'key',
       'canister-pickup',
     ]);
-    expect(events.update({ ...base, exitOpen: true, canisters: 0, keyHolderId: 'x' })).toEqual([
+    expect(events.update({ ...base, exitOpen: true, canisters: 0, pickups: 1 })).toEqual([
       'refuel-done',
     ]);
     expect(
       events.update({
         ...base,
         exitOpen: true,
-        keyHolderId: 'x',
+        pickups: 1,
         overheated: true,
         exchangeCount: 1,
       }),
@@ -74,7 +74,7 @@ describe('GameAudioEvents', () => {
       events.update({
         ...base,
         exitOpen: true,
-        keyHolderId: 'x',
+        pickups: 1,
         overheated: true,
         exchangeCount: 1,
         inTambour: true,

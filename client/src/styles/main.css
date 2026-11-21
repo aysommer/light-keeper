@@ -1016,3 +1016,200 @@ kbd {
 .settings__close {
   align-self: flex-end;
 }
+
+/* Предмет в руке: ключи и записка */
+
+.hand-item {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: #f3e7b0;
+}
+
+.hand-item__keys {
+  position: absolute;
+  right: 28px;
+  bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgb(20 17 10 / 0.6);
+  color: #d4ad2f;
+}
+
+.hand-item__keys svg {
+  width: 64px;
+  height: 32px;
+}
+
+.hand-item__count {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f3e7b0;
+}
+
+.hand-item__note {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  width: min(320px, calc(100% - 32px));
+  padding: 14px 18px 18px;
+  transform: translateX(-50%) rotate(-1.5deg);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(transparent 0 23px, rgb(80 110 160 / 0.25) 23px 24px), #f1ead2;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+  color: #262333;
+  text-align: center;
+}
+
+.hand-item__keys[hidden],
+.hand-item__note[hidden] {
+  display: none;
+}
+
+.hand-item__note-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.hand-item__note-code {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.code-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1em;
+  line-height: 1;
+}
+
+.code-symbol svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* Кодовая панель двери */
+
+.code-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(10 8 4 / 0.55);
+  pointer-events: auto;
+}
+
+.code-panel[hidden] {
+  display: none;
+}
+
+.code-panel__box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(340px, 100%);
+  padding: 18px;
+  border: 2px solid #3a3f46;
+  border-radius: 14px;
+  background: #23262b;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.6);
+}
+
+.code-panel__display {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #0f2414;
+  color: #5cff8a;
+}
+
+.code-panel__display--wrong {
+  animation: code-panel-shake 0.35s;
+  color: #ff6b5c;
+}
+
+@keyframes code-panel-shake {
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+.code-panel__cell {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border-bottom: 2px solid currentColor;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.code-panel__status {
+  min-height: 1.2em;
+  margin: 0;
+  color: #ffb4a8;
+  font-size: 14px;
+  text-align: center;
+}
+
+.code-panel__keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.code-panel__keypad[data-alphabet='digits'] {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.code-panel__button {
+  padding: 10px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: #c9c3b0;
+  color: #1b1a14;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.code-panel__button:hover,
+.code-panel__button:focus-visible {
+  background: #f3e7b0;
+  outline: none;
+}
+
+.code-panel__key {
+  font-size: 22px;
+}
+
+.code-panel__controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.code-panel__enter {
+  background: #5cb85c;
+}
+
+.code-panel__close {
+  background: #6b6a66;
+  color: #f3e7b0;
+}

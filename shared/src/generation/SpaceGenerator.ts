@@ -80,7 +80,7 @@ export class SpaceGenerator {
       throw new Error('Стартовая комната не найдена');
     }
     const exitRng = rng.fork('exit');
-    const { exit, key } = new ExitPlanner().plan(
+    const { exit, keys, note, code } = new ExitPlanner().plan(
       ExitPlanner.kindFor(index, exitRng),
       grid,
       layout,
@@ -103,7 +103,9 @@ export class SpaceGenerator {
       [startCenter.sub(offset), startCenter.add(offset)],
       this.startYaw(startCenter, startRoom, doors),
       exit,
-      key,
+      keys,
+      note,
+      code,
       this.planEmptyOil(rooms, rng.fork('oil-empty')),
     );
   }

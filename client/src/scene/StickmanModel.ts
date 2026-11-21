@@ -78,7 +78,7 @@ export class StickmanModel {
 
     const lampInHand = item === 'lamp';
     this.lantern.root.visible = lampInHand;
-    this.compass.visible = !lampInHand;
+    this.compass.visible = item === 'compass';
     const brightness = lampInHand && lamp ? LampRules.brightness(lamp) : 0;
     const level = LampFlame.level(time, brightness, 1.3);
     this.lampLight.visible = level > 0;

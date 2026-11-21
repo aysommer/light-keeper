@@ -39,7 +39,7 @@ export class MatchWorld {
     this.currentSpace = this.generator.generate(0);
     this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
     this.currentMovement = new PlayerMovement(this.currentCollisions);
-    this.currentExit = new ExitState(this.currentSpace);
+    this.currentExit = new ExitState();
     this.currentGhosts = new GhostPopulation(this.currentSpace, seed);
   }
 
@@ -155,7 +155,7 @@ export class MatchWorld {
     this.currentSpace = this.generator.generate(index);
     this.currentCollisions = CollisionWorld.fromSpace(this.currentSpace);
     this.currentMovement = new PlayerMovement(this.currentCollisions);
-    this.currentExit = new ExitState(this.currentSpace);
+    this.currentExit = new ExitState();
     this.currentOil = new OilState();
     this.currentGhosts = new GhostPopulation(this.currentSpace, this.seed);
     this.exchange.clearOffer();

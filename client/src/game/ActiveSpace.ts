@@ -4,6 +4,7 @@ import type { DroppedCanister, ExitSnapshot, Space } from '@light-keeper/shared'
 import { CanisterField } from '../scene/CanisterField.ts';
 import { ExitDoorView } from '../scene/ExitDoorView.ts';
 import { KeyView } from '../scene/KeyView.ts';
+import { NoteView } from '../scene/NoteView.ts';
 import { MaterialLibrary } from '../scene/MaterialLibrary.ts';
 import type { SpaceDetail } from '../scene/MaterialLibrary.ts';
 import { SpaceMeshBuilder } from '../scene/SpaceMeshBuilder.ts';
@@ -27,7 +28,8 @@ export class ActiveSpace implements MovementProvider {
   private currentCollisions: CollisionWorld;
   private view: SpaceView;
   private door: ExitDoorView;
-  private key: KeyView | null;
+  private keys: KeyView[];
+  private note: NoteView | null;
   private canisters: CanisterField;
   private detail: SpaceDetail;
 
@@ -44,7 +46,8 @@ export class ActiveSpace implements MovementProvider {
     this.view = this.builder.build(this.currentSpace, this.detail);
     scene.add(this.view.group);
     this.door = this.createDoor();
-    this.key = this.createKey();
+    this.keys = this.createKeys();
+    this.note = this.createNote();
     this.canisters = new CanisterField(scene, this.currentSpace.oilSpawns, (i) =>
       this.currentSpace.isOilFull(i),
     );
@@ -84,7 +87,8 @@ export class ActiveSpace implements MovementProvider {
     this.view = this.builder.build(this.currentSpace, this.detail);
     this.scene.add(this.view.group);
     this.door = this.createDoor();
-    this.key = this.createKey();
+    this.keys = this.createKeys();
+    this.note = this.createNote();
     this.canisters = new CanisterField(this.scene, this.currentSpace.oilSpawns, (i) =>
       this.currentSpace.isOilFull(i),
     );
@@ -100,7 +104,8 @@ export class ActiveSpace implements MovementProvider {
   ): void {
     this.view.update(time);
     this.door.update(exit, deltaSeconds);
-    this.key?.update(exit, time);
+    this.keys.forEach((key) => key.update(exit, time));
+    this.note?.update(exit, time);
     this.canisters.update(oilTaken, oilDropped);
   }
 
@@ -109,23 +114,36 @@ export class ActiveSpace implements MovementProvider {
   }
 
   private createDoor(): ExitDoorView {
-    const door = new ExitDoorView(this.currentSpace.exit, this.view.materials);
+    const door = new ExitDoorView(
+      this.currentSpace.exit,
+      this.view.materials,
+      this.currentSpace.keys.length,
+    );
     this.scene.add(door.root);
     return door;
   }
 
-  private createKey(): KeyView | null {
-    if (!this.currentSpace.key) {
+  private createKeys(): KeyView[] {
+    return this.currentSpace.keys.map((position, index) => {
+      const key = new KeyView(position, index);
+      this.scene.add(key.root);
+      return key;
+    });
+  }
+
+  private createNote(): NoteView | null {
+    if (!this.currentSpace.note) {
       return null;
     }
-    const key = new KeyView(this.currentSpace.key);
-    this.scene.add(key.root);
-    return key;
+    const note = new NoteView(this.currentSpace.note);
+    this.scene.add(note.root);
+    return note;
   }
 
   private disposeViews(): void {
     this.canisters.dispose();
-    this.key?.dispose();
+    this.keys.forEach((key) => key.dispose());
+    this.note?.dispose();
     this.door.dispose();
     this.view.dispose();
   }

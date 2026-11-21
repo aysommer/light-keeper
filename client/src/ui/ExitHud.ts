@@ -39,7 +39,20 @@ export class ExitHud {
     this.update(null, 'me', null);
   }
 
-  public update(exit: ExitSnapshot | null, playerId: string, prompt: string | null): void {
+  /**
+   * @param keys что известно о ключах: сколько у тебя, сколько вставлено и сколько нужно
+   *   (`null` — у двери нет замка)
+   */
+  public update(
+    exit: ExitSnapshot | null,
+    playerId: string,
+    prompt: string | null,
+    keys: {
+      readonly own: number;
+      readonly inserted: number;
+      readonly required: number;
+    } | null = null,
+  ): void {
     const opening = exit !== null && exit.openerId === playerId;
     this.ring.classList.toggle('exit-hud__ring--visible', opening);
     const progress = opening ? exit.openProgress : 0;
@@ -60,11 +73,21 @@ export class ExitHud {
       secondsLeft !== null && secondsLeft <= ExitHud.URGENT_SECONDS,
     );
 
-    const holder = exit?.keyHolderId ?? null;
-    this.setText(
-      this.key,
-      holder === null ? null : holder === playerId ? 'Ключ у тебя' : 'Ключ у напарника',
-    );
+    this.setText(this.key, this.keysText(exit, keys));
+  }
+
+  /** Строка про ключи: сколько найдено и вставлено из нужных. */
+  private keysText(
+    exit: ExitSnapshot | null,
+    keys: { readonly own: number; readonly inserted: number; readonly required: number } | null,
+  ): string | null {
+    if (!exit || !keys || exit.open || exit.keysTaken.length === 0) {
+      return null;
+    }
+    const parts = [`Ключи: найдено ${exit.keysTaken.length} из ${keys.required}`];
+    if (keys.own > 0) parts.push(`у тебя ${keys.own} (3)`);
+    if (keys.inserted > 0) parts.push(`вставлено ${keys.inserted}`);
+    return parts.join(' · ');
   }
 
   private div(className: string): HTMLElement {

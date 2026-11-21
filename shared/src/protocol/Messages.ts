@@ -64,30 +64,36 @@ export interface PlayerSnapshot {
   readonly lamp: LampSnapshot | null;
   /** Сколько канистр с маслом несёт. */
   readonly canisters: number;
+  /** Сколько ключей несёт (ещё не вставленных в замок). */
+  readonly keys: number;
   /** Прогресс заправки лампы, 0–1. */
   readonly refuelProgress: number;
 }
 
-/** Состояние двери выхода и ключа в текущем пространстве. */
+/** Состояние двери выхода, ключей и записки в текущем пространстве. */
 export interface ExitSnapshot {
   readonly open: boolean;
-  /** Скрытая дверь уже проявлена (для остальных типов всегда `true`). */
-  readonly revealed: boolean;
   /** Кто открывает дверь прямо сейчас, иначе `null`. */
   readonly openerId: string | null;
   /** Прогресс открытия, 0–1. */
   readonly openProgress: number;
   /** Сколько секунд осталось войти, пока дверь открыта; иначе `null`. */
   readonly secondsLeft: number | null;
-  /** У кого ключ; `null` — ключ лежит на месте или его нет. */
-  readonly keyHolderId: string | null;
+  /** Какие ключи уже подобраны (индексы в `Space.keys`). */
+  readonly keysTaken: readonly number[];
+  /** Сколько ключей уже вставлено в замок (нужны все `Space.keys`). */
+  readonly keysInserted: number;
+  /** У кого записка с кодом; `null` — лежит на месте или её нет. */
+  readonly noteHolderId: string | null;
+  /** Сколько раз на панели ввели неверный код (клиент показывает «неверно» по росту). */
+  readonly codeFailures: number;
 }
 
 /** Отладочные состояния лампы. */
 export type DebugLampPreset = 'hot' | 'low-oil';
 
 /** Куда можно перенестись отладочной командой. */
-export type DebugGotoTarget = 'exit' | 'key' | 'oil';
+export type DebugGotoTarget = 'exit' | 'key' | 'note' | 'oil';
 
 /** Обмен лампами: кто предложил и сколько обменов уже было в пространстве. */
 export interface ExchangeSnapshot {
@@ -150,6 +156,8 @@ export type ClientMessage =
   | { readonly type: 'lobby:ready'; readonly ready: boolean }
   | { readonly type: 'ping'; readonly sentAt: number }
   | { readonly type: 'input'; readonly commands: readonly PlayerInput[] }
+  /** Ввод кода на панели двери (символы алфавита кода). */
+  | { readonly type: 'exit:code'; readonly code: readonly string[] }
   /** Отладка: перейти в следующее пространство. Сервер принимает только в режиме разработки. */
   | { readonly type: 'debug:next-space' }
   /** Отладка: перенестись к двери выхода или к ключу. Только в режиме разработки. */
