@@ -90,7 +90,12 @@ export class LobbyScreen implements Screen {
     this.update(snapshot);
   }
 
-  public mount(): void {}
+  public mount(): void {
+    // Модели героев грузятся, пока игроки в лобби (не в меню — там это давало рывок).
+    CharacterAssets.load().catch(() => {
+      // Не загрузились — в игре останутся стикмены.
+    });
+  }
 
   public update(snapshot: LobbySnapshot): void {
     this.code.textContent = snapshot.code;

@@ -1234,7 +1234,25 @@ kbd {
   transform: translateZ(-1700px);
   --w: 760px;
   --h: 420px;
-  --d: 4000px;
+  --d: 4160px;
+  /** Шаг узоров вдоль коридора: на столько он «едет» за цикл, и стык незаметен. */
+  --step: 400px;
+}
+
+.liminal__mover {
+  position: absolute;
+  transform-style: preserve-3d;
+  animation: liminal-walk 9s linear infinite;
+  will-change: transform;
+}
+
+@keyframes liminal-walk {
+  from {
+    transform: translateZ(0);
+  }
+  to {
+    transform: translateZ(var(--step));
+  }
 }
 
 .liminal__face {
@@ -1250,11 +1268,10 @@ kbd {
   margin-top: calc(var(--d) / -2);
   transform: translateY(calc(var(--h) / 2)) rotateX(90deg);
   background:
-    radial-gradient(circle at 30% 40%, rgb(0 0 0 / 0.18) 0 2px, transparent 3px) 0 0 / 23px 19px,
+    radial-gradient(circle at 30% 40%, rgb(0 0 0 / 0.18) 0 2px, transparent 3px) 0 0 / 23px 20px,
     radial-gradient(circle at 70% 60%, rgb(255 240 180 / 0.12) 0 2px, transparent 3px) 0 0 / 17px
       29px,
     linear-gradient(#6f6224, #5b5020);
-  animation: liminal-walk-y 9s linear infinite;
 }
 
 /* Подвесной потолок: плитки и лампы дневного света. */
@@ -1267,7 +1284,6 @@ kbd {
   background:
     repeating-linear-gradient(90deg, rgb(0 0 0 / 0.22) 0 2px, transparent 2px 95px),
     repeating-linear-gradient(0deg, rgb(0 0 0 / 0.22) 0 2px, transparent 2px 100px), #cfc49a;
-  animation: liminal-walk-y 9s linear infinite;
 }
 
 .liminal__face--ceiling::after {
@@ -1304,18 +1320,16 @@ kbd {
   margin-top: calc(var(--h) / -2);
   background:
     linear-gradient(transparent calc(100% - 22px), #4a3f18 calc(100% - 22px)),
-    repeating-linear-gradient(90deg, rgb(120 100 30 / 0.18) 0 10px, transparent 10px 36px),
+    repeating-linear-gradient(90deg, rgb(120 100 30 / 0.18) 0 10px, transparent 10px 40px),
     linear-gradient(#d8c56c, #bfa94e);
 }
 
 .liminal__face--left {
   transform: translateX(calc(var(--w) / -2)) rotateY(90deg);
-  animation: liminal-walk-x 9s linear infinite reverse;
 }
 
 .liminal__face--right {
   transform: translateX(calc(var(--w) / 2)) rotateY(-90deg);
-  animation: liminal-walk-x 9s linear infinite;
 }
 
 /* Конец коридора теряется в темноте. */
@@ -1324,20 +1338,8 @@ kbd {
   height: var(--h);
   margin-left: calc(var(--w) / -2);
   margin-top: calc(var(--h) / -2);
-  transform: translateZ(calc(var(--d) / -2));
+  transform: translateZ(calc(var(--d) / -2 + var(--step)));
   background: #0b0904;
-}
-
-@keyframes liminal-walk-y {
-  to {
-    background-position-y: 400px;
-  }
-}
-
-@keyframes liminal-walk-x {
-  to {
-    background-position-x: 432px;
-  }
 }
 
 @keyframes liminal-flicker {
@@ -1365,25 +1367,14 @@ kbd {
 
 .liminal__grain {
   position: absolute;
-  inset: -50%;
+  inset: 0;
   opacity: 0.08;
   background: repeating-radial-gradient(circle at 17% 32%, #fff 0 1px, transparent 1px 3px);
-  animation: liminal-grain 0.6s steps(3) infinite;
-}
-
-@keyframes liminal-grain {
-  33% {
-    transform: translate(-3%, 2%);
-  }
-  66% {
-    transform: translate(2%, -3%);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liminal__face,
-  .liminal__face::after,
-  .liminal__grain {
+  .liminal__mover,
+  .liminal__face::after {
     animation: none;
   }
 }
