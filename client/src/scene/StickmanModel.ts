@@ -7,19 +7,24 @@ import {
   MeshStandardMaterial,
   PlaneGeometry,
   PointLight,
+  Vector3,
 } from 'three';
 import { LampRules } from '@light-keeper/shared';
 import type { HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
 import { Blinker } from '../game/Blinker.ts';
 import { LampFlame } from '../game/LampFlame.ts';
 import { StickmanAnimator } from '../game/StickmanAnimator.ts';
+import { CharacterAssets } from './CharacterAssets.ts';
+import { CharacterBody } from './CharacterBody.ts';
 import { GroundShadow } from './GroundShadow.ts';
 import { LanternModel } from './LanternModel.ts';
 import { StickmanRig } from './StickmanRig.ts';
 
 /**
- * Стикмен напарника: шарнирный скелет с процедурной анимацией шага и бега.
- * В правой руке — горящий фонарь (освещает мир) или компас (фонарь убран).
+ * Напарник на сцене. Главные герои — модели Kenney (мальчик в рыжей футболке
+ * у красного игрока, усач у голубого) со скелетной анимацией и морганием;
+ * пока модели загружаются (или если не загрузились), виден стикмен.
+ * В правой руке — горящий фонарь (освещает мир), компас, ключ или записка.
  */
 export class StickmanModel {
   public static readonly COLORS: Record<PlayerColor, string> = {
@@ -28,8 +33,13 @@ export class StickmanModel {
   };
   private static readonly LAMP_INTENSITY = 6;
 
-  public readonly root: Group;
+  public readonly root = new Group();
   private readonly rig: StickmanRig;
+  /** Точка правой кисти (в координатах `root`): за ней следуют предметы в руке. */
+  private readonly hand = new Group();
+  private character: CharacterBody | null = null;
+  private disposed = false;
+  private readonly handWorld = new Vector3();
   private readonly animator = new StickmanAnimator();
   private readonly blinker = new Blinker();
   private readonly bodyMaterial: MeshStandardMaterial;
@@ -55,9 +65,9 @@ export class StickmanModel {
   public constructor(color: PlayerColor) {
     this.bodyMaterial = StickmanRig.bodyMaterial(StickmanModel.COLORS[color]);
     this.rig = new StickmanRig(this.bodyMaterial);
-    this.root = this.rig.root;
+    this.root.add(this.rig.root, this.hand);
 
-    this.rig.rightHand.add(this.lampSwing);
+    this.hand.add(this.lampSwing);
     this.lampSwing.add(this.lantern.root);
     this.lampLight = new PointLight('#ffcf8a', StickmanModel.LAMP_INTENSITY, 14, 1.6);
     this.lampLight.position.y = LanternModel.GLASS_CENTER_Y;
@@ -66,18 +76,29 @@ export class StickmanModel {
     // Компас в руке — плоский латунный диск.
     this.compass = new Mesh(new CylinderGeometry(0.05, 0.05, 0.015, 20), this.compassMaterial);
     this.compass.position.set(0, -0.02, -0.03);
-    this.compass.rotation.x = Math.PI / 2;
-    this.rig.rightHand.add(this.compass);
+    this.compass.rotation.x = 0.6;
+    this.hand.add(this.compass);
 
     this.key = new Mesh(new BoxGeometry(0.02, 0.1, 0.01), this.compassMaterial);
     this.key.position.set(0, -0.06, -0.02);
-    this.rig.rightHand.add(this.key);
+    this.hand.add(this.key);
     this.note = new Mesh(new PlaneGeometry(0.15, 0.1), this.noteMaterial);
     this.note.position.set(0, -0.02, -0.06);
     this.note.rotation.x = -0.6;
-    this.rig.rightHand.add(this.note);
+    this.hand.add(this.note);
 
     this.shadow.attach(this.root, 0.9);
+
+    void CharacterAssets.load()
+      .then((assets) => {
+        if (this.disposed) return;
+        this.character = new CharacterBody(assets, color);
+        this.root.add(this.character.root);
+        this.rig.root.visible = false;
+      })
+      .catch(() => {
+        // Модели не загрузились — остаётся стикмен.
+      });
   }
 
   /**
@@ -100,9 +121,15 @@ export class StickmanModel {
       rightShoulder: animated.rightShoulder + reach * 1.1,
       rightElbow: animated.rightElbow * (1 - reach * 0.7),
     };
-    this.rig.applyPose(pose);
-    this.rig.setEyesOpen(this.blinker.update(deltaSeconds));
+    const eyesOpen = this.blinker.update(deltaSeconds);
+    if (this.character) {
+      this.character.update(deltaSeconds, signedSpeed, eyesOpen);
+    } else {
+      this.rig.applyPose(pose);
+      this.rig.setEyesOpen(eyesOpen);
+    }
     this.lampSwing.rotation.x = pose.lampSwing;
+    this.followHand(reach);
 
     const lampInHand = item === 'lamp';
     this.lantern.root.visible = lampInHand;
@@ -117,7 +144,20 @@ export class StickmanModel {
     this.lantern.setGlow(level, LampFlame.heatGlow(lamp?.heat ?? 0));
   }
 
+  /** Предметы в руке следуют за кистью текущего тела (при передаче лампы — тянутся вперёд). */
+  private followHand(reach: number): void {
+    this.root.updateMatrixWorld(true);
+    const world =
+      this.character?.handPosition(this.handWorld) ??
+      this.rig.rightHand.getWorldPosition(this.handWorld);
+    this.hand.position.copy(this.root.worldToLocal(world));
+    this.hand.position.z -= reach * 0.3;
+    this.hand.position.y += reach * 0.15;
+  }
+
   public dispose(): void {
+    this.disposed = true;
+    this.character?.dispose();
     this.shadow.dispose();
     this.key.geometry.dispose();
     this.note.geometry.dispose();

@@ -42,48 +42,6 @@ body {
   text-align: center;
 }
 
-.title-screen__heroes {
-  display: flex;
-  gap: 40px;
-}
-
-.stickman {
-  width: 72px;
-  height: 108px;
-  fill: none;
-  stroke-width: 5;
-  stroke-linecap: round;
-  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.25));
-}
-
-.stickman--red {
-  stroke: var(--player-red);
-}
-
-.stickman--blue {
-  stroke: var(--player-blue);
-}
-
-.stickman--red circle:first-child {
-  fill: var(--player-red);
-}
-
-.stickman--blue circle:first-child {
-  fill: var(--player-blue);
-}
-
-.stickman__lamp-handle {
-  stroke: var(--ink);
-  stroke-width: 2;
-}
-
-.stickman__lamp {
-  fill: var(--lamp);
-  stroke: var(--ink);
-  stroke-width: 2;
-  filter: drop-shadow(0 0 6px #fff7b0);
-}
-
 .title-screen__name {
   margin: 0;
   font-size: clamp(36px, 8vw, 72px);
@@ -1175,4 +1133,268 @@ kbd {
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--gauge-color);
+}
+
+/* Главное меню: бесконечный лиминальный коридор */
+
+.title-screen--liminal {
+  position: relative;
+  overflow: hidden;
+  color: #f3e7b0;
+  background: #120f07;
+}
+
+.title-screen__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 28px 24px;
+  border: 1px solid rgb(243 231 176 / 0.14);
+  border-radius: 18px;
+  background: rgb(14 12 6 / 0.62);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.title-screen--liminal .title-screen__name {
+  color: #fff4c2;
+  text-shadow:
+    0 0 18px rgb(255 228 140 / 0.55),
+    0 0 2px rgb(255 244 194 / 0.9);
+}
+
+.title-screen--liminal .join-form__input {
+  border-color: rgb(243 231 176 / 0.45);
+  background: rgb(255 255 255 / 0.06);
+  color: #f3e7b0;
+}
+
+.title-screen--liminal .join-form__input::placeholder {
+  color: rgb(243 231 176 / 0.45);
+}
+
+.title-screen--liminal .button {
+  background: #e8d77f;
+  color: #1b1a14;
+}
+
+.title-screen--liminal .button--secondary {
+  background: #6b5f2c;
+  color: #f3e7b0;
+}
+
+.title-screen--liminal .button--ghost-dark {
+  border-color: rgb(243 231 176 / 0.45);
+  background: transparent;
+  color: #f3e7b0;
+}
+
+.title-screen--liminal .title-screen__error {
+  color: #ff8a7a;
+}
+
+.title-screen--liminal .server-status {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.title-screen--liminal .server-status--ok {
+  color: #8fe39b;
+}
+
+.title-screen--liminal .server-status--bad {
+  color: #ff8a7a;
+}
+
+.title-screen--liminal .records--title {
+  background: rgb(255 255 255 / 0.05);
+  color: #f3e7b0;
+}
+
+.liminal {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  perspective: 520px;
+  perspective-origin: 50% 48%;
+  pointer-events: none;
+}
+
+.liminal__tunnel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(-1700px);
+  --w: 760px;
+  --h: 420px;
+  --d: 4000px;
+}
+
+.liminal__face {
+  position: absolute;
+  backface-visibility: hidden;
+}
+
+/* Ковролин: пятнистый, тёмно-жёлтый. */
+.liminal__face--floor {
+  width: var(--w);
+  height: var(--d);
+  margin-left: calc(var(--w) / -2);
+  margin-top: calc(var(--d) / -2);
+  transform: translateY(calc(var(--h) / 2)) rotateX(90deg);
+  background:
+    radial-gradient(circle at 30% 40%, rgb(0 0 0 / 0.18) 0 2px, transparent 3px) 0 0 / 23px 19px,
+    radial-gradient(circle at 70% 60%, rgb(255 240 180 / 0.12) 0 2px, transparent 3px) 0 0 / 17px
+      29px,
+    linear-gradient(#6f6224, #5b5020);
+  animation: liminal-walk-y 9s linear infinite;
+}
+
+/* Подвесной потолок: плитки и лампы дневного света. */
+.liminal__face--ceiling {
+  width: var(--w);
+  height: var(--d);
+  margin-left: calc(var(--w) / -2);
+  margin-top: calc(var(--d) / -2);
+  transform: translateY(calc(var(--h) / -2)) rotateX(-90deg);
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.22) 0 2px, transparent 2px 95px),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.22) 0 2px, transparent 2px 100px), #cfc49a;
+  animation: liminal-walk-y 9s linear infinite;
+}
+
+.liminal__face--ceiling::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0 300px,
+    rgb(255 250 220 / 0.9) 300px 345px,
+    transparent 345px 400px
+  );
+  -webkit-mask: linear-gradient(
+    90deg,
+    transparent calc(50% - 90px),
+    #000 calc(50% - 90px) calc(50% + 90px),
+    transparent calc(50% + 90px)
+  );
+  mask: linear-gradient(
+    90deg,
+    transparent calc(50% - 90px),
+    #000 calc(50% - 90px) calc(50% + 90px),
+    transparent calc(50% + 90px)
+  );
+  animation: liminal-flicker 7s steps(1) infinite;
+}
+
+/* Обои: полосы в жёлтых тонах и плинтус. */
+.liminal__face--left,
+.liminal__face--right {
+  width: var(--d);
+  height: var(--h);
+  margin-left: calc(var(--d) / -2);
+  margin-top: calc(var(--h) / -2);
+  background:
+    linear-gradient(transparent calc(100% - 22px), #4a3f18 calc(100% - 22px)),
+    repeating-linear-gradient(90deg, rgb(120 100 30 / 0.18) 0 10px, transparent 10px 36px),
+    linear-gradient(#d8c56c, #bfa94e);
+}
+
+.liminal__face--left {
+  transform: translateX(calc(var(--w) / -2)) rotateY(90deg);
+  animation: liminal-walk-x 9s linear infinite reverse;
+}
+
+.liminal__face--right {
+  transform: translateX(calc(var(--w) / 2)) rotateY(-90deg);
+  animation: liminal-walk-x 9s linear infinite;
+}
+
+/* Конец коридора теряется в темноте. */
+.liminal__face--end {
+  width: var(--w);
+  height: var(--h);
+  margin-left: calc(var(--w) / -2);
+  margin-top: calc(var(--h) / -2);
+  transform: translateZ(calc(var(--d) / -2));
+  background: #0b0904;
+}
+
+@keyframes liminal-walk-y {
+  to {
+    background-position-y: 400px;
+  }
+}
+
+@keyframes liminal-walk-x {
+  to {
+    background-position-x: 432px;
+  }
+}
+
+@keyframes liminal-flicker {
+  0%,
+  41%,
+  43.5%,
+  100% {
+    opacity: 1;
+  }
+  41.5%,
+  43% {
+    opacity: 0.25;
+  }
+}
+
+/* Глубина: тьма у дальнего конца и по краям, тёплый туман. */
+.liminal__haze {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 14% 16% at 50% 48%, rgb(8 6 2 / 0.95), transparent 100%),
+    radial-gradient(ellipse 40% 40% at 50% 48%, rgb(30 24 8 / 0.65), transparent 100%),
+    radial-gradient(ellipse at 50% 48%, transparent 45%, rgb(0 0 0 / 0.75) 100%);
+}
+
+.liminal__grain {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.08;
+  background: repeating-radial-gradient(circle at 17% 32%, #fff 0 1px, transparent 1px 3px);
+  animation: liminal-grain 0.6s steps(3) infinite;
+}
+
+@keyframes liminal-grain {
+  33% {
+    transform: translate(-3%, 2%);
+  }
+  66% {
+    transform: translate(2%, -3%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liminal__face,
+  .liminal__face::after,
+  .liminal__grain {
+    animation: none;
+  }
+}
+
+.lobby-slot__portrait {
+  width: 84px;
+  height: 180px;
+  object-fit: contain;
+}
+
+.lobby-slot--empty .lobby-slot__portrait {
+  opacity: 0.35;
+  filter: grayscale(1);
 }

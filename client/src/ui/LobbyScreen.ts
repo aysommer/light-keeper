@@ -2,7 +2,7 @@ import { PLAYER_COLORS } from '@light-keeper/shared';
 import type { LobbySnapshot, PlayerColor } from '@light-keeper/shared';
 import type { Screen } from './Screen.ts';
 import { Clipboard } from '../core/Clipboard.ts';
-import { StickmanIcon } from './StickmanIcon.ts';
+import { CharacterAssets } from '../scene/CharacterAssets.ts';
 
 export interface LobbyScreenActions {
   onReady(ready: boolean): void;
@@ -11,11 +11,6 @@ export interface LobbyScreenActions {
 
 /** Комната ожидания: код, два слота игроков, готовность и обратный отсчёт. */
 export class LobbyScreen implements Screen {
-  private static readonly COLOR_NAMES: Record<PlayerColor, string> = {
-    red: 'Красный',
-    blue: 'Голубой',
-  };
-
   public readonly element: HTMLElement;
   private readonly code: HTMLElement;
   private readonly copyButton: HTMLButtonElement;
@@ -56,7 +51,11 @@ export class LobbyScreen implements Screen {
     for (const color of PLAYER_COLORS) {
       const slot = document.createElement('div');
       slot.className = `lobby-slot lobby-slot--${color}`;
-      slot.append(new StickmanIcon(color, color === 'blue').element);
+      const portrait = document.createElement('img');
+      portrait.className = 'lobby-slot__portrait';
+      portrait.src = CharacterAssets.SKINS[color].portrait;
+      portrait.alt = CharacterAssets.SKINS[color].name;
+      slot.append(portrait);
       const caption = document.createElement('div');
       caption.className = 'lobby-slot__caption';
       slot.append(caption);
@@ -102,7 +101,8 @@ export class LobbyScreen implements Screen {
       if (!slot || !caption) continue;
       slot.classList.toggle('lobby-slot--empty', !player);
       slot.classList.toggle('lobby-slot--ready', player?.ready ?? false);
-      const who = player?.id === this.playerId ? 'Ты' : LobbyScreen.COLOR_NAMES[color];
+      const hero = CharacterAssets.SKINS[color].name;
+      const who = player?.id === this.playerId ? `Ты — ${hero}` : hero;
       caption.textContent = player
         ? `${who} · ${player.ready ? 'готов' : 'не готов'}`
         : 'Ждём напарника…';

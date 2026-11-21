@@ -5,7 +5,7 @@ import { RecordsTable } from './RecordsTable.ts';
 import { SettingsPanel } from './SettingsPanel.ts';
 import type { Screen } from './Screen.ts';
 import type { ServerStatusIndicator } from './ServerStatusIndicator.ts';
-import { StickmanIcon } from './StickmanIcon.ts';
+import { LiminalBackdrop } from './LiminalBackdrop.ts';
 
 export interface TitleScreenActions {
   onCreateLobby(): void;
@@ -30,11 +30,7 @@ export class TitleScreen implements Screen {
   ) {
     this.settings = new SettingsPanel(graphics);
     this.element = document.createElement('main');
-    this.element.className = 'title-screen';
-
-    const heroes = document.createElement('div');
-    heroes.className = 'title-screen__heroes';
-    heroes.append(new StickmanIcon('red').element, new StickmanIcon('blue', true).element);
+    this.element.className = 'title-screen title-screen--liminal';
 
     const name = document.createElement('h1');
     name.className = 'title-screen__name';
@@ -82,8 +78,10 @@ export class TitleScreen implements Screen {
     this.error.setAttribute('role', 'alert');
 
     this.records.element.classList.add('records--title');
-    this.element.append(
-      heroes,
+    const content = document.createElement('div');
+    content.className = 'title-screen__content';
+    this.element.append(new LiminalBackdrop().element, content);
+    content.append(
       name,
       tagline,
       menu,

@@ -14,7 +14,7 @@ import { LampFlame } from '../game/LampFlame.ts';
 import { ItemSwitcher } from '../game/ItemSwitcher.ts';
 import { HeldProps } from './HeldProps.ts';
 import { LanternModel } from './LanternModel.ts';
-import { StickmanModel } from './StickmanModel.ts';
+import { CharacterAssets } from './CharacterAssets.ts';
 import { StickmanRig } from './StickmanRig.ts';
 
 /** Что нужно руке от первого лица, чтобы двигаться вместе с игроком. */
@@ -64,6 +64,7 @@ export class FirstPersonViewmodel {
   private readonly lantern = new LanternModel();
   private readonly glow = new PointLight('#ffcf8a', 1.2, 1.5, 1.5);
   private readonly material: MeshStandardMaterial;
+  private readonly fistMaterial: MeshStandardMaterial;
   private readonly geometries: BufferGeometry[] = [];
   private readonly switcher = new ItemSwitcher();
   private readonly props = new HeldProps();
@@ -80,7 +81,9 @@ export class FirstPersonViewmodel {
     private readonly scene: Scene,
     color: PlayerColor,
   ) {
-    this.material = StickmanRig.bodyMaterial(StickmanModel.COLORS[color]);
+    // Рука героя: рукав (у мальчика — белый лонгслив, у усача — белый костюм) и кисть.
+    this.material = StickmanRig.bodyMaterial(CharacterAssets.SKINS[color].sleeve);
+    this.fistMaterial = StickmanRig.bodyMaterial(CharacterAssets.SKINS[color].skinColor);
     scene.add(new HemisphereLight('#fff1c4', '#2b2414', 0.45));
     scene.add(this.root);
 
@@ -101,7 +104,7 @@ export class FirstPersonViewmodel {
     this.root.add(arm);
     const fist = new Mesh(
       this.geometry(new SphereGeometry(FirstPersonViewmodel.FIST_RADIUS, 14, 10)),
-      this.material,
+      this.fistMaterial,
     );
     fist.position.copy(hand);
     this.root.add(fist);
@@ -190,6 +193,7 @@ export class FirstPersonViewmodel {
     this.props.dispose();
     this.glow.dispose();
     this.material.dispose();
+    this.fistMaterial.dispose();
     this.geometries.forEach((geometry) => geometry.dispose());
     this.scene.clear();
   }
