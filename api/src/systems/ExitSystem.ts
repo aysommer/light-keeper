@@ -183,8 +183,7 @@ export class ExitSystem implements System {
   private isNearDoor(world: MatchWorld, player: ServerPlayer, slack = 0): boolean {
     return (
       player.floor === world.space.exitFloor &&
-      player.position.distanceTo(world.space.exit.frontPoint()) <=
-        this.exitSettings.interactDistance + slack
+      world.space.exit.reachableFrom(player.position, this.exitSettings.interactDistance + slack)
     );
   }
 }

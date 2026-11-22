@@ -221,6 +221,29 @@ describe('Этажи', () => {
     }
   });
 
+  it('пролёт лестницы твёрдый, в своей клетке и не упирается в проём', () => {
+    for (const space of all().filter((s) => s.floorCount > 1)) {
+      for (const stair of space.stairs) {
+        const block = stair.block();
+        const [col, row] = space.grid.cellAt(stair.position);
+        const cell = space.grid.cellBounds(col, row);
+        // Внутри клетки (с запасом на полстены).
+        expect(block.minX).toBeGreaterThanOrEqual(cell.minX + 0.1);
+        expect(block.maxX).toBeLessThanOrEqual(cell.maxX - 0.1);
+        expect(block.minY).toBeGreaterThanOrEqual(cell.minY + 0.1);
+        expect(block.maxY).toBeLessThanOrEqual(cell.maxY - 0.1);
+        for (const floor of [stair.lower, stair.lower + 1]) {
+          // Пролёт — среди препятствий этажа (сквозь него не пройти).
+          expect(space.floor(floor).colliders).toContainEqual(block);
+          // Ни один проём этажа не перекрыт пролётом.
+          for (const door of space.floor(floor).doors) {
+            expect(block.expand(0.3).containsPoint(door.position)).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
   it('stairNear: снизу ведёт наверх, сверху — вниз, на другом этаже — ничего', () => {
     const space = all().find((s) => s.floorCount === 3)!;
     const [first, second] = space.stairs;
@@ -260,5 +283,18 @@ describe('ExitPlanner: магнитофон', () => {
     const plain = new SpaceGenerator(1).generate(0);
     expect(plain.code).toBeNull();
     expect(plain.codeHint).toBe('note');
+  });
+});
+
+describe('ExitDoor.reachableFrom', () => {
+  it('перед дверью — можно, за стеной (с другой стороны) — нельзя', () => {
+    for (const seed of SEEDS.slice(0, 10)) {
+      const { exit } = new SpaceGenerator(seed).generate(2);
+      expect(exit.reachableFrom(exit.frontPoint(0.6), 1.3)).toBe(true);
+      // С обратной стороны стены, вплотную к ней.
+      const behind = exit.position.sub(exit.normal.scale(0.4));
+      expect(exit.position.distanceTo(behind)).toBeLessThan(1.3);
+      expect(exit.reachableFrom(behind, 1.3)).toBe(false);
+    }
   });
 });

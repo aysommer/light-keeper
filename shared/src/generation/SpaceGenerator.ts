@@ -14,6 +14,8 @@ import { RoomLayoutPlanner } from './RoomLayoutPlanner.ts';
 import { Space } from './Space.ts';
 import { SpaceFloor } from './SpaceFloor.ts';
 import { Stair } from './Stair.ts';
+import { GridEdge } from './GridEdge.ts';
+import type { AABB } from '../math/AABB.ts';
 import { SpaceGrid } from './SpaceGrid.ts';
 import { RoomTemplateRegistry } from './templates/RoomTemplateRegistry.ts';
 import { WallBuilder } from './WallBuilder.ts';
@@ -57,33 +59,47 @@ export class SpaceGenerator {
     const startRoomIndex = layout.ownerAt(startCol, startRow);
 
     const floorCount = this.floorCountFor(index, rng.fork('floors'));
-    // Лестницы: по одной между соседними этажами, в разных клетках и не в клетке старта.
-    const stairRng = rng.fork('stairs');
-    const stairCells: Array<[number, number]> = [];
-    for (let lower = 0; lower < floorCount - 1; lower++) {
-      let cell: [number, number];
-      do {
-        cell = [stairRng.int(0, size - 1), stairRng.int(0, size - 1)];
-      } while (
-        (cell[0] === startCol && cell[1] === startRow) ||
-        stairCells.some(([c, r]) => c === cell[0] && r === cell[1])
-      );
-      stairCells.push(cell);
-    }
-    const stairs = stairCells.map(
-      ([col, row], lower) => new Stair(lower, grid.cellCenter(col, row)),
+    // Раскладки этажей и их проёмы — заранее: лестница не должна упираться в проём.
+    const floorRngs = Array.from({ length: floorCount }, (_, floor) =>
+      floor === 0 ? rng : rng.fork(`floor:${floor}`),
     );
+    const layouts = floorRngs.map((floorRng, floor) =>
+      floor === 0 ? layout : new RoomLayoutPlanner(size, size).plan(floorRng.fork('layout')),
+    );
+    const doorEdges = layouts.map(
+      (floorLayout, floor) =>
+        new Set(
+          new DoorPlanner(this.settings.extraDoorChance)
+            .plan(floorLayout, floorRngs[floor]!.fork('doors'))
+            .map((door) => door.edge.key),
+        ),
+    );
+    const stairs = this.planStairs(
+      floorCount,
+      size,
+      grid,
+      [startCol, startRow],
+      doorEdges,
+      rng.fork('stairs'),
+    );
+    const stairCells = stairs.map((stair) => grid.cellAt(stair.position));
     const stairCellsOf = (floor: number): Array<[number, number]> =>
       stairCells.filter((_, lower) => lower === floor || lower === floor - 1);
+    const blocksOf = (floor: number) =>
+      stairs.filter((stair) => stair.targetFrom(floor) !== null).map((stair) => stair.block());
 
-    const floors = [this.buildFloor(0, index, grid, layout, startRoomIndex, rng, stairCellsOf(0))];
-    for (let floor = 1; floor < floorCount; floor++) {
-      const floorRng = rng.fork(`floor:${floor}`);
-      const floorLayout = new RoomLayoutPlanner(size, size).plan(floorRng.fork('layout'));
-      floors.push(
-        this.buildFloor(floor, index, grid, floorLayout, -1, floorRng, stairCellsOf(floor)),
-      );
-    }
+    const floors = layouts.map((floorLayout, floor) =>
+      this.buildFloor(
+        floor,
+        index,
+        grid,
+        floorLayout,
+        floor === 0 ? startRoomIndex : -1,
+        floorRngs[floor]!,
+        stairCellsOf(floor),
+        blocksOf(floor),
+      ),
+    );
     const ground = floors[0]!;
 
     const startCenter = grid.cellCenter(startCol, startRow);
@@ -151,6 +167,52 @@ export class SpaceGenerator {
     );
   }
 
+  /**
+   * Лестницы: по одной между соседними этажами, в разных клетках, не в клетке
+   * старта. Пролёт идёт к стороне клетки без проёма на обоих этажах — так он
+   * не упирается в проём и целиком остаётся в клетке.
+   */
+  private planStairs(
+    floorCount: number,
+    size: number,
+    grid: SpaceGrid,
+    start: readonly [number, number],
+    doorEdges: ReadonlyArray<ReadonlySet<string>>,
+    rng: SeededRandom,
+  ): Stair[] {
+    const stairs: Stair[] = [];
+    const used = new Set<string>([`${start[0]}:${start[1]}`]);
+    for (let lower = 0; lower < floorCount - 1; lower++) {
+      let fallback: Stair | null = null;
+      for (let attempt = 0; attempt < 200; attempt++) {
+        const col = rng.int(0, size - 1);
+        const row = rng.int(0, size - 1);
+        if (used.has(`${col}:${row}`)) continue;
+        const sides = [
+          { direction: new Vector2(1, 0), edge: GridEdge.vertical(col + 1, row) },
+          { direction: new Vector2(-1, 0), edge: GridEdge.vertical(col, row) },
+          { direction: new Vector2(0, 1), edge: GridEdge.horizontal(col, row + 1) },
+          { direction: new Vector2(0, -1), edge: GridEdge.horizontal(col, row) },
+        ];
+        const free = sides.filter(
+          (side) =>
+            !doorEdges[lower]!.has(side.edge.key) && !doorEdges[lower + 1]!.has(side.edge.key),
+        );
+        const position = grid.cellCenter(col, row);
+        fallback ??= new Stair(lower, position, sides[0]!.direction);
+        const side = free.length > 0 ? rng.pick(free) : null;
+        if (side) {
+          used.add(`${col}:${row}`);
+          fallback = null;
+          stairs.push(new Stair(lower, position, side.direction));
+          break;
+        }
+      }
+      if (fallback) stairs.push(fallback);
+    }
+    return stairs;
+  }
+
   /** Сколько этажей: первое пространство — один, дальше иногда два или три. */
   private floorCountFor(index: number, rng: SeededRandom): number {
     if (index === 0) {
@@ -170,6 +232,7 @@ export class SpaceGenerator {
     startRoomIndex: number,
     rng: SeededRandom,
     stairCells: ReadonlyArray<[number, number]>,
+    blocks: readonly AABB[] = [],
   ): SpaceFloor {
     const prefix = floor === 0 ? `${index}` : `${index}:f${floor}`;
     const stairAreas = stairCells.map(([col, row]) => grid.cellBounds(col, row));
@@ -202,7 +265,7 @@ export class SpaceGenerator {
       layout,
       new Set(doors.map((door) => door.edge.key)),
     );
-    return new SpaceFloor(floor, layout, rooms, walls, doors);
+    return new SpaceFloor(floor, layout, rooms, walls, doors, blocks);
   }
 
   /**

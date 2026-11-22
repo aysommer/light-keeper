@@ -17,9 +17,11 @@ const SEEDS = Array.from({ length: 30 }, (_, i) => 1000 + i * 7919);
 const settings = GameConfig.world;
 
 /** Карта проходимости пространства для игрока. */
-const buildOccupancy = (space: Space): OccupancyGrid => {
+const buildOccupancy = (space: Space, floor = 0): OccupancyGrid => {
   const grid = new OccupancyGrid(space.bounds.expand(1), 0.1);
-  space.colliders.forEach((collider) => grid.block(collider, GameConfig.player.radius));
+  space
+    .floor(floor)
+    .colliders.forEach((collider) => grid.block(collider, GameConfig.player.radius));
   return grid;
 };
 
@@ -161,8 +163,15 @@ describe('SpaceGenerator: связность', () => {
       space.doors.forEach((door) =>
         expect(reachable.contains(door.position), `дверь ${door.edge.key}`).toBe(true),
       );
-      space.oilSpawns.forEach((oil) =>
-        expect(reachable.contains(oil), `канистра ${oil}`).toBe(true),
+      // Канистры — на своих этажах: верхние достижимы от лестницы, ведущей на этаж.
+      const floors = space.oilFloors;
+      const byFloor = space.floors.map((_, floor) =>
+        floor === 0
+          ? reachable
+          : buildOccupancy(space, floor).reachableFrom(space.stairs[floor - 1]!.position),
+      );
+      space.oilSpawns.forEach((oil, i) =>
+        expect(byFloor[floors[i]!]!.contains(oil), `канистра ${oil}`).toBe(true),
       );
     }
   });

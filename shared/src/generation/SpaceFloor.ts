@@ -15,6 +15,8 @@ export class SpaceFloor {
     public readonly rooms: readonly Room[],
     public readonly walls: readonly Wall[],
     public readonly doors: readonly Door[],
+    /** Дополнительные непроходимые места: пролёты лестниц. */
+    public readonly blocks: readonly AABB[] = [],
   ) {}
 
   public get obstacles(): Obstacle[] {
@@ -23,7 +25,11 @@ export class SpaceFloor {
 
   /** Все непроходимые прямоугольники этажа: стены и препятствия. */
   public get colliders(): AABB[] {
-    return [...this.walls.map((wall) => wall.bounds), ...this.obstacles.map((o) => o.bounds)];
+    return [
+      ...this.walls.map((wall) => wall.bounds),
+      ...this.obstacles.map((o) => o.bounds),
+      ...this.blocks,
+    ];
   }
 
   public roomAt(point: Vector2): Room | undefined {

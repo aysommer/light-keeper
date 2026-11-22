@@ -16,7 +16,7 @@ export class InteractionPrompt {
   public isNearDoor(space: Space, position: Vector2, floor = 0): boolean {
     return (
       floor === space.exitFloor &&
-      position.distanceTo(space.exit.frontPoint()) <= this.settings.interactDistance
+      space.exit.reachableFrom(position, this.settings.interactDistance)
     );
   }
 

@@ -22,6 +22,20 @@ export class ExitDoor {
     public readonly roomId: string,
   ) {}
 
+  /**
+   * Может ли игрок в этой точке взаимодействовать с дверью: рядом и именно перед
+   * ней, со стороны комнаты. Из-за тонкой стены (а не перед дверью) — нельзя:
+   * иначе за стеной появлялась бы подсказка двери, которой с этой стороны нет.
+   */
+  public reachableFrom(point: Vector2, distance: number): boolean {
+    const offset = point.sub(this.position);
+    const inFront = offset.x * this.normal.x + offset.y * this.normal.y;
+    return inFront > ExitDoor.MIN_IN_FRONT && point.distanceTo(this.frontPoint()) <= distance;
+  }
+
+  /** Насколько игрок должен быть перед осевой линией стены, м (полстены + запас). */
+  private static readonly MIN_IN_FRONT = 0.2;
+
   /** Точка перед дверью, от которой считаются расстояния взаимодействия. */
   public frontPoint(offset = 0.5): Vector2 {
     return this.position.add(this.normal.scale(offset));

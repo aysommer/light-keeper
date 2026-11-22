@@ -39,6 +39,11 @@ export class SpaceGrid {
     return new AABB(min.x, min.y, min.x + this.cellSize, min.y + this.cellSize);
   }
 
+  /** Клетка [столбец, строка], в которой лежит точка. */
+  public cellAt(point: Vector2): [number, number] {
+    return [Math.floor(point.x / this.cellSize), Math.floor(point.y / this.cellSize)];
+  }
+
   public cellCenter(col: number, row: number): Vector2 {
     return this.cellBounds(col, row).center;
   }
