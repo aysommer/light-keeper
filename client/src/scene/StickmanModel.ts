@@ -23,7 +23,7 @@ import { StickmanRig } from './StickmanRig.ts';
 /**
  * Напарник на сцене. Главные герои — модели Kenney (мальчик в рыжей футболке
  * у красного игрока, усач у голубого) со скелетной анимацией и морганием;
- * пока модели загружаются (или если не загрузились), виден стикмен.
+ * стикмен не показывается никогда (его скелет служит только точкой руки до загрузки).
  * В правой руке — горящий фонарь (освещает мир), компас, ключ или записка.
  */
 export class StickmanModel {
@@ -66,6 +66,9 @@ export class StickmanModel {
     this.bodyMaterial = StickmanRig.bodyMaterial(StickmanModel.COLORS[color]);
     this.rig = new StickmanRig(this.bodyMaterial);
     this.root.add(this.rig.root, this.hand);
+    // Стикмен не показывается: его скелет нужен только чтобы знать, где рука,
+    // пока не загрузилась модель героя.
+    this.rig.root.visible = false;
 
     this.hand.add(this.lampSwing);
     this.lampSwing.add(this.lantern.root);

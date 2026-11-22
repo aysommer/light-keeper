@@ -20,7 +20,7 @@ interface RabbitAsset {
 }
 
 /**
- * Белый низкополигональный заяц. Если в `public/models/rabbit/rabbit.glb`
+ * Белый полупрозрачный заяц — как призрак. Если в `public/models/rabbit/rabbit.glb`
  * лежит модель (например, «Low Poly Rabbit» с Sketchfab), берётся она —
  * перекрашенная в белый; иначе — своя модель из примитивов.
  * Заяц бежит прыжками: тело подскакивает, уши прижимаются.
@@ -35,14 +35,26 @@ export class RabbitModel {
   private readonly body = new Group();
   private readonly ears: Mesh[] = [];
   private readonly geometries: BufferGeometry[] = [];
+  /** Насколько заяц непрозрачен: полупрозрачный, как призрак. */
+  private static readonly OPACITY = 0.45;
   private readonly material = new MeshStandardMaterial({
-    color: '#f4f2ec',
+    color: '#f4f6ff',
     roughness: 0.9,
     flatShading: true,
-    // Чуть светится — белое пятно в темноте коридора.
-    emissive: '#5a5a56',
+    // Холодное свечение — бледный силуэт в темноте коридора.
+    emissive: '#cfd8ff',
+    emissiveIntensity: 0.45,
+    transparent: true,
+    opacity: RabbitModel.OPACITY,
+    depthWrite: false,
   });
-  private readonly eyeMaterial = new MeshStandardMaterial({ color: '#120404', roughness: 0.3 });
+  private readonly eyeMaterial = new MeshStandardMaterial({
+    color: '#120404',
+    roughness: 0.3,
+    transparent: true,
+    opacity: RabbitModel.OPACITY,
+    depthWrite: false,
+  });
   private mixer: AnimationMixer | null = null;
   private phase = 0;
   private disposed = false;
@@ -78,15 +90,9 @@ export class RabbitModel {
 
   /** Прозрачность (растворение в темноте): 1 — виден целиком. */
   public setOpacity(opacity: number): void {
-    const transparent = opacity < 1;
-    if (this.material.transparent !== transparent) {
-      this.material.transparent = transparent;
-      this.eyeMaterial.transparent = transparent;
-      this.material.needsUpdate = true;
-      this.eyeMaterial.needsUpdate = true;
-    }
-    this.material.opacity = opacity;
-    this.eyeMaterial.opacity = opacity;
+    this.material.opacity = RabbitModel.OPACITY * opacity;
+    this.material.emissiveIntensity = 0.45 * opacity;
+    this.eyeMaterial.opacity = RabbitModel.OPACITY * opacity;
   }
 
   public dispose(): void {

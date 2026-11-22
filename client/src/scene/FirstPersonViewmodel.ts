@@ -1,13 +1,5 @@
-import {
-  CylinderGeometry,
-  Group,
-  HemisphereLight,
-  Mesh,
-  PointLight,
-  SphereGeometry,
-  Vector3,
-} from 'three';
-import type { BufferGeometry, MeshStandardMaterial, Scene } from 'three';
+import { Group, HemisphereLight, PointLight, Vector3 } from 'three';
+import type { Scene } from 'three';
 import { LampRules } from '@light-keeper/shared';
 import type { ExitCode, HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
 import { LampFlame } from '../game/LampFlame.ts';
@@ -15,7 +7,7 @@ import { ItemSwitcher } from '../game/ItemSwitcher.ts';
 import { HeldProps } from './HeldProps.ts';
 import { LanternModel } from './LanternModel.ts';
 import { CharacterAssets } from './CharacterAssets.ts';
-import { StickmanRig } from './StickmanRig.ts';
+import { HeroArm } from './HeroArm.ts';
 
 /** Что нужно руке от первого лица, чтобы двигаться вместе с игроком. */
 export interface ViewmodelMotion {
@@ -43,7 +35,7 @@ export interface ViewmodelMotion {
 }
 
 /**
- * Своя рука от первого лица: тонкая рука цвета игрока с висящим фонарём.
+ * Своя рука от первого лица — рука героя из его модели (рукав и кисть) с висящим фонарём.
  * Рисуется отдельной сценой поверх мира (см. SceneManager), поэтому не утопает
  * в стенах. Рука качается при ходьбе, запаздывает при поворотах; фонарь —
  * маятник. При смене предмета рука опускается и поднимается. Кроме фонаря
@@ -56,16 +48,15 @@ export class FirstPersonViewmodel {
   private static readonly LANTERN_SCALE = 0.8;
   private static readonly SHOULDER = new Vector3(0.44, -0.62, 0.05);
   private static readonly LOWERED_OFFSET = 0.5;
-  private static readonly ARM_RADIUS = 0.016;
-  private static readonly FIST_RADIUS = 0.024;
+  /** Длина руки героя от плеча до ладони, м (как у модели — без растяжения). */
+  private static readonly ARM_LENGTH = 0.55;
 
   private readonly root = new Group();
   private readonly lampPivot = new Group();
   private readonly lantern = new LanternModel();
   private readonly glow = new PointLight('#ffcf8a', 1.2, 1.5, 1.5);
-  private readonly material: MeshStandardMaterial;
-  private readonly fistMaterial: MeshStandardMaterial;
-  private readonly geometries: BufferGeometry[] = [];
+  private arm: HeroArm | null = null;
+  private disposed = false;
   private readonly switcher = new ItemSwitcher();
   private readonly props = new HeldProps();
   private swayX = 0;
@@ -81,33 +72,27 @@ export class FirstPersonViewmodel {
     private readonly scene: Scene,
     color: PlayerColor,
   ) {
-    // Рука героя: рукав (у мальчика — белый лонгслив, у усача — белый костюм) и кисть.
-    this.material = StickmanRig.bodyMaterial(CharacterAssets.SKINS[color].sleeve);
-    this.fistMaterial = StickmanRig.bodyMaterial(CharacterAssets.SKINS[color].skinColor);
     scene.add(new HemisphereLight('#fff1c4', '#2b2414', 0.45));
     scene.add(this.root);
 
     const hand = FirstPersonViewmodel.HAND;
     const shoulder = FirstPersonViewmodel.SHOULDER;
-    const direction = hand.clone().sub(shoulder);
-    const armGeometry = this.geometry(
-      new CylinderGeometry(
-        FirstPersonViewmodel.ARM_RADIUS,
-        FirstPersonViewmodel.ARM_RADIUS,
-        direction.length(),
-        12,
-      ),
-    );
-    const arm = new Mesh(armGeometry, this.material);
-    arm.position.copy(shoulder).add(hand).multiplyScalar(0.5);
-    arm.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
-    this.root.add(arm);
-    const fist = new Mesh(
-      this.geometry(new SphereGeometry(FirstPersonViewmodel.FIST_RADIUS, 14, 10)),
-      this.fistMaterial,
-    );
-    fist.position.copy(hand);
-    this.root.add(fist);
+    // Рука — из модели героя (рукав и кисть); появляется, как только модель загружена.
+    void CharacterAssets.load()
+      .then((assets) => {
+        if (this.disposed) return;
+        // Плечо — на длине настоящей руки от кисти, в сторону прежнего «плеча» (вниз-вправо-назад).
+        const armShoulder = shoulder
+          .clone()
+          .sub(hand)
+          .setLength(FirstPersonViewmodel.ARM_LENGTH)
+          .add(hand);
+        this.arm = new HeroArm(assets, color, armShoulder, hand);
+        this.root.add(this.arm.root);
+      })
+      .catch(() => {
+        // Модель не загрузилась — видны только предметы в руке.
+      });
 
     this.lampPivot.position.copy(hand).add(new Vector3(0, -0.02, 0));
     this.root.add(this.lampPivot);
@@ -192,9 +177,8 @@ export class FirstPersonViewmodel {
     this.lantern.dispose();
     this.props.dispose();
     this.glow.dispose();
-    this.material.dispose();
-    this.fistMaterial.dispose();
-    this.geometries.forEach((geometry) => geometry.dispose());
+    this.disposed = true;
+    this.arm?.dispose();
     this.scene.clear();
   }
 
@@ -206,10 +190,5 @@ export class FirstPersonViewmodel {
 
   private easeOut(t: number): number {
     return 1 - (1 - t) * (1 - t);
-  }
-
-  private geometry<T extends BufferGeometry>(geometry: T): T {
-    this.geometries.push(geometry);
-    return geometry;
   }
 }
