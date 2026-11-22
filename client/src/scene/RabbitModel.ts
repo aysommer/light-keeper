@@ -1,5 +1,7 @@
 import {
   AnimationMixer,
+  Box3,
+  Vector3,
   ConeGeometry,
   Group,
   IcosahedronGeometry,
@@ -63,7 +65,9 @@ export class RabbitModel {
   /** @param speed скорость бега, м/с (0 — сидит) */
   public update(deltaSeconds: number, speed: number): void {
     if (this.mixer) {
+      // У модели из файла своя анимация бега — без нашего подскока.
       this.mixer.update(deltaSeconds * Math.max(0.3, speed / 4));
+      return;
     }
     this.phase += deltaSeconds * (speed > 0.1 ? 14 : 0);
     const hop = Math.abs(Math.sin(this.phase));
@@ -133,21 +137,26 @@ export class RabbitModel {
     });
     // Подогнать размер: самая длинная сторона — длина зайца.
     model.updateMatrixWorld(true);
-    let maxSide = 0;
-    model.traverse((object: Object3D) => {
-      const mesh = object as Mesh;
-      if (mesh.isMesh) {
-        mesh.geometry.computeBoundingBox();
-        const box = mesh.geometry.boundingBox;
-        if (box) {
-          const size = box.max.clone().sub(box.min).multiply(mesh.getWorldScale(box.min.clone()));
-          maxSide = Math.max(maxSide, size.x, size.y, size.z);
-        }
-      }
-    });
+    const box = new Box3().setFromObject(model);
+    const size = box.getSize(new Vector3());
+    const maxSide = Math.max(size.x, size.y, size.z);
     if (maxSide > 0) model.scale.multiplyScalar(RabbitModel.LENGTH / maxSide);
+    // Наш заяц смотрит в −Z: если уши (голова) у модели в +Z — развернуть.
+    model.updateMatrixWorld(true);
+    const center = new Box3().setFromObject(model).getCenter(new Vector3());
+    let ear: Object3D | undefined;
+    model.traverse((object: Object3D) => {
+      if (!ear && /ear/i.test(object.name)) ear = object;
+    });
+    if (ear && ear.getWorldPosition(new Vector3()).z > center.z) {
+      model.rotation.y += Math.PI;
+    }
+    // Стоит на полу.
+    model.updateMatrixWorld(true);
+    model.position.y -= new Box3().setFromObject(model).min.y;
     this.body.add(model);
-    const clip = asset.clips[0];
+    // Анимация бега (в файле Sketchfab есть Die, Idle и Run).
+    const clip = asset.clips.find((c) => /run/i.test(c.name)) ?? asset.clips[0];
     if (clip) {
       this.mixer = new AnimationMixer(model);
       this.mixer.clipAction(clip).play();

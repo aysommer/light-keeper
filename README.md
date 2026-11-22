@@ -144,6 +144,8 @@ docker compose up --build
 Модели и анимации героев — [Kenney: Animated Characters Protagonists](https://www.kenney.nl)
 (лицензия CC0), см. `client/public/models/characters/LICENSE-Kenney.txt`.
 
-Модель зайца можно заменить своей: положите glTF-файл в
-`client/public/models/rabbit/rabbit.glb` — игра перекрасит его в белый и
-подгонит размер. Если файла нет, используется встроенная модель.
+Белый заяц — [«Low poly rabbit»](https://sketchfab.com/3d-models/low-poly-rabbit-284412021a4c42879b894271c0bcc634)
+автора [Tin3D](https://sketchfab.com/Tin3D), лицензия
+[CC BY 4.0](http://creativecommons.org/licenses/by/4.0/); в игре перекрашен в
+белый и уменьшен (`client/public/models/rabbit/LICENSE.txt`). Если файла
+`rabbit.glb` нет, используется встроенная модель.

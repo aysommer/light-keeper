@@ -1,0 +1,4 @@
+"Low poly rabbit" (https://sketchfab.com/3d-models/low-poly-rabbit-284412021a4c42879b894271c0bcc634)
+by Tin3D (https://sketchfab.com/Tin3D)
+licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+Changes: recolored white in game (texture replaced by a plain white material), resized.
