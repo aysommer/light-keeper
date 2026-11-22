@@ -42,7 +42,7 @@ export interface ViewmodelMotion {
  */
 export class FirstPersonViewmodel {
   /** Где предмет «в руке»: низко справа (сама рука не рисуется — только предмет). */
-  private static readonly HAND = new Vector3(0.24, -0.14, -0.5);
+  private static readonly HAND = new Vector3(0.24, -0.11, -0.5);
   /** Фонарь в руке чуть меньше настоящего, чтобы не загораживать обзор. */
   private static readonly LANTERN_SCALE = 0.8;
   private static readonly LOWERED_OFFSET = 0.5;
