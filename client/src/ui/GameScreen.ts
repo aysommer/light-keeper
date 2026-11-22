@@ -2,6 +2,7 @@ import { GameConfig, PlayerMovement, Vector2 } from '@light-keeper/shared';
 import type { HeldItem, MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
 import { AudioEngine } from '../audio/AudioEngine.ts';
 import { SoundDirector } from '../audio/SoundDirector.ts';
+import { Synth } from '../audio/Synth.ts';
 import { GameLoop } from '../core/GameLoop.ts';
 import type { GraphicsOptions, GraphicsSettings } from '../core/GraphicsSettings.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
@@ -15,6 +16,7 @@ import { LampHint } from '../game/LampHint.ts';
 import { LocalPlayer } from '../game/LocalPlayer.ts';
 import { NetworkSession } from '../game/NetworkSession.ts';
 import { PartnerBearing } from '../game/PartnerBearing.ts';
+import { RabbitDirector } from '../game/RabbitDirector.ts';
 import { ScareLevel } from '../game/ScareLevel.ts';
 import { InputController } from '../input/InputController.ts';
 import type { NetworkClient } from '../network/NetworkClient.ts';
@@ -138,6 +140,10 @@ export class GameScreen implements Screen {
     // Звук разрешается только после действия пользователя — первый клик или клавиша.
     const audio = this.own(new AudioEngine());
     const sound = this.own(new SoundDirector(audio));
+    // Редкие белые зайцы — только у этого игрока, на сеть не влияют.
+    const rabbits = this.own(
+      new RabbitDirector(sceneManager.scene, space, audio, new Synth(audio)),
+    );
     const unlockAudio = (): void => audio.unlock();
     this.element.addEventListener('pointerdown', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
@@ -170,6 +176,10 @@ export class GameScreen implements Screen {
     this.loop = new GameLoop((delta, time) => {
       if (import.meta.env.DEV) {
         this.handleDebugKeys(input, session, player, space);
+        // B — выпустить зайца (если есть видимый угол).
+        if (input.consumePress('KeyB')) rabbits.spawnSoon();
+        (window as unknown as { __lkRabbit?: () => boolean }).__lkRabbit = () => rabbits.running;
+        (window as unknown as { __lkRabbits?: unknown }).__lkRabbits = rabbits;
       }
       if (space.spaceIndex !== shownSpace) {
         shownSpace = space.spaceIndex;
@@ -230,6 +240,11 @@ export class GameScreen implements Screen {
       controller.update(delta);
       session.update(delta, time);
       controller.applyToCamera(sceneManager.camera);
+      rabbits.update(delta, {
+        position: player.position,
+        camera: sceneManager.camera,
+        active: !session.inTambour && !inTransition,
+      });
       space.update(session.exit, session.oilTaken, session.oilDropped, delta, time);
       const exit = session.exit;
       const partnerPosition = session.partnerPosition();

@@ -20,6 +20,17 @@ export class Synth {
     this.tone('sine', 72, 52, 0.003, 0.09, 0.18 * volume, destination);
   }
 
+  /** Лёгкий быстрый топоток лапок (заяц). */
+  public patter(destination?: AudioNode): void {
+    this.noiseBurst({ type: 'bandpass', frequency: 900, q: 1.2 }, 0.002, 0.035, 0.22, destination);
+  }
+
+  /** Короткий высокий писк — неприятный, будто не к месту. */
+  public squeak(destination?: AudioNode): void {
+    this.tone('triangle', 1500, 2700, 0.01, 0.1, 0.1, destination);
+    window.setTimeout(() => this.tone('triangle', 2300, 1300, 0.005, 0.12, 0.07, destination), 90);
+  }
+
   /** Потрескивание фитиля. */
   public crackle(volume = 1): void {
     const frequency = 2500 + Math.random() * 2500;
