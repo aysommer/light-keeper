@@ -28,6 +28,7 @@ import { CodePanel } from './CodePanel.ts';
 import { ExitHud } from './ExitHud.ts';
 import { FloorHud } from './FloorHud.ts';
 import { Hud } from './Hud.ts';
+import { Hotbar } from './Hotbar.ts';
 import { Jumpscare } from './Jumpscare.ts';
 import { ScareOverlay } from './ScareOverlay.ts';
 import { SettingsPanel } from './SettingsPanel.ts';
@@ -53,6 +54,8 @@ export class GameScreen implements Screen {
   private static readonly TITLE_HOLD_SECONDS = 1.2;
   /** Откуда работает лестница (как на сервере, StairSystem.REACH), м. */
   private static readonly STAIR_REACH = 0.9;
+  /** Откуда поднимается флажок (как на сервере, FlagSystem.REACH), м. */
+  private static readonly FLAG_REACH = 1;
   /** Сколько показывать «лампа у напарника» после нажатия 1 без лампы, с. */
   private static readonly NO_LAMP_HINT_SECONDS = 2;
 
@@ -78,6 +81,7 @@ export class GameScreen implements Screen {
   private readonly disposables: Array<{ dispose(): void }> = [];
   private loop: GameLoop | null = null;
   private readonly jumpscare = new Jumpscare();
+  private readonly hotbar = new Hotbar();
   private scream: (() => void) | null = null;
 
   public constructor(private readonly options: GameScreenOptions) {
@@ -141,9 +145,10 @@ export class GameScreen implements Screen {
 
     // Звук разрешается только после действия пользователя — первый клик или клавиша.
     const audio = this.own(new AudioEngine());
+    session.setAudio(audio);
     const screamSynth = new Synth(audio);
     this.scream = () => screamSynth.scream();
-    this.element.append(this.jumpscare.element);
+    this.element.append(this.hotbar.element, this.jumpscare.element);
     const sound = this.own(new SoundDirector(audio));
     const tapeVoice = this.own(new TapeRecorderVoice(audio));
     // Редкие белые зайцы — только у этого игрока, на сеть не влияют.
@@ -177,6 +182,7 @@ export class GameScreen implements Screen {
     /** Короткая подсказка по нажатию клавиши предмета, которого нет. */
     let flash: { text: string; until: number } | null = null;
     let codeFailuresSeen = 0;
+    let hadGoose = false;
     this.submitCode = (code) => session.submitCode(code);
     this.element.append(this.codePanel.element);
     this.loop = new GameLoop((delta, time) => {
@@ -210,6 +216,10 @@ export class GameScreen implements Screen {
           flash = { text: 'Ключей нет — найди их', until: time + GameScreen.NO_LAMP_HINT_SECONDS };
           continue;
         }
+        if (wanted === 'flag' && session.ownFlags === 0) {
+          flash = { text: 'Флажков нет — найди их', until: time + GameScreen.NO_LAMP_HINT_SECONDS };
+          continue;
+        }
         if (wanted === 'note' && !session.hasNote) {
           flash = { text: 'Записки нет — найди её', until: time + GameScreen.NO_LAMP_HINT_SECONDS };
           continue;
@@ -225,6 +235,7 @@ export class GameScreen implements Screen {
         const available: HeldItem[] = [session.hasLamp ? 'lamp' : 'compass', 'compass'];
         if (session.ownKeys > 0) available.push('key');
         if (session.hasNote) available.push('note');
+        if (session.ownFlags > 0) available.push('flag');
         const shown =
           this.held.current === 'lamp' && !session.hasLamp ? 'compass' : this.held.current;
         this.held.select(HeldItems.cycle(shown, wheel, available));
@@ -235,7 +246,8 @@ export class GameScreen implements Screen {
       // Ключи вставлены или записка пропала (новое пространство) — рука возвращается к лампе.
       if (
         (this.held.current === 'key' && session.ownKeys === 0) ||
-        (this.held.current === 'note' && !session.hasNote)
+        (this.held.current === 'note' && !session.hasNote) ||
+        (this.held.current === 'flag' && session.ownFlags === 0)
       ) {
         this.held.select('lamp');
       }
@@ -284,6 +296,28 @@ export class GameScreen implements Screen {
           GameConfig.lamp.pickupDistance
           ? 'E — поднять лампу'
           : null;
+      // Флажок на полу рядом — поднять; флажок в руке — поставить.
+      const groundFlag = session.inTambour
+        ? undefined
+        : session.flags.find(
+            (flag) =>
+              flag.holderId === null &&
+              flag.floor === floor &&
+              player.position.distanceTo(new Vector2(flag.x, flag.y)) <= GameScreen.FLAG_REACH,
+          );
+      const flagHint = groundFlag
+        ? 'E — поднять флажок'
+        : item === 'flag' && session.ownFlags > 0 && !session.inTambour
+          ? 'E — поставить флажок'
+          : null;
+      // Гусь на спине и дверь рядом — E откроет её гусем.
+      const gooseDoorHint =
+        session.hasGoose &&
+        exit !== null &&
+        !exit.open &&
+        this.prompt.isNearDoor(space.space, player.position, floor)
+          ? 'E — открыть дверь гусем'
+          : null;
       // Лестница рядом: E — на соседний этаж.
       const stair = session.inTambour
         ? null
@@ -297,6 +331,8 @@ export class GameScreen implements Screen {
         pickupHint ??
           exchangeHint ??
           stairHint ??
+          gooseDoorHint ??
+          flagHint ??
           this.prompt.resolve(
             space.space,
             exit,
@@ -331,6 +367,8 @@ export class GameScreen implements Screen {
         exchangeHint === null &&
         pickupHint === null &&
         stairHint === null &&
+        gooseDoorHint === null &&
+        flagHint === null &&
         panelCode
       ) {
         codeFailuresSeen = exit.codeFailures;
@@ -384,6 +422,27 @@ export class GameScreen implements Screen {
         sceneManager.camera.position.y += (Math.random() - 0.5) * 0.03 * scare;
         sceneManager.camera.rotation.z += (Math.random() - 0.5) * 0.02 * scare;
       }
+      // Гусь: пойман — короткая подсказка; бегает рядом — позвать в погоню.
+      if (session.hasGoose && !hadGoose) {
+        flash = { text: 'Гусь пойман — он у тебя на спине. Неси к двери!', until: time + 3 };
+      }
+      hadGoose = session.hasGoose;
+      const freeGoose = session.goose && session.goose.holderId === null ? session.goose : null;
+      const gooseNear =
+        freeGoose !== null &&
+        freeGoose.floor === floor &&
+        player.position.distanceTo(new Vector2(freeGoose.x, freeGoose.y)) < 7;
+      if (gooseNear && (flash === null || time >= flash.until)) {
+        flash = { text: 'Гусь-призрак! Догони — он откроет дверь', until: time + 0.5 };
+      }
+      this.hotbar.update({
+        selected: item,
+        hasLamp: session.hasLamp,
+        keys: session.ownKeys,
+        hasNote: session.hasNote,
+        flags: session.ownFlags,
+        hasGoose: session.hasGoose,
+      });
       const ownLamp = session.ownLamp;
       // Индикаторы нагрева и масла общей лампы — видны обоим (в тамбуре и при переходе скрыты).
       this.lampGauges.update(
@@ -494,6 +553,16 @@ export class GameScreen implements Screen {
       // Сервер ставит в шаге правее канистры — смотрим налево и вниз, на неё.
       player.yaw = PlayerMovement.yawTowards(new Vector2(-1, 0));
       player.pitch = -0.6;
+    }
+    if (input.consumePress('KeyF')) {
+      session.requestGoto('flag');
+      player.yaw = PlayerMovement.yawTowards(new Vector2(1, 0));
+      player.pitch = -0.3;
+    }
+    if (input.consumePress('KeyY')) {
+      session.requestGoto('goose');
+      player.yaw = PlayerMovement.yawTowards(new Vector2(1, 0));
+      player.pitch = -0.2;
     }
     if (input.consumePress('KeyU')) {
       session.requestGoto('stair');

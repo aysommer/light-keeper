@@ -112,6 +112,22 @@ export class ExitSystem implements System {
   ): void {
     const exit = world.exit;
     const kind = world.space.exit.kind;
+    // Гусь-призрак открывает любую дверь: с гусем на спине нажать E у двери.
+    const goose = world.goose;
+    if (goose && !goose.gone && goose.holderId !== null) {
+      const holder = world.players.get(goose.holderId);
+      if (
+        holder &&
+        holder.interactPressed &&
+        !holder.aimingAtPartner &&
+        this.isNearDoor(world, holder)
+      ) {
+        goose.gone = true;
+        goose.holderId = null;
+        this.openDoor(world);
+        return;
+      }
+    }
     // Дверь с панелью открывают кодом, а не удержанием `E`.
     const canOpen = (player: ServerPlayer): boolean =>
       kind !== 'code' &&

@@ -56,6 +56,23 @@ export interface DroppedLampSnapshot {
   readonly lamp: LampSnapshot;
 }
 
+/** Флажок-ориентир: лежит на полу (`holderId` = null) или у игрока. */
+export interface FlagSnapshot {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly floor: number;
+  readonly holderId: string | null;
+}
+
+/** Гусь-призрак: бегает (`holderId` = null) или пойман и у игрока. */
+export interface GooseSnapshot {
+  readonly x: number;
+  readonly y: number;
+  readonly floor: number;
+  readonly holderId: string | null;
+}
+
 /** Состояние игрока в снимке мира. */
 export interface PlayerSnapshot {
   readonly id: string;
@@ -104,7 +121,7 @@ export interface ExitSnapshot {
 export type DebugLampPreset = 'hot' | 'low-oil';
 
 /** Куда можно перенестись отладочной командой. */
-export type DebugGotoTarget = 'exit' | 'key' | 'note' | 'oil' | 'stair';
+export type DebugGotoTarget = 'exit' | 'key' | 'note' | 'oil' | 'stair' | 'flag' | 'goose';
 
 /** Обмен лампами: кто предложил и сколько обменов уже было в пространстве. */
 export interface ExchangeSnapshot {
@@ -146,6 +163,10 @@ export interface MatchSnapshot {
   readonly oilDropped: readonly DroppedCanister[];
   /** Общая лампа на полу (выпала от перегрева); `null` — она у кого-то в руках. */
   readonly droppedLamp: DroppedLampSnapshot | null;
+  /** Флажки пространства (на полу и в руках). */
+  readonly flags: readonly FlagSnapshot[];
+  /** Гусь-призрак; `null` — его нет или им уже открыли дверь. */
+  readonly goose: GooseSnapshot | null;
   readonly ghosts: readonly GhostSnapshot[];
   readonly players: readonly PlayerSnapshot[];
 }

@@ -14,6 +14,7 @@ import {
 import type { BufferGeometry, Material, Texture } from 'three';
 import type { ExitCode, HeldItem } from '@light-keeper/shared';
 import { CodeSymbols } from '../ui/CodeSymbols.ts';
+import { FlagModel } from './FlagModel.ts';
 
 /**
  * Предметы в руке от первого лица (кроме лампы): компас со стрелкой на
@@ -27,6 +28,9 @@ export class HeldProps {
   public readonly compass = new Group();
   public readonly keys = new Group();
   public readonly note = new Group();
+  /** Флажок в руке (слот 5). */
+  private readonly flagModel = new FlagModel(0.4);
+  public readonly flag = this.flagModel.root;
   private readonly needle = new Group();
   private readonly keyMeshes: Group[] = [];
   private readonly geometries: BufferGeometry[] = [];
@@ -84,6 +88,8 @@ export class HeldProps {
     this.compass.visible = item === 'compass';
     this.keys.visible = item === 'key';
     this.note.visible = item === 'note';
+    this.flag.visible = item === 'flag';
+    if (this.flag.visible) this.flagModel.update(time);
     if (this.compass.visible) {
       // Неизвестно, где напарник, — стрелка беспокойно гуляет.
       const angle = bearing ?? Math.sin(time * 1.7) * 1.2 + Math.sin(time * 0.6) * 2;
@@ -97,6 +103,7 @@ export class HeldProps {
   }
 
   public dispose(): void {
+    this.flagModel.dispose();
     this.geometries.forEach((geometry) => geometry.dispose());
     this.materials.forEach((material) => material.dispose());
     this.noteTexture.dispose();

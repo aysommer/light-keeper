@@ -95,7 +95,9 @@ export class MessageCodec {
           data['target'] === 'key' ||
           data['target'] === 'note' ||
           data['target'] === 'oil' ||
-          data['target'] === 'stair'
+          data['target'] === 'stair' ||
+          data['target'] === 'flag' ||
+          data['target'] === 'goose'
           ? { type: 'debug:goto', target: data['target'] }
           : null;
       default:

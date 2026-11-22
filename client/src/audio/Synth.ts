@@ -28,6 +28,20 @@ export class Synth {
     this.tone('square', 95, 40, 0.005, 0.5, 0.5);
   }
 
+  /** «Га-га!» — гоготание гуся: два коротких гнусавых крика. */
+  public honk(destination?: AudioNode): void {
+    const ctx = this.engine.ctx;
+    if (!ctx) return;
+    const cry = (delayMs: number, pitch: number): void => {
+      window.setTimeout(() => {
+        this.tone('sawtooth', 520 * pitch, 380 * pitch, 0.015, 0.16, 0.18, destination);
+        this.tone('square', 1040 * pitch, 760 * pitch, 0.015, 0.12, 0.05, destination);
+      }, delayMs);
+    };
+    cry(0, 1);
+    cry(190, 0.94);
+  }
+
   /** Лёгкий быстрый топоток лапок (заяц). */
   public patter(destination?: AudioNode): void {
     this.noiseBurst({ type: 'bandpass', frequency: 900, q: 1.2 }, 0.002, 0.035, 0.22, destination);

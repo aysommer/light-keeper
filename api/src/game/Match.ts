@@ -16,6 +16,8 @@ import { ExitSystem } from '../systems/ExitSystem.ts';
 import { GhostSystem } from '../systems/GhostSystem.ts';
 import { LampSystem } from '../systems/LampSystem.ts';
 import { StairSystem } from '../systems/StairSystem.ts';
+import { FlagSystem } from '../systems/FlagSystem.ts';
+import { GooseSystem } from '../systems/GooseSystem.ts';
 import { OilSystem } from '../systems/OilSystem.ts';
 import { MovementSystem } from '../systems/MovementSystem.ts';
 import type { System } from '../systems/System.ts';
@@ -76,6 +78,8 @@ export class Match {
       new StairSystem(),
       new OilSystem(),
       new ExchangeSystem(),
+      new FlagSystem(),
+      new GooseSystem(),
       new GhostSystem(),
       new ExitSystem(GameConfig.exit, {
         transitionSeconds: options.transitionSeconds ?? GameConfig.match.transitionSeconds,
@@ -141,9 +145,16 @@ export class Match {
           ? [space.keys[keyIndex]?.add(Match.KEY_GOTO_OFFSET), space.keyFloors[keyIndex] ?? 0]
           : target === 'note'
             ? [space.note?.add(Match.KEY_GOTO_OFFSET), space.noteFloor]
-            : target === 'stair'
-              ? [stair?.position.add(new Vector2(-0.6, 0)), player?.floor ?? 0]
-              : [canister?.add(Match.KEY_GOTO_OFFSET), player?.floor ?? 0];
+            : target === 'flag'
+              ? (() => {
+                  const flag = this.world.flags.flags.find((f) => f.holderId === null);
+                  return [flag?.position.add(new Vector2(-1.2, 0)), flag?.floor ?? 0] as const;
+                })()
+              : target === 'goose'
+                ? [this.world.goose?.position.add(new Vector2(-2, 0)), this.world.goose?.floor ?? 0]
+                : target === 'stair'
+                  ? [stair?.position.add(new Vector2(-0.6, 0)), player?.floor ?? 0]
+                  : [canister?.add(Match.KEY_GOTO_OFFSET), player?.floor ?? 0];
     if (player && !player.inTambour && destination) {
       player.position = destination;
       player.floor = floor;
@@ -247,6 +258,8 @@ export class Match {
         oilTaken: this.world.oil.snapshot(),
         oilDropped: this.world.oil.droppedSnapshot(),
         droppedLamp: this.droppedLampSnapshot(),
+        flags: this.world.flags.snapshot(),
+        goose: this.world.goose?.snapshot() ?? null,
         ghosts: this.world.ghostPopulation.ghosts.map((ghost) => ghost.snapshot()),
         players: [...this.world.players.values()].map((player) => player.snapshot()),
       },

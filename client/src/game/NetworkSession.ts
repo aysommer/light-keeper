@@ -5,6 +5,8 @@ import type {
   DebugLampPreset,
   DroppedCanister,
   DroppedLampSnapshot,
+  FlagSnapshot,
+  GooseSnapshot,
   ExchangeSnapshot,
   ExitSnapshot,
   LampSnapshot,
@@ -21,6 +23,8 @@ import type { FirstPersonController } from './FirstPersonController.ts';
 import type { LocalPlayer } from './LocalPlayer.ts';
 import { GhostsView } from './GhostsView.ts';
 import { FloorLampView } from '../scene/FloorLampView.ts';
+import { WorldItemsView } from './WorldItemsView.ts';
+import type { AudioEngine } from '../audio/AudioEngine.ts';
 import { RemotePlayerView } from './RemotePlayerView.ts';
 
 /**
@@ -38,6 +42,9 @@ export class NetworkSession {
   private readonly ghostsView: GhostsView;
   private readonly floorLamp: FloorLampView;
   private latestDroppedLamp: DroppedLampSnapshot | null = null;
+  private latestFlags: readonly FlagSnapshot[] = [];
+  private latestGoose: GooseSnapshot | null = null;
+  private readonly worldItems: WorldItemsView;
   private readonly unsubscribe: Array<() => void> = [];
   private currentPhase: SpacePhase = 'playing';
   private latestExit: ExitSnapshot | null = null;
@@ -68,6 +75,7 @@ export class NetworkSession {
     // до первого снимка считаем, что её нет — это скрыто заставкой пространства.
     this.ghostsView = new GhostsView(scene);
     this.floorLamp = new FloorLampView(scene);
+    this.worldItems = new WorldItemsView(scene);
     this.reconciler = new PredictionReconciler(space);
     for (const info of players) {
       if (info.id !== playerId) {
@@ -178,6 +186,36 @@ export class NetworkSession {
     return null;
   }
 
+  /** Подключить звук для гуся-призрака. */
+  public setAudio(audio: AudioEngine): void {
+    this.worldItems.setAudio(audio);
+  }
+
+  /** Флажки (на полу и в руках). */
+  public get flags(): readonly FlagSnapshot[] {
+    return this.latestFlags;
+  }
+
+  /** Сколько флажков у этого игрока. */
+  public get ownFlags(): number {
+    return this.latestFlags.filter((flag) => flag.holderId === this.playerId).length;
+  }
+
+  /** Гусь-призрак (на свободе или пойман); `null` — нет или уже открыл дверь. */
+  public get goose(): GooseSnapshot | null {
+    return this.latestGoose;
+  }
+
+  /** Гусь у этого игрока на спине. */
+  public get hasGoose(): boolean {
+    return this.latestGoose?.holderId === this.playerId;
+  }
+
+  private partnerAt(id: string): { position: Vector2; floor: number } | null {
+    const remote = this.remotes.get(id);
+    return remote?.state ? { position: remote.state.position, floor: remote.currentFloor } : null;
+  }
+
   /** Этаж напарника; `null`, если он неизвестен. */
   public partnerFloor(): number | null {
     for (const remote of this.remotes.values()) {
@@ -225,11 +263,27 @@ export class NetworkSession {
         this.space.floor,
       );
       this.floorLamp.update(this.latestDroppedLamp, time);
+      const carrier = this.latestGoose?.holderId ?? null;
+      const carrierAt =
+        carrier === this.playerId
+          ? { position: this.player.position, floor: this.space.floor }
+          : carrier
+            ? this.partnerAt(carrier)
+            : null;
+      this.worldItems.update(
+        this.latestFlags,
+        this.latestGoose,
+        deltaSeconds,
+        time,
+        this.space.floor,
+        carrierAt,
+      );
     }
   }
 
   public dispose(): void {
     this.floorLamp.dispose();
+    this.worldItems.dispose();
     this.unsubscribe.forEach((off) => off());
     this.remotes.forEach((remote) => remote.dispose());
     this.remotes.clear();
@@ -252,6 +306,8 @@ export class NetworkSession {
     }
     this.ghostsView.push(snapshot.serverTime, snapshot.ghosts);
     this.latestDroppedLamp = snapshot.droppedLamp;
+    this.latestFlags = snapshot.flags;
+    this.latestGoose = snapshot.goose;
     this.latestSharedLamp =
       snapshot.players.find((state) => state.lamp)?.lamp ?? snapshot.droppedLamp?.lamp ?? null;
     for (const state of snapshot.players) {
@@ -278,6 +334,7 @@ export class NetworkSession {
       }
       const remote = this.remotes.get(state.id);
       remote?.setFloor(state.floor);
+      remote?.setGooseOnBack(snapshot.goose?.holderId === state.id);
       remote?.setInTambour(state.inTambour);
       remote?.setHands(state.item, state.lamp);
       remote?.setExchangeCount(snapshot.exchange.count);

@@ -562,7 +562,7 @@ kbd {
 
 .lamp-hud__hint {
   position: absolute;
-  bottom: 28px;
+  bottom: 92px;
   left: 50%;
   transform: translateX(-50%);
   padding: 6px 14px;
@@ -1479,5 +1479,83 @@ kbd {
   }
   100% {
     opacity: 0;
+  }
+}
+
+/* Панель слотов внизу экрана (как в Minecraft) */
+
+.hotbar {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  transform: translateX(-50%);
+  border: 2px solid rgb(0 0 0 / 0.6);
+  border-radius: 6px;
+  background: rgb(20 18 12 / 0.55);
+  pointer-events: none;
+}
+
+.hotbar__slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 2px solid rgb(243 231 176 / 0.22);
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.35);
+  color: #f3e7b0;
+}
+
+.hotbar__slot--selected {
+  border-color: #fff4c2;
+  box-shadow:
+    0 0 0 2px rgb(0 0 0 / 0.6),
+    0 0 12px rgb(255 228 140 / 0.45);
+}
+
+.hotbar__slot--empty .hotbar__icon {
+  opacity: 0.2;
+}
+
+.hotbar__slot--carried {
+  border-color: #cfd8ff;
+  box-shadow: 0 0 12px rgb(207 216 255 / 0.5);
+}
+
+.hotbar__icon {
+  width: 34px;
+  height: 34px;
+}
+
+.hotbar__key {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.hotbar__count {
+  position: absolute;
+  right: 4px;
+  bottom: 1px;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 1px 1px 0 #000;
+}
+
+@media (max-width: 480px) {
+  .hotbar__slot {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hotbar__icon {
+    width: 26px;
+    height: 26px;
   }
 }

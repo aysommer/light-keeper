@@ -21,7 +21,7 @@ export class Hud {
     hint.innerHTML = `
       <p class="hud__hint-title">Кликни, чтобы осмотреться</p>
       <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> — идти · <kbd>Shift</kbd> — бежать ·
-        мышь — смотреть · <kbd>E</kbd> — дверь, обмен · <kbd>R</kbd> — заправить · <kbd>1</kbd> — лампа · <kbd>2</kbd> — компас · <kbd>3</kbd> — ключи · <kbd>4</kbd> — записка · <kbd>M</kbd> — звук ·
+        мышь — смотреть · <kbd>E</kbd> — дверь, обмен · <kbd>R</kbd> — заправить · <kbd>1</kbd> — лампа · <kbd>2</kbd> — компас · <kbd>3</kbd> — ключи · <kbd>4</kbd> — записка · <kbd>5</kbd> — флажок · <kbd>M</kbd> — звук ·
         <kbd>Esc</kbd> — пауза</p>
     `;
     const exit = document.createElement('button');

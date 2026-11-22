@@ -16,6 +16,7 @@ import { LampFlame } from '../game/LampFlame.ts';
 import { StickmanAnimator } from '../game/StickmanAnimator.ts';
 import { CharacterAssets } from './CharacterAssets.ts';
 import { CharacterBody } from './CharacterBody.ts';
+import { GooseModel } from './GooseModel.ts';
 import { GroundShadow } from './GroundShadow.ts';
 import { LanternModel } from './LanternModel.ts';
 import { StickmanRig } from './StickmanRig.ts';
@@ -38,6 +39,8 @@ export class StickmanModel {
   /** Точка правой кисти (в координатах `root`): за ней следуют предметы в руке. */
   private readonly hand = new Group();
   private character: CharacterBody | null = null;
+  /** Пойманный гусь-призрак сидит на спине (модель смотрит в −Z, спина — +Z). */
+  private gooseOnBack: GooseModel | null = null;
   private disposed = false;
   private readonly handWorld = new Vector3();
   private readonly animator = new StickmanAnimator();
@@ -132,6 +135,7 @@ export class StickmanModel {
       this.rig.setEyesOpen(eyesOpen);
     }
     this.lampSwing.rotation.x = pose.lampSwing;
+    this.gooseOnBack?.update(deltaSeconds, 0);
     this.followHand(reach);
 
     const lampInHand = item === 'lamp';
@@ -147,6 +151,19 @@ export class StickmanModel {
     this.lantern.setGlow(level, LampFlame.heatGlow(lamp?.heat ?? 0));
   }
 
+  /** Гусь на спине: показать или убрать. */
+  public setGooseOnBack(carrying: boolean): void {
+    if (carrying && !this.gooseOnBack) {
+      this.gooseOnBack = new GooseModel();
+      this.gooseOnBack.root.scale.setScalar(0.8);
+      this.gooseOnBack.root.position.set(0, 1.05, 0.22);
+      this.root.add(this.gooseOnBack.root);
+    } else if (!carrying && this.gooseOnBack) {
+      this.gooseOnBack.dispose();
+      this.gooseOnBack = null;
+    }
+  }
+
   /** Предметы в руке следуют за кистью текущего тела (при передаче лампы — тянутся вперёд). */
   private followHand(reach: number): void {
     this.root.updateMatrixWorld(true);
@@ -160,6 +177,7 @@ export class StickmanModel {
 
   public dispose(): void {
     this.disposed = true;
+    this.gooseOnBack?.dispose();
     this.character?.dispose();
     this.shadow.dispose();
     this.key.geometry.dispose();

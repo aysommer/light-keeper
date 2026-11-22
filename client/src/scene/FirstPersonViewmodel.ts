@@ -79,7 +79,11 @@ export class FirstPersonViewmodel {
     this.props.keys.position.copy(hand).add(new Vector3(-0.01, -0.005, 0));
     this.props.note.position.set(0.04, -0.13, -0.42);
     this.props.note.rotation.set(-0.42, -0.12, 0.03);
-    this.root.add(this.props.compass, this.props.keys, this.props.note);
+    // Флажок в руке — маленький, древко наклонено вперёд.
+    this.props.flag.position.copy(hand).add(new Vector3(0.02, -0.14, 0.02));
+    this.props.flag.scale.setScalar(0.55);
+    this.props.flag.rotation.set(-0.35, 0.4, 0);
+    this.root.add(this.props.compass, this.props.keys, this.props.note, this.props.flag);
   }
 
   private level = 0;

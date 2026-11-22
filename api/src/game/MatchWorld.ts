@@ -10,6 +10,8 @@ import { Lamp } from '../entities/Lamp.ts';
 import type { ServerPlayer } from '../entities/ServerPlayer.ts';
 import { ExchangeState } from './ExchangeState.ts';
 import { ExitState } from './ExitState.ts';
+import { FlagState } from './FlagState.ts';
+import { GooseState } from './GooseState.ts';
 import { GhostPopulation } from './GhostPopulation.ts';
 import { OilState } from './OilState.ts';
 
@@ -30,6 +32,8 @@ export class MatchWorld {
   private transitionLeft = 0;
   private currentExit: ExitState;
   private currentOil = new OilState();
+  private currentFlags: FlagState;
+  private currentGoose: GooseState | null;
   private currentGhosts: GhostPopulation;
   private overReason: MatchOverReason | null = null;
   /** Лампа одна на двоих; кто её держит — решается заново в каждом пространстве. */
@@ -44,6 +48,8 @@ export class MatchWorld {
     this.buildPhysics();
     this.currentExit = new ExitState();
     this.currentGhosts = new GhostPopulation(this.currentSpace, seed);
+    this.currentFlags = new FlagState(this.currentSpace.flags);
+    this.currentGoose = this.currentSpace.goose ? new GooseState(this.currentSpace.goose) : null;
   }
 
   public get space(): Space {
@@ -82,6 +88,16 @@ export class MatchWorld {
   /** Привидения текущего пространства (в новое пространство не переходят). */
   public get ghostPopulation(): GhostPopulation {
     return this.currentGhosts;
+  }
+
+  /** Флажки-ориентиры текущего пространства. */
+  public get flags(): FlagState {
+    return this.currentFlags;
+  }
+
+  /** Гусь-призрак текущего пространства (если есть). */
+  public get goose(): GooseState | null {
+    return this.currentGoose;
   }
 
   /** Какие канистры текущего пространства уже подобраны. */
@@ -189,6 +205,8 @@ export class MatchWorld {
     this.currentExit = new ExitState();
     this.currentOil = new OilState();
     this.currentGhosts = new GhostPopulation(this.currentSpace, this.seed);
+    this.currentFlags = new FlagState(this.currentSpace.flags);
+    this.currentGoose = this.currentSpace.goose ? new GooseState(this.currentSpace.goose) : null;
     this.exchange.clearOffer();
     this.currentPhase = 'playing';
     this.transitionLeft = 0;

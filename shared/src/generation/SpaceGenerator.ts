@@ -16,6 +16,7 @@ import { SpaceFloor } from './SpaceFloor.ts';
 import { Stair } from './Stair.ts';
 import { RoomGraph } from './RoomGraph.ts';
 import { WaySign } from './WaySign.ts';
+import type { FloorSpot } from './FloorSpot.ts';
 import type { WaySignTarget } from './WaySign.ts';
 import { GridEdge } from './GridEdge.ts';
 import type { AABB } from '../math/AABB.ts';
@@ -172,6 +173,10 @@ export class SpaceGenerator {
         grid,
         floorCount > 1 ? null : plan.exit.roomId,
       ),
+      this.planFlags(floors, stairCells, grid, rng.fork('flags')),
+      plan.exit.kind === 'plain'
+        ? null
+        : this.planGoose(floors, stairCells, grid, rng.fork('goose')),
       this.planEmptyOil(
         floors.flatMap((floor) => floor.rooms),
         rng.fork('oil-empty'),
@@ -316,6 +321,58 @@ export class SpaceGenerator {
       const right = new Vector2(facing.y, -facing.x);
       const arrow = way.x * right.x + way.y * right.y >= 0 ? 'right' : 'left';
       return new WaySign(spot.add(side.normal.scale(half + 0.01)), side.normal, arrow, kind);
+    }
+    return null;
+  }
+
+  /** Флажки: с вероятностью 15 % один или два, в случайных местах (на любых этажах). */
+  private planFlags(
+    floors: readonly SpaceFloor[],
+    stairCells: ReadonlyArray<[number, number]>,
+    grid: SpaceGrid,
+    rng: SeededRandom,
+  ): FloorSpot[] {
+    const { chance, max } = this.settings.flags;
+    if (!rng.chance(chance)) {
+      return [];
+    }
+    const count = rng.int(1, max);
+    return Array.from({ length: count }, () =>
+      this.randomSpot(floors, stairCells, grid, rng),
+    ).filter((spot): spot is FloorSpot => spot !== null);
+  }
+
+  /** Гусь-призрак: с вероятностью 10 % (только у двери с ключом или кодом). */
+  private planGoose(
+    floors: readonly SpaceFloor[],
+    stairCells: ReadonlyArray<[number, number]>,
+    grid: SpaceGrid,
+    rng: SeededRandom,
+  ): FloorSpot | null {
+    return rng.chance(this.settings.gooseChance)
+      ? this.randomSpot(floors, stairCells, grid, rng)
+      : null;
+  }
+
+  /** Случайная свободная точка: центр клетки случайной комнаты, не лестница и не мебель. */
+  private randomSpot(
+    floors: readonly SpaceFloor[],
+    stairCells: ReadonlyArray<[number, number]>,
+    grid: SpaceGrid,
+    rng: SeededRandom,
+  ): FloorSpot | null {
+    const stairs = new Set(stairCells.map(([c, r]) => `${c}:${r}`));
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const floor = rng.int(0, floors.length - 1);
+      const target = floors[floor]!;
+      const room = rng.pick(target.rooms);
+      const col = room.cells.col + rng.int(0, room.cells.width - 1);
+      const row = room.cells.row + rng.int(0, room.cells.height - 1);
+      const point = grid.cellCenter(col, row);
+      if (stairs.has(`${col}:${row}`) || target.colliders.some((c) => c.containsPoint(point))) {
+        continue;
+      }
+      return { position: point, floor };
     }
     return null;
   }

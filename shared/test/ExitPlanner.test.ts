@@ -324,3 +324,36 @@ describe('Табличка-указатель', () => {
     }
   });
 });
+
+describe('Флажки и гусь', () => {
+  const many = (): Space[] =>
+    SEEDS.flatMap((seed) =>
+      Array.from({ length: 12 }, (_, i) => new SpaceGenerator(seed).generate(i + 1)),
+    );
+
+  it('флажки — примерно в 15 % пространств, по 1–2, на свободном месте своего этажа', () => {
+    const spaces = many();
+    const withFlags = spaces.filter((space) => space.flags.length > 0);
+    expect(withFlags.length / spaces.length).toBeGreaterThan(0.07);
+    expect(withFlags.length / spaces.length).toBeLessThan(0.25);
+    for (const space of withFlags) {
+      expect(space.flags.length).toBeLessThanOrEqual(2);
+      for (const flag of space.flags) {
+        expect(space.floor(flag.floor).colliders.some((c) => c.containsPoint(flag.position))).toBe(
+          false,
+        );
+      }
+    }
+  });
+
+  it('гусь — только у двери с ключом или кодом, примерно в 10 % таких', () => {
+    const spaces = many();
+    for (const space of spaces.filter((s) => s.goose)) {
+      expect(['locked', 'code']).toContain(space.exit.kind);
+    }
+    const eligible = spaces.filter((s) => s.exit.kind !== 'plain');
+    const share = eligible.filter((s) => s.goose).length / eligible.length;
+    expect(share).toBeGreaterThan(0.03);
+    expect(share).toBeLessThan(0.2);
+  });
+});

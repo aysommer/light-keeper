@@ -47,6 +47,11 @@ export class RemotePlayerView {
     return this.hiddenInTambour;
   }
 
+  /** Пойманный гусь у напарника на спине. */
+  public setGooseOnBack(carrying: boolean): void {
+    this.model.setGooseOnBack(carrying);
+  }
+
   /** Этаж напарника (из снимка); при смене этажа — не принимать перенос за бег. */
   public setFloor(floor: number): void {
     if (floor !== this.floor) {

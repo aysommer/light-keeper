@@ -16,6 +16,10 @@ export interface WorldSettings {
   readonly ceilingHeight: number;
   /** Расстояние между этажами по высоте (потолок + перекрытие), м. */
   readonly floorHeight: number;
+  /** Флажки-ориентиры: с какой вероятностью лежат в пространстве и сколько максимум. */
+  readonly flags: { readonly chance: number; readonly max: number };
+  /** Вероятность гуся-призрака (только у двери с ключом или кодом). */
+  readonly gooseChance: number;
   /** Вероятность двух и трёх этажей в пространстве (кроме первого). */
   readonly floors: { readonly twoFloors: number; readonly threeFloors: number };
   readonly doorWidth: number;
@@ -194,6 +198,8 @@ export class GameConfig {
     ceilingHeight: 3,
     floorHeight: 3.4,
     floors: { twoFloors: 0.3, threeFloors: 0.15 },
+    flags: { chance: 0.15, max: 2 },
+    gooseChance: 0.1,
     doorWidth: 1.4,
     extraDoorChance: 0.15,
     pillarSize: 0.6,

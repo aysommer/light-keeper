@@ -5,6 +5,7 @@ import type { Door } from './Door.ts';
 import type { SpaceFloor } from './SpaceFloor.ts';
 import type { Stair } from './Stair.ts';
 import type { WaySign } from './WaySign.ts';
+import type { FloorSpot } from './FloorSpot.ts';
 import type { CodeHint, ExitCode } from './ExitCode.ts';
 import type { ExitDoor } from './ExitDoor.ts';
 import type { Obstacle } from './Obstacle.ts';
@@ -54,6 +55,13 @@ export class Space {
     public readonly stairs: readonly Stair[],
     /** Табличка-указатель в стартовой комнате (первый этаж). */
     public readonly sign: WaySign | null,
+    /** Флажки-ориентиры, лежащие в пространстве (0, или 1–2 с вероятностью 15 %). */
+    public readonly flags: readonly FloorSpot[],
+    /**
+     * Где появляется гусь-призрак (10 % — только у двери с ключом или кодом):
+     * его ловят и открывают им дверь без ключа и кода.
+     */
+    public readonly goose: FloorSpot | null,
     /** Какие канистры пустые (обманки) — по индексам `oilSpawns`. */
     public readonly oilEmpty: readonly boolean[] = [],
   ) {}
