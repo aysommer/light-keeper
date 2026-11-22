@@ -1406,3 +1406,89 @@ kbd {
 .floor-hud[hidden] {
   display: none;
 }
+
+/* Скример: лицо привидения на весь экран */
+
+.jumpscare {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+  pointer-events: none;
+}
+
+.jumpscare[hidden] {
+  display: none;
+}
+
+.jumpscare__face {
+  width: min(96vw, 130vh);
+  height: 96vh;
+  filter: drop-shadow(0 0 40px rgb(200 210 255 / 0.5));
+}
+
+.jumpscare--active .jumpscare__face {
+  animation:
+    jumpscare-lunge 0.35s cubic-bezier(0.2, 2, 0.4, 1) both,
+    jumpscare-shake 0.07s linear 0.35s infinite;
+}
+
+.jumpscare--active .jumpscare__mouth {
+  transform-origin: 100px 172px;
+  animation: jumpscare-mouth 0.25s ease-in-out infinite alternate;
+}
+
+.jumpscare__flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+}
+
+.jumpscare--active .jumpscare__flash {
+  animation: jumpscare-flash 0.4s ease-out;
+}
+
+@keyframes jumpscare-lunge {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes jumpscare-shake {
+  25% {
+    transform: scale(1.15) translate(-6px, 4px) rotate(-1deg);
+  }
+  50% {
+    transform: scale(1.17) translate(5px, -5px) rotate(1deg);
+  }
+  75% {
+    transform: scale(1.14) translate(-4px, -3px);
+  }
+  100% {
+    transform: scale(1.15) translate(4px, 5px) rotate(0.5deg);
+  }
+}
+
+@keyframes jumpscare-mouth {
+  to {
+    transform: scaleY(1.35);
+  }
+}
+
+@keyframes jumpscare-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}

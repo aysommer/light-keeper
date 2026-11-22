@@ -25,6 +25,8 @@ export class App {
   private pendingNotice: string | null = null;
   /** Последнее состояние комнаты — чтобы вернуться в неё с экрана конца партии. */
   private latestLobby: LobbySnapshot | null = null;
+  /** Напарник вышел посреди партии — с игрового экрана сразу в комнату. */
+  private matchAborted = false;
 
   public constructor(private readonly root: HTMLElement) {}
 
@@ -72,8 +74,16 @@ export class App {
       network.on('lobby:state', (message) => this.handleLobbyState(message.lobby)),
       network.on('lobby:left', () => this.showTitle()),
       network.on('match:start', (message) => this.showMatch(network, message)),
-      network.on('match:over', (message) => this.showGameOver(network, message)),
+      network.on('match:over', (message) => {
+        // Поймало привидение — сначала скример (лицо призрака), потом итоги.
+        if (message.reason === 'ghost_caught' && this.current instanceof GameScreen) {
+          void this.current.playJumpscare().then(() => this.showGameOver(network, message));
+        } else {
+          this.showGameOver(network, message);
+        }
+      }),
       network.on('match:aborted', () => {
+        this.matchAborted = true;
         this.pendingNotice = 'Напарник вышел из игры.';
       }),
       network.on('error', (message) => this.handleServerError(ErrorMessages.text(message.code))),
@@ -89,7 +99,12 @@ export class App {
     if (!network?.playerId) {
       return;
     }
-    if (snapshot.status === 'in_game' && this.current instanceof GameScreen) {
+    // Пока идёт партия (или она только что закончилась и вот-вот придут итоги
+    // со скримером), игровой экран не заменяем — его сменит экран итогов.
+    if (
+      this.current instanceof GameScreen &&
+      (snapshot.status === 'in_game' || !this.matchAborted)
+    ) {
       return;
     }
     // На экране конца партии показываем, готов ли напарник сыграть ещё раз.
@@ -150,6 +165,7 @@ export class App {
   }
 
   private showMatch(network: NetworkClient, start: ServerMessageOf<'match:start'>): void {
+    this.matchAborted = false;
     if (!network.playerId) {
       return;
     }

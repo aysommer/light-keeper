@@ -20,6 +20,14 @@ export class Synth {
     this.tone('sine', 72, 52, 0.003, 0.09, 0.18 * volume, destination);
   }
 
+  /** Крик скримера: резкий шумовой удар и визгливый нисходящий аккорд. */
+  public scream(): void {
+    this.noiseBurst({ type: 'bandpass', frequency: 1800, q: 0.7 }, 0.005, 0.9, 1.2);
+    this.tone('sawtooth', 1400, 380, 0.01, 1.1, 0.35);
+    this.tone('sawtooth', 1870, 520, 0.01, 1.0, 0.25);
+    this.tone('square', 95, 40, 0.005, 0.5, 0.5);
+  }
+
   /** Лёгкий быстрый топоток лапок (заяц). */
   public patter(destination?: AudioNode): void {
     this.noiseBurst({ type: 'bandpass', frequency: 900, q: 1.2 }, 0.002, 0.035, 0.22, destination);

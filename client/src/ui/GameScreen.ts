@@ -28,6 +28,7 @@ import { CodePanel } from './CodePanel.ts';
 import { ExitHud } from './ExitHud.ts';
 import { FloorHud } from './FloorHud.ts';
 import { Hud } from './Hud.ts';
+import { Jumpscare } from './Jumpscare.ts';
 import { ScareOverlay } from './ScareOverlay.ts';
 import { SettingsPanel } from './SettingsPanel.ts';
 import { LampGauges } from './LampGauges.ts';
@@ -76,6 +77,8 @@ export class GameScreen implements Screen {
   private readonly handOver = new HandOverMotion();
   private readonly disposables: Array<{ dispose(): void }> = [];
   private loop: GameLoop | null = null;
+  private readonly jumpscare = new Jumpscare();
+  private scream: (() => void) | null = null;
 
   public constructor(private readonly options: GameScreenOptions) {
     this.element = document.createElement('div');
@@ -138,6 +141,9 @@ export class GameScreen implements Screen {
 
     // Звук разрешается только после действия пользователя — первый клик или клавиша.
     const audio = this.own(new AudioEngine());
+    const screamSynth = new Synth(audio);
+    this.scream = () => screamSynth.scream();
+    this.element.append(this.jumpscare.element);
     const sound = this.own(new SoundDirector(audio));
     const tapeVoice = this.own(new TapeRecorderVoice(audio));
     // Редкие белые зайцы — только у этого игрока, на сеть не влияют.
@@ -505,6 +511,13 @@ export class GameScreen implements Screen {
       player.yaw = PlayerMovement.yawTowards(new Vector2(-1, 0));
       player.pitch = 0;
     }
+  }
+
+  /** Привидение поймало героя: лицо призрака на весь экран и крик. */
+  public playJumpscare(): Promise<void> {
+    this.scream?.();
+    document.exitPointerLock();
+    return this.jumpscare.play();
   }
 
   public dispose(): void {
