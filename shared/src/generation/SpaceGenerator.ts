@@ -259,14 +259,7 @@ export class SpaceGenerator {
       const room = ground.rooms.find((r) => r.id === roomId) ?? startRoom;
       const next = path[step + 1];
       const door = next ? doorBetween(roomId, next) : undefined;
-      const sign = this.signIn(
-        ground,
-        room,
-        here,
-        (door ? door.position : target).sub(here),
-        kind,
-        grid,
-      );
+      const sign = this.signIn(ground, room, here, door ? door.position : target, kind, grid);
       if (sign) return sign;
       if (!door) break;
       here = door.position;
@@ -274,19 +267,19 @@ export class SpaceGenerator {
     return null;
   }
 
-  /** Табличка в комнате: на стене, вдоль которой направление читается лучше, на сплошном участке. */
+  /**
+   * Табличка в комнате: на сплошном участке стены, откуда цель лучше всего видна
+   * «вбок» — стрелка считается от места самой таблички, а не от центра комнаты,
+   * иначе цель могла оказаться по другую сторону от таблички.
+   */
   private signIn(
     ground: SpaceFloor,
     room: Room,
     from: Vector2,
-    direction: Vector2,
+    goal: Vector2,
     kind: WaySignTarget,
     grid: SpaceGrid,
   ): WaySign | null {
-    if (direction.length() < 1e-6) {
-      return null;
-    }
-    const way = direction.normalize();
     const { col, row, width, height } = room.cells;
     const doorways = new Set(ground.doors.map((d) => d.edge.key));
     const sides = [
@@ -307,22 +300,27 @@ export class SpaceGenerator {
         edges: Array.from({ length: height }, (_, i) => GridEdge.vertical(col + width, row + i)),
       },
     ];
-    const along = (n: Vector2) => Math.abs(way.x * -n.y + way.y * n.x);
-    const ranked = [...sides].sort((a, b) => along(b.normal) - along(a.normal));
-    for (const side of ranked) {
-      const spot = side.edges
-        .filter((edge) => !doorways.has(edge.key))
-        .map((edge) => grid.edgeCenter(edge))
-        .sort((a, b) => a.distanceTo(from) - b.distanceTo(from))[0];
-      if (!spot) continue;
-      const half = this.settings.wallThickness / 2;
+    const half = this.settings.wallThickness / 2;
+    let best: { sign: WaySign; score: number } | null = null;
+    for (const side of sides) {
       // Смотрящий на табличку стоит лицом к стене: вперёд = −нормаль, вправо = (f.y, −f.x).
       const facing = side.normal.scale(-1);
       const right = new Vector2(facing.y, -facing.x);
-      const arrow = way.x * right.x + way.y * right.y >= 0 ? 'right' : 'left';
-      return new WaySign(spot.add(side.normal.scale(half + 0.01)), side.normal, arrow, kind);
+      for (const edge of side.edges) {
+        if (doorways.has(edge.key)) continue;
+        const spot = grid.edgeCenter(edge).add(side.normal.scale(half + 0.01));
+        const toGoal = goal.sub(spot);
+        const distance = toGoal.length();
+        if (distance < 1e-6) continue;
+        const sideways = toGoal.x * right.x + toGoal.y * right.y;
+        // Насколько однозначна стрелка (цель вбок, а не за спиной), минус удалённость от старта.
+        const score = Math.abs(sideways) / distance - 0.03 * spot.distanceTo(from);
+        if (Math.abs(sideways) < 0.5 || (best && best.score >= score)) continue;
+        const arrow = sideways >= 0 ? 'right' : 'left';
+        best = { sign: new WaySign(spot, side.normal, arrow, kind), score };
+      }
     }
-    return null;
+    return best?.sign ?? null;
   }
 
   /** Флажки: с вероятностью 15 % один или два, в случайных местах (на любых этажах). */

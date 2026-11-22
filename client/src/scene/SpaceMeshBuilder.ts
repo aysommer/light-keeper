@@ -102,8 +102,15 @@ export class SpaceMeshBuilder {
     const doorFront = space.exit.frontPoint();
     const hintCol = Math.floor(doorFront.x / space.grid.cellSize);
     const hintRow = Math.floor(doorFront.y / space.grid.cellSize);
+    // Над пролётом лестницы потолка нет (там проём со своей лампой) — панель не вешаем.
+    const stairCells = new Set(
+      space.stairs
+        .filter((stair) => stair.lower === floorIndex)
+        .map((stair) => space.grid.cellAt(stair.position).join(':')),
+    );
     for (let row = 0; row < space.grid.rows; row++) {
       for (let col = 0; col < space.grid.columns; col++) {
+        if (stairCells.has(`${col}:${row}`)) continue;
         const roll = SeedHasher.hash(space.seed, 'panel', floorIndex, col, row) / 2 ** 32;
         const isHint =
           space.exit.kind === 'plain' &&

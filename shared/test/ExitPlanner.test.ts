@@ -325,6 +325,39 @@ describe('Табличка-указатель', () => {
   });
 });
 
+describe('Табличка-указатель: направление стрелки', () => {
+  it('стрелка, считая от самой таблички, смотрит в сторону прохода по пути к цели', () => {
+    for (const seed of SEEDS) {
+      for (let i = 0; i < 6; i++) {
+        const space = new SpaceGenerator(seed).generate(i);
+        const sign = space.sign!;
+        const ground = space.floor(0);
+        const room = ground.roomAt(sign.position.add(sign.normal.scale(0.5)))!;
+        const targetId =
+          space.floorCount > 1 ? ground.roomAt(space.stairs[0]!.position)!.id : space.exit.roomId;
+        const path = new RoomGraph(ground.rooms, ground.doors).path(room.id, targetId);
+        expect(path.length, `seed ${seed}/${i}`).toBeGreaterThan(0);
+        const next = path[1];
+        const goal = next
+          ? ground.doors.find(
+              (d) =>
+                (d.roomA === room.id && d.roomB === next) ||
+                (d.roomB === room.id && d.roomA === next),
+            )!.position
+          : space.floorCount > 1
+            ? space.stairs[0]!.position
+            : space.exit.position;
+        // Лицом к табличке: вправо = (−n.y, n.x).
+        const right = { x: -sign.normal.y, y: sign.normal.x };
+        const toGoal = goal.sub(sign.position);
+        const sideways =
+          (toGoal.x * right.x + toGoal.y * right.y) * (sign.arrow === 'right' ? 1 : -1);
+        expect(sideways, `seed ${seed}/${i}`).toBeGreaterThan(0.4);
+      }
+    }
+  });
+});
+
 describe('Флажки и гусь', () => {
   const many = (): Space[] =>
     SEEDS.flatMap((seed) =>
