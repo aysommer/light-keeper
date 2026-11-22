@@ -1,13 +1,11 @@
 import { Group, HemisphereLight, PointLight, Vector3 } from 'three';
 import type { Scene } from 'three';
 import { LampRules } from '@light-keeper/shared';
-import type { ExitCode, HeldItem, LampSnapshot, PlayerColor } from '@light-keeper/shared';
+import type { ExitCode, HeldItem, LampSnapshot } from '@light-keeper/shared';
 import { LampFlame } from '../game/LampFlame.ts';
 import { ItemSwitcher } from '../game/ItemSwitcher.ts';
 import { HeldProps } from './HeldProps.ts';
 import { LanternModel } from './LanternModel.ts';
-import { CharacterAssets } from './CharacterAssets.ts';
-import { HeroArm } from './HeroArm.ts';
 
 /** Что нужно руке от первого лица, чтобы двигаться вместе с игроком. */
 export interface ViewmodelMotion {
@@ -35,30 +33,24 @@ export interface ViewmodelMotion {
 }
 
 /**
- * Своя рука от первого лица — рука героя из его модели (рукав и кисть) с висящим фонарём.
- * Рисуется отдельной сценой поверх мира (см. SceneManager), поэтому не утопает
- * в стенах. Рука качается при ходьбе, запаздывает при поворотах; фонарь —
- * маятник. При смене предмета рука опускается и поднимается. Кроме фонаря
- * в руке бывают компас со стрелкой на напарника, связка ключей и записка
- * с кодом, который читается прямо на листке (см. HeldProps).
+ * Предмет в руках от первого лица — без самой руки: висящий фонарь, компас со
+ * стрелкой на напарника, связка ключей или записка с кодом (код читается прямо
+ * на листке, см. HeldProps). Рисуется отдельной сценой поверх мира (см.
+ * SceneManager), поэтому не утопает в стенах. Предмет качается при ходьбе,
+ * запаздывает при поворотах; фонарь — маятник. При смене предмета он опускается
+ * за край экрана и поднимается снова.
  */
 export class FirstPersonViewmodel {
-  /** Кисть низко справа, как фонарь в руке в Amnesia: рука опущена, предплечье из-под края экрана. */
+  /** Где предмет «в руке»: низко справа (сама рука не рисуется — только предмет). */
   private static readonly HAND = new Vector3(0.24, -0.14, -0.5);
   /** Фонарь в руке чуть меньше настоящего, чтобы не загораживать обзор. */
   private static readonly LANTERN_SCALE = 0.8;
-  /** Куда уходит рука от кисти: по диагонали в правый нижний угол, за край экрана. */
-  private static readonly SHOULDER = new Vector3(0.79, -0.59, -0.15);
   private static readonly LOWERED_OFFSET = 0.5;
-  /** Длина руки героя от плеча до ладони, м (как у модели — без растяжения). */
-  private static readonly ARM_LENGTH = 0.55;
 
   private readonly root = new Group();
   private readonly lampPivot = new Group();
   private readonly lantern = new LanternModel();
   private readonly glow = new PointLight('#ffcf8a', 1.2, 1.5, 1.5);
-  private arm: HeroArm | null = null;
-  private disposed = false;
   private readonly switcher = new ItemSwitcher();
   private readonly props = new HeldProps();
   private swayX = 0;
@@ -70,32 +62,11 @@ export class FirstPersonViewmodel {
   private walkAmount = 0;
   private refuelAmount = 0;
 
-  public constructor(
-    private readonly scene: Scene,
-    color: PlayerColor,
-  ) {
+  public constructor(private readonly scene: Scene) {
     scene.add(new HemisphereLight('#fff1c4', '#2b2414', 0.45));
     scene.add(this.root);
 
     const hand = FirstPersonViewmodel.HAND;
-    const shoulder = FirstPersonViewmodel.SHOULDER;
-    // Рука — из модели героя (рукав и кисть); появляется, как только модель загружена.
-    void CharacterAssets.load()
-      .then((assets) => {
-        if (this.disposed) return;
-        // Плечо — на длине настоящей руки от кисти, в сторону прежнего «плеча» (вниз-вправо-назад).
-        const armShoulder = shoulder
-          .clone()
-          .sub(hand)
-          .setLength(FirstPersonViewmodel.ARM_LENGTH)
-          .add(hand);
-        this.arm = new HeroArm(assets, color, armShoulder, hand);
-        this.root.add(this.arm.root);
-      })
-      .catch(() => {
-        // Модель не загрузилась — видны только предметы в руке.
-      });
-
     this.lampPivot.position.copy(hand).add(new Vector3(0, -0.02, 0));
     this.root.add(this.lampPivot);
     this.lampPivot.add(this.lantern.root);
@@ -179,8 +150,6 @@ export class FirstPersonViewmodel {
     this.lantern.dispose();
     this.props.dispose();
     this.glow.dispose();
-    this.disposed = true;
-    this.arm?.dispose();
     this.scene.clear();
   }
 

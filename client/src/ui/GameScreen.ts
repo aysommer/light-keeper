@@ -120,9 +120,7 @@ export class GameScreen implements Screen {
     player.yaw = space.space.startYaw;
     const controller = new FirstPersonController(player, input, space);
     const lamp = this.own(new HandLampLight(sceneManager.camera));
-    const viewmodel = this.own(
-      new FirstPersonViewmodel(sceneManager.viewmodelScene, options.color),
-    );
+    const viewmodel = this.own(new FirstPersonViewmodel(sceneManager.viewmodelScene));
     let previousYaw = player.yaw;
     let previousPitch = player.pitch;
     const session = this.own(
