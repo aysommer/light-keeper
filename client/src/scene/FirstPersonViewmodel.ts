@@ -43,10 +43,14 @@ export interface ViewmodelMotion {
  * с кодом, который читается прямо на листке (см. HeldProps).
  */
 export class FirstPersonViewmodel {
-  private static readonly HAND = new Vector3(0.22, -0.1, -0.6);
+  /** Кисть низко справа, как фонарь в руке в Amnesia: рука опущена, предплечье из-под края экрана. */
+  private static readonly HAND = new Vector3(0.24, -0.17, -0.5);
   /** Фонарь в руке чуть меньше настоящего, чтобы не загораживать обзор. */
   private static readonly LANTERN_SCALE = 0.8;
-  private static readonly SHOULDER = new Vector3(0.44, -0.62, 0.05);
+  /** Куда уходит рука от кисти: по диагонали в правый нижний угол, за край экрана. */
+  private static readonly SHOULDER = new Vector3(0.79, -0.62, -0.15);
+  /** Поворот руки вокруг её оси: пальцы кулака смотрят вниз, на дужку фонаря. */
+  private static readonly ARM_ROLL = 1.2;
   private static readonly LOWERED_OFFSET = 0.5;
   /** Длина руки героя от плеча до ладони, м (как у модели — без растяжения). */
   private static readonly ARM_LENGTH = 0.55;
@@ -87,7 +91,14 @@ export class FirstPersonViewmodel {
           .sub(hand)
           .setLength(FirstPersonViewmodel.ARM_LENGTH)
           .add(hand);
-        this.arm = new HeroArm(assets, color, armShoulder, hand);
+        this.arm = new HeroArm(
+          assets,
+          color,
+          armShoulder,
+          hand,
+          undefined,
+          FirstPersonViewmodel.ARM_ROLL,
+        );
         this.root.add(this.arm.root);
       })
       .catch(() => {
@@ -102,7 +113,7 @@ export class FirstPersonViewmodel {
     this.lampPivot.add(this.glow);
 
     // Компас и ключи — в кисти; записка — перед глазами, чтобы код можно было прочитать.
-    this.props.compass.position.copy(hand).add(new Vector3(-0.05, 0.03, 0.02));
+    this.props.compass.position.copy(hand).add(new Vector3(-0.08, 0.05, -0.03));
     this.props.keys.position.copy(hand).add(new Vector3(-0.01, -0.005, 0));
     this.props.note.position.set(0.04, -0.13, -0.42);
     this.props.note.rotation.set(-0.42, -0.12, 0.03);

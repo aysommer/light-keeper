@@ -1,5 +1,6 @@
 import {
   BufferGeometry,
+  Float32BufferAttribute,
   CanvasTexture,
   Group,
   Mesh,
@@ -20,6 +21,11 @@ import type { LoadedCharacters } from './CharacterAssets.ts';
  * плечо было внизу справа, а кисть — там, где висит фонарь.
  */
 export class HeroArm {
+  /** Как сгибать кости пальцев в кулак. */
+  public static readonly CURL: { axis: 'x' | 'y' | 'z'; angle: number } = {
+    axis: 'z',
+    angle: -0.95,
+  };
   public readonly root = new Group();
   private readonly geometry: BufferGeometry;
   private readonly texture: CanvasTexture;
@@ -34,6 +40,9 @@ export class HeroArm {
     color: PlayerColor,
     shoulder: Vector3,
     hand: Vector3,
+    curl: { axis: 'x' | 'y' | 'z'; angle: number } = HeroArm.CURL,
+    /** Поворот руки вокруг её оси, рад: чтобы кулак смотрел пальцами вниз, на дужку. */
+    roll = 0,
   ) {
     const model = clone(assets.model);
     model.updateMatrixWorld(true);
@@ -47,6 +56,18 @@ export class HeroArm {
       throw new Error('В модели героя нет скелетной сетки');
     }
     const mesh: SkinnedMesh = skinned;
+    // Пальцы сжаты в кулак — кисть держит дужку фонаря.
+    // Запястье согнуто вниз — к дужке фонаря.
+    const wrist = bones.get('RightHand');
+    if (wrist) wrist.rotation[curl.axis] += curl.angle * 0.55;
+    for (const [name, bone] of bones) {
+      if (/^RightHand(Index|Thumb)\d$/.test(name)) {
+        const factor = name.includes('Thumb') ? 0.5 : 1;
+        bone.rotation[curl.axis] += curl.angle * factor;
+      }
+    }
+    model.updateMatrixWorld(true);
+    mesh.skeleton.update();
     this.geometry = HeroArm.extractArm(mesh);
 
     // Точки руки в позе модели (T-поза): плечо и середина ладони.
@@ -61,9 +82,10 @@ export class HeroArm {
     const modelDirection = grip.clone().sub(from);
     const target = hand.clone().sub(shoulder);
     const scale = target.length() / modelDirection.length();
-    this.root.quaternion.copy(
-      new Quaternion().setFromUnitVectors(modelDirection.normalize(), target.clone().normalize()),
-    );
+    const axis = target.clone().normalize();
+    this.root.quaternion
+      .copy(new Quaternion().setFromAxisAngle(axis, roll))
+      .multiply(new Quaternion().setFromUnitVectors(modelDirection.normalize(), axis));
     this.root.scale.setScalar(scale);
     this.root.position.copy(shoulder);
 
@@ -111,14 +133,21 @@ export class HeroArm {
       if (corners.every((vertex) => armBones.has(dominant(vertex)))) indices.push(...corners);
     }
     const geometry = new BufferGeometry();
-    for (const name of ['position', 'normal', 'uv']) {
-      const attribute = source.getAttribute(name);
-      if (attribute) geometry.setAttribute(name, attribute.clone());
+    // Вершины в текущей позе скелета (с согнутыми пальцами) — в координатах модели.
+    const sourcePositions = source.getAttribute('position');
+    const positions = new Float32Array(sourcePositions.count * 3);
+    const vertex = new Vector3();
+    for (let i = 0; i < sourcePositions.count; i++) {
+      vertex.fromBufferAttribute(sourcePositions, i);
+      mesh.applyBoneTransform(i, vertex);
+      vertex.applyMatrix4(mesh.matrixWorld);
+      positions.set([vertex.x, vertex.y, vertex.z], i * 3);
     }
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    const uv = source.getAttribute('uv');
+    if (uv) geometry.setAttribute('uv', uv.clone());
     geometry.setIndex(indices);
-    // В позе привязки вершины лежат как в сетке: переводим их в координаты модели.
-    mesh.updateMatrixWorld(true);
-    geometry.applyMatrix4(mesh.matrixWorld);
+    geometry.computeVertexNormals();
     return geometry;
   }
 }
