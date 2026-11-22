@@ -4,7 +4,7 @@ import { SceneCoords } from './SceneCoords.ts';
 
 /**
  * Табличка-указатель на стене — как знак эвакуации: светящийся зелёный
- * прямоугольник с белой стрелкой и надписью «ВЫХОД» или «ЛЕСТНИЦА».
+ * прямоугольник с белой стрелкой — без надписей.
  */
 export class WaySignView {
   private static readonly HEIGHT = 1.85;
@@ -42,30 +42,20 @@ export class WaySignView {
       ctx.strokeRect(5, 5, 246, 118);
       // Стрелка.
       ctx.save();
-      ctx.translate(sign.arrow === 'right' ? 200 : 56, 64);
+      ctx.translate(128, 64);
       ctx.scale(sign.arrow === 'right' ? 1 : -1, 1);
       ctx.fillStyle = '#f2fff4';
       ctx.beginPath();
-      ctx.moveTo(-36, -12);
-      ctx.lineTo(4, -12);
-      ctx.lineTo(4, -30);
-      ctx.lineTo(38, 0);
-      ctx.lineTo(4, 30);
-      ctx.lineTo(4, 12);
-      ctx.lineTo(-36, 12);
+      ctx.moveTo(-70, -16);
+      ctx.lineTo(20, -16);
+      ctx.lineTo(20, -40);
+      ctx.lineTo(70, 0);
+      ctx.lineTo(20, 40);
+      ctx.lineTo(20, 16);
+      ctx.lineTo(-70, 16);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
-      // Надпись — с другой стороны от стрелки.
-      ctx.fillStyle = '#f2fff4';
-      ctx.font = 'bold 22px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(
-        sign.target === 'stairs' ? 'ЛЕСТНИЦА' : 'ВЫХОД',
-        sign.arrow === 'right' ? 98 : 158,
-        66,
-      );
     }
     const texture = new CanvasTexture(canvas);
     texture.colorSpace = SRGBColorSpace;
