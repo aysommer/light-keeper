@@ -1,8 +1,9 @@
 import { GameConfig, PlayerMovement, Vector2 } from '@light-keeper/shared';
-import type { HeldItem, MatchPlayerInfo, PlayerColor } from '@light-keeper/shared';
+import type { HeldItem, MatchPlayerInfo, PlayerColor, Space } from '@light-keeper/shared';
 import { AudioEngine } from '../audio/AudioEngine.ts';
 import { SoundDirector } from '../audio/SoundDirector.ts';
 import { Synth } from '../audio/Synth.ts';
+import { TapeRecorderVoice } from '../audio/TapeRecorderVoice.ts';
 import { GameLoop } from '../core/GameLoop.ts';
 import type { GraphicsOptions, GraphicsSettings } from '../core/GraphicsSettings.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
@@ -138,6 +139,7 @@ export class GameScreen implements Screen {
     // Звук разрешается только после действия пользователя — первый клик или клавиша.
     const audio = this.own(new AudioEngine());
     const sound = this.own(new SoundDirector(audio));
+    const tapeVoice = this.own(new TapeRecorderVoice(audio));
     // Редкие белые зайцы — только у этого игрока, на сеть не влияют.
     const rabbits = this.own(
       new RabbitDirector(sceneManager.scene, space, audio, new Synth(audio)),
@@ -238,6 +240,12 @@ export class GameScreen implements Screen {
       controller.update(delta);
       session.update(delta, time);
       controller.applyToCamera(sceneManager.camera);
+      tapeVoice.update(
+        space.space,
+        player.position,
+        space.floor,
+        !session.inTambour && !inTransition,
+      );
       rabbits.update(delta, {
         position: player.position,
         camera: sceneManager.camera,
@@ -394,13 +402,13 @@ export class GameScreen implements Screen {
               )) ??
           (session.inTambour
             ? null
-            : this.canisterHint.resolve(
+            : (this.canisterHint.resolve(
                 space.space,
                 session.oilTaken,
                 session.oilDropped,
                 player.position,
                 floor,
-              )),
+              ) ?? this.tapeHint(space.space, player.position, floor))),
       );
       this.lampHud.updateOil(
         session.inTambour ? 0 : session.ownCanisters,
@@ -436,6 +444,14 @@ export class GameScreen implements Screen {
       sceneManager.render(time, scare, viewmodel.lightLevel);
     });
     this.loop.start();
+  }
+
+  /** Подсказка у магнитофона: он повторяет код вслух. */
+  private tapeHint(space: Space, position: Vector2, floor: number): string | null {
+    const tape = space.codeHint === 'tape' ? space.note : null;
+    return tape && floor === space.noteFloor && tape.distanceTo(position) <= 2.5
+      ? 'Магнитофон повторяет код — слушай и набери на панели'
+      : null;
   }
 
   /**

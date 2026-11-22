@@ -4,7 +4,7 @@ import type { Vector2 } from '../math/Vector2.ts';
 import type { Door } from './Door.ts';
 import type { SpaceFloor } from './SpaceFloor.ts';
 import type { Stair } from './Stair.ts';
-import type { ExitCode } from './ExitCode.ts';
+import type { CodeHint, ExitCode } from './ExitCode.ts';
 import type { ExitDoor } from './ExitDoor.ts';
 import type { Obstacle } from './Obstacle.ts';
 import type { Room } from './Room.ts';
@@ -44,6 +44,11 @@ export class Space {
     public readonly noteFloor: number,
     /** Код двери `code`. */
     public readonly code: ExitCode | null,
+    /**
+     * Где код: записка (`note`) или магнитофон (`tape`) — оба стоят в точке `note`
+     * на этаже `noteFloor`. Магнитофон бывает только у кода из цифр.
+     */
+    public readonly codeHint: CodeHint,
     /** Лестницы между этажами (по одной на каждую пару соседних этажей). */
     public readonly stairs: readonly Stair[],
     /** Какие канистры пустые (обманки) — по индексам `oilSpawns`. */

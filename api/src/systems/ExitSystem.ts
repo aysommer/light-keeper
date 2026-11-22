@@ -61,7 +61,8 @@ export class ExitSystem implements System {
 
   private pickUpNote(world: MatchWorld, active: readonly ServerPlayer[]): void {
     const note = world.space.note;
-    if (!note || world.exit.noteHolderId !== null) {
+    // Магнитофон не подбирают — он стоит на месте и повторяет код вслух.
+    if (!note || world.space.codeHint !== 'note' || world.exit.noteHolderId !== null) {
       return;
     }
     const finder = this.finderOf(note, world.space.noteFloor, active);

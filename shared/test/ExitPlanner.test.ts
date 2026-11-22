@@ -241,3 +241,24 @@ describe('RoomGraph', () => {
     expect(path.length - 1).toBe(graph.distancesFrom(space.startRoom.id).get(space.exit.roomId));
   });
 });
+
+describe('ExitPlanner: магнитофон', () => {
+  const codeSpaces = (): Space[] =>
+    SEEDS.flatMap((seed) =>
+      Array.from({ length: 10 }, (_, i) => new SpaceGenerator(seed).generate(i + 1)),
+    ).filter((space) => space.exit.kind === 'code');
+
+  it('магнитофон бывает только у кода из цифр; у букв и фигур — записка', () => {
+    const spaces = codeSpaces();
+    const tapes = spaces.filter((space) => space.codeHint === 'tape');
+    expect(tapes.length).toBeGreaterThan(3);
+    expect(spaces.some((s) => s.code!.alphabet === 'digits' && s.codeHint === 'note')).toBe(true);
+    for (const space of tapes) expect(space.code!.alphabet).toBe('digits');
+  });
+
+  it('у остальных дверей подсказка по умолчанию — записка (без кода её нет)', () => {
+    const plain = new SpaceGenerator(1).generate(0);
+    expect(plain.code).toBeNull();
+    expect(plain.codeHint).toBe('note');
+  });
+});

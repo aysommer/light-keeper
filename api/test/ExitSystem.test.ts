@@ -33,6 +33,16 @@ const indexWithKind = (kind: ExitKind, minKeys = 0): number => {
   throw new Error(`Нет двери ${kind}`);
 };
 
+/** Пространство с дверью-кодом, где код — в записке (не на магнитофоне). */
+const indexWithNote = (): number => {
+  const generator = new SpaceGenerator(SEED);
+  for (let index = 0; index < 120; index++) {
+    const space = generator.generate(index);
+    if (space.exit.kind === 'code' && space.codeHint === 'note') return index;
+  }
+  throw new Error('Нет двери с запиской');
+};
+
 const setup = (spaceIndex = 0) => {
   let now = 0;
   let ended = 0;
@@ -304,13 +314,27 @@ describe('ExitSystem: запертая дверь и ключи', () => {
 
 describe('ExitSystem: дверь с кодовой панелью', () => {
   const codeSetup = () => {
-    const ctx = setup(indexWithKind('code'));
+    const ctx = setup(indexWithNote());
     return { ...ctx, code: ctx.space().code! };
   };
   const wrongOf = (symbols: readonly string[], keypad: readonly string[]): string[] =>
     symbols.map((symbol, index) =>
       index === 0 ? keypad.find((other) => other !== symbol)! : symbol,
     );
+
+  it('магнитофон не подбирается — он остаётся на месте', () => {
+    const generator = new SpaceGenerator(SEED);
+    let index = -1;
+    for (let i = 1; i < 120 && index < 0; i++) {
+      if (generator.generate(i).codeHint === 'tape') index = i;
+    }
+    expect(index).toBeGreaterThan(0);
+    const ctx = setup(index);
+    ctx.player('blue').position = ctx.space().note!;
+    ctx.player('blue').floor = ctx.space().noteFloor;
+    ctx.tick();
+    expect(ctx.exitState().noteHolderId).toBeNull();
+  });
 
   it('записку подбирает тот, кто подошёл к ней', () => {
     const ctx = codeSetup();

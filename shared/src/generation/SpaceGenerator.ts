@@ -141,6 +141,8 @@ export class SpaceGenerator {
       note,
       noteFloor,
       plan.code,
+      // Код из цифр иногда не в записке, а на магнитофоне, который его повторяет.
+      plan.code?.alphabet === 'digits' && rng.fork('code-hint').chance(0.5) ? 'tape' : 'note',
       stairs,
       this.planEmptyOil(
         floors.flatMap((floor) => floor.rooms),

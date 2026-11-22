@@ -1,5 +1,11 @@
 import type { SeededRandom } from '../random/SeededRandom.ts';
 
+/**
+ * Где спрятан код: в записке (её подбирают) или в магнитофоне, который
+ * по кругу повторяет цифры вслух (только для кода из цифр).
+ */
+export type CodeHint = 'note' | 'tape';
+
 /** Чем записан код двери: цифрами, латинскими буквами или фигурами. */
 export type CodeAlphabet = 'digits' | 'letters' | 'shapes';
 

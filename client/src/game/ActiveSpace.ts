@@ -5,6 +5,7 @@ import { CanisterField } from '../scene/CanisterField.ts';
 import { ExitDoorView } from '../scene/ExitDoorView.ts';
 import { KeyView } from '../scene/KeyView.ts';
 import { NoteView } from '../scene/NoteView.ts';
+import { TapeRecorderView } from '../scene/TapeRecorderView.ts';
 import { MaterialLibrary } from '../scene/MaterialLibrary.ts';
 import type { SpaceDetail } from '../scene/MaterialLibrary.ts';
 import { SceneCoords } from '../scene/SceneCoords.ts';
@@ -37,7 +38,7 @@ export class ActiveSpace implements MovementProvider {
   private stairs: StairView[] = [];
   private door!: ExitDoorView;
   private keys: KeyView[] = [];
-  private note: NoteView | null = null;
+  private note: NoteView | TapeRecorderView | null = null;
   private canisters!: CanisterField;
   private detail: SpaceDetail;
 
@@ -158,11 +159,15 @@ export class ActiveSpace implements MovementProvider {
     });
   }
 
-  private createNote(): NoteView | null {
+  private createNote(): NoteView | TapeRecorderView | null {
     if (!this.currentSpace.note) {
       return null;
     }
-    const note = new NoteView(this.currentSpace.note, this.currentSpace.noteFloor);
+    // Код — в записке или на магнитофоне, который повторяет его вслух.
+    const note =
+      this.currentSpace.codeHint === 'tape'
+        ? new TapeRecorderView(this.currentSpace.note, this.currentSpace.noteFloor)
+        : new NoteView(this.currentSpace.note, this.currentSpace.noteFloor);
     this.scene.add(note.root);
     return note;
   }

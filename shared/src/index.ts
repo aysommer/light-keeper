@@ -64,7 +64,7 @@ export type { ExitKind } from './generation/ExitDoor.ts';
 export { ExitCode } from './generation/ExitCode.ts';
 export { SpaceFloor } from './generation/SpaceFloor.ts';
 export { Stair } from './generation/Stair.ts';
-export type { CodeAlphabet, CodeShape } from './generation/ExitCode.ts';
+export type { CodeAlphabet, CodeHint, CodeShape } from './generation/ExitCode.ts';
 export { ExitPlanner } from './generation/ExitPlanner.ts';
 export type { ExitPlan } from './generation/ExitPlanner.ts';
 export { RoomGraph } from './generation/RoomGraph.ts';
