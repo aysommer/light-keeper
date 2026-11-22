@@ -3,7 +3,9 @@ import type { HeldItem, MatchPlayerInfo, PlayerColor, Space } from '@light-keepe
 import { AudioEngine } from '../audio/AudioEngine.ts';
 import { SoundDirector } from '../audio/SoundDirector.ts';
 import { Synth } from '../audio/Synth.ts';
+import { PanelHum } from '../audio/PanelHum.ts';
 import { TapeRecorderVoice } from '../audio/TapeRecorderVoice.ts';
+import { SpaceTone } from '../scene/SpaceTone.ts';
 import { GameLoop } from '../core/GameLoop.ts';
 import type { GraphicsOptions, GraphicsSettings } from '../core/GraphicsSettings.ts';
 import { ActiveSpace } from '../game/ActiveSpace.ts';
@@ -151,6 +153,7 @@ export class GameScreen implements Screen {
     this.element.append(this.hotbar.element, this.jumpscare.element);
     const sound = this.own(new SoundDirector(audio));
     const tapeVoice = this.own(new TapeRecorderVoice(audio));
+    const panelHum = this.own(new PanelHum(audio));
     // Редкие белые зайцы — только у этого игрока, на сеть не влияют.
     const rabbits = this.own(
       new RabbitDirector(sceneManager.scene, space, audio, new Synth(audio)),
@@ -174,6 +177,7 @@ export class GameScreen implements Screen {
 
     // Затемнение: во время перехода и ещё немного после входа в пространство.
     let shownSpace = space.spaceIndex;
+    sceneManager.setTone(SpaceTone.for(space.space));
     let titleUntil = GameScreen.TITLE_HOLD_SECONDS;
     this.overlay.showEntering(shownSpace + 1);
 
@@ -195,6 +199,7 @@ export class GameScreen implements Screen {
       }
       if (space.spaceIndex !== shownSpace) {
         shownSpace = space.spaceIndex;
+        sceneManager.setTone(SpaceTone.for(space.space));
         titleUntil = time + GameScreen.TITLE_HOLD_SECONDS;
         this.overlay.showEntering(shownSpace + 1);
       }
@@ -293,6 +298,12 @@ export class GameScreen implements Screen {
         delta,
         time,
         sceneManager.camera.position,
+      );
+      panelHum.update(
+        space.nearbyPanels,
+        sceneManager.camera.position,
+        space.flickerLit,
+        !session.inTambour && !inTransition,
       );
       const exit = session.exit;
       const partnerPosition = session.partnerPosition();

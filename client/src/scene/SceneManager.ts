@@ -6,6 +6,7 @@ import {
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
+  Vector3,
   WebGLRenderer,
 } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -39,6 +40,7 @@ export class SceneManager {
    */
   private readonly composer: EffectComposer;
   private readonly film: ShaderPass;
+  private readonly toneTarget = new Vector3(1, 1, 1);
   /** Свечение: создаётся только при включении, чтобы выключенное ничего не стоило. */
   private bloom: SoftBloomPass | null = null;
   /** Пыль: тоже создаётся только при включении. */
@@ -131,8 +133,15 @@ export class SceneManager {
    * @param time время, с (для зерна); @param scare испуг 0–1;
    * @param light свет своей лампы 0…~1 (пыль видна в её свете)
    */
+  /** Тон картинки (см. SpaceTone): меняется плавно — при переходе в новое пространство. */
+  public setTone(tone: Vector3): void {
+    this.toneTarget.copy(tone);
+  }
+
   public render(time = 0, scare = 0, light = 1): void {
     this.dust?.update(time, light, this.renderer.getPixelRatio());
+    const tint = (this.film.uniforms as Record<string, { value: Vector3 }>)['uTint']!.value;
+    tint.lerp(this.toneTarget, 0.05);
     const uniforms = this.film.uniforms as Record<string, { value: number }>;
     uniforms['uTime']!.value = time % 1000;
     uniforms['uScare']!.value = scare;

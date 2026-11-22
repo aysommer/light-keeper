@@ -6,6 +6,10 @@ export interface CeilingPanelLight {
   readonly position: Vector3;
   readonly floor: number;
   readonly flicker: boolean;
+  /** Комната, над которой висит панель. */
+  readonly roomId: string;
+  /** Клетка панели: `столбец:строка`. */
+  readonly cell: string;
 }
 
 /**
@@ -13,6 +17,8 @@ export interface CeilingPanelLight {
  * хватит (их сотни), поэтому есть небольшой постоянный набор: каждый кадр он
  * встаёт под ближайшие к игроку горящие панели его этажа. Число источников
  * не меняется — шейдеры не пересобираются; лишние просто гаснут.
+ * Какие панели вообще могут светить игроку (своя комната и панели у проёмов
+ * в соседние — свет не проходит сквозь стены), решает вызывающий.
  */
 export class CeilingLightPool {
   public static readonly SIZE = 6;
@@ -23,6 +29,7 @@ export class CeilingLightPool {
 
   private readonly lights: PointLight[] = [];
   private readonly viewer = new Vector3();
+  private chosen: CeilingPanelLight[] = [];
 
   public constructor(private readonly scene: Scene) {
     for (let i = 0; i < CeilingLightPool.SIZE; i++) {
@@ -34,7 +41,7 @@ export class CeilingLightPool {
   }
 
   /**
-   * @param panels горящие панели пространства (на всех этажах)
+   * @param panels горящие панели, которые могут светить игроку
    * @param viewer где игрок (сцена)
    * @param floor его этаж
    * @param flickerLit горят ли сейчас мерцающие панели
@@ -51,6 +58,7 @@ export class CeilingLightPool {
       .map((panel) => ({ panel, distance: panel.position.distanceToSquared(this.viewer) }))
       .sort((a, b) => a.distance - b.distance)
       .slice(0, CeilingLightPool.SIZE);
+    this.chosen = nearest.map((entry) => entry.panel);
     this.lights.forEach((light, i) => {
       const entry = nearest[i];
       if (!entry) {
@@ -62,6 +70,11 @@ export class CeilingLightPool {
       const lit = !entry.panel.flicker || flickerLit;
       light.intensity = lit ? CeilingLightPool.INTENSITY : 0;
     });
+  }
+
+  /** Панели, под которыми сейчас стоит свет, — от ближней к дальней. */
+  public get active(): readonly CeilingPanelLight[] {
+    return this.chosen;
   }
 
   public dispose(): void {

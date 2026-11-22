@@ -1,5 +1,7 @@
+import { Vector3 } from 'three';
+
 /**
- * Плёночный шейдер: зерно, виньетка и лёгкое расхождение цветов по краям.
+ * Плёночный шейдер: тон пространства, зерно, виньетка и лёгкое расхождение цветов по краям.
  * Сила зерна и расхождения растёт при испуге (`uScare`).
  */
 export const FilmShader = {
@@ -11,6 +13,7 @@ export const FilmShader = {
     uGrain: { value: 0.02 },
     uVignette: { value: 0.35 },
     uAberration: { value: 0.0012 },
+    uTint: { value: new Vector3(1, 1, 1) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -26,6 +29,7 @@ export const FilmShader = {
     uniform float uGrain;
     uniform float uVignette;
     uniform float uAberration;
+    uniform vec3 uTint;
     varying vec2 vUv;
 
     float hash(vec2 p) {
@@ -40,6 +44,8 @@ export const FilmShader = {
       vec4 color = texture2D(tDiffuse, vUv);
       color.r = texture2D(tDiffuse, vUv + shift).r;
       color.b = texture2D(tDiffuse, vUv - shift).b;
+      // Тон пространства.
+      color.rgb *= uTint;
       // Виньетка.
       color.rgb *= 1.0 - smoothstep(0.12, 0.6, edge) * (uVignette + uScare * 0.25);
       // Зерно.

@@ -1,6 +1,7 @@
 import type { Group, InstancedMesh, Mesh } from 'three';
 import type { CeilingPanelLight } from './CeilingLightPool.ts';
 import type { MaterialLibrary } from './MaterialLibrary.ts';
+import type { DecorParts } from './SpaceDecor.ts';
 
 /** Трёхмерное представление пространства: меши и его собственные материалы. */
 export class SpaceView {
@@ -10,6 +11,7 @@ export class SpaceView {
     public readonly materials: MaterialLibrary,
     /** Горящие панели этого этажа — их свет падает в комнаты. */
     public readonly panelLights: readonly CeilingPanelLight[] = [],
+    private readonly decor: DecorParts | null = null,
   ) {}
 
   public update(time: number): void {
@@ -28,5 +30,6 @@ export class SpaceView {
     });
     this.group.removeFromParent();
     this.materials.dispose();
+    this.decor?.dispose();
   }
 }

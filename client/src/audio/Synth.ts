@@ -42,6 +42,12 @@ export class Synth {
     cry(190, 0.94);
   }
 
+  /** Треск мерцающей лампы дневного света: сухой щелчок и короткое жужжание. */
+  public fluorescentCrackle(destination?: AudioNode): void {
+    this.noiseBurst({ type: 'bandpass', frequency: 3400, q: 1.5 }, 0.001, 0.03, 0.12, destination);
+    this.tone('sawtooth', 120, 118, 0.002, 0.06, 0.05, destination);
+  }
+
   /** Лёгкий быстрый топоток лапок (заяц). */
   public patter(destination?: AudioNode): void {
     this.noiseBurst({ type: 'bandpass', frequency: 900, q: 1.2 }, 0.002, 0.035, 0.22, destination);

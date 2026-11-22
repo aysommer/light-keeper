@@ -1,5 +1,5 @@
 import type { Scene, Vector3 } from 'three';
-import { CollisionWorld, PlayerMovement, SpaceGenerator } from '@light-keeper/shared';
+import { CollisionWorld, PlayerMovement, SpaceGenerator, Vector2 } from '@light-keeper/shared';
 import type { DroppedCanister, ExitSnapshot, Space } from '@light-keeper/shared';
 import { CanisterField } from '../scene/CanisterField.ts';
 import { CeilingLightPool } from '../scene/CeilingLightPool.ts';
@@ -47,6 +47,9 @@ export class ActiveSpace implements MovementProvider {
   private detail: SpaceDetail;
   private readonly ceilingLights: CeilingLightPool;
   private panelLights: CeilingPanelLight[] = [];
+  /** Комната игрока (последняя известная — в проёме комнаты нет) и её видимые панели. */
+  private lightRoom = '';
+  private visiblePanels: CeilingPanelLight[] = [];
 
   public constructor(
     matchSeed: number,
@@ -116,10 +119,10 @@ export class ActiveSpace implements MovementProvider {
   ): void {
     this.views.forEach((view) => view.update(time));
     this.ceilingLights.update(
-      this.panelLights,
+      this.panelsSeenFrom(new Vector2(viewer.x, -viewer.z)),
       viewer,
       this.currentFloor,
-      this.views[0]?.materials.flickerLit ?? true,
+      this.flickerLit,
     );
     this.door.update(exit, deltaSeconds);
     this.keys.forEach((key) => key.update(exit, time));
@@ -127,9 +130,52 @@ export class ActiveSpace implements MovementProvider {
     this.canisters.update(oilTaken, oilDropped);
   }
 
+  /** Горящие панели, под которыми сейчас стоит свет (ближние первыми). */
+  public get nearbyPanels(): readonly CeilingPanelLight[] {
+    return this.ceilingLights.active;
+  }
+
+  /** Горят ли сейчас мерцающие панели. */
+  public get flickerLit(): boolean {
+    return this.views[0]?.materials.flickerLit ?? true;
+  }
+
   public dispose(): void {
     this.disposeViews();
     this.ceilingLights.dispose();
+  }
+
+  /**
+   * Панели, свет которых может достать до игрока: все над его комнатой и в
+   * соседних — только те, что над клеткой у проёма в его комнату (сквозь
+   * стены свет не проходит, а через проём — да).
+   */
+  private panelsSeenFrom(point: Vector2): CeilingPanelLight[] {
+    const floor = this.currentSpace.floor(this.currentFloor);
+    const room = floor.roomAt(point);
+    const key = room ? `${this.currentFloor}:${room.id}` : this.lightRoom;
+    if (key === this.lightRoom) {
+      return this.visiblePanels;
+    }
+    this.lightRoom = key;
+    const roomId = room!.id;
+    const grid = this.currentSpace.grid;
+    const doorCells = new Set<string>();
+    for (const door of floor.doors) {
+      if (door.roomA !== roomId && door.roomB !== roomId) continue;
+      const across = door.edge.orientation === 'horizontal' ? new Vector2(0, 1) : new Vector2(1, 0);
+      for (const side of [-1, 1]) {
+        const cellPoint = door.position.add(across.scale((side * grid.cellSize) / 2));
+        if (floor.roomAt(cellPoint)?.id !== roomId) {
+          doorCells.add(grid.cellAt(cellPoint).join(':'));
+        }
+      }
+    }
+    this.visiblePanels = this.panelLights.filter(
+      (panel) =>
+        panel.floor === this.currentFloor && (panel.roomId === roomId || doorCells.has(panel.cell)),
+    );
+    return this.visiblePanels;
   }
 
   private build(): void {
@@ -142,6 +188,8 @@ export class ActiveSpace implements MovementProvider {
       return view;
     });
     this.panelLights = this.views.flatMap((view) => [...view.panelLights]);
+    this.lightRoom = '';
+    this.visiblePanels = [];
     this.stairs = space.stairs.map((stair) => {
       const view = new StairView(stair);
       this.scene.add(view.root);
