@@ -21,11 +21,9 @@ import type { LoadedCharacters } from './CharacterAssets.ts';
  * плечо было внизу справа, а кисть — там, где висит фонарь.
  */
 export class HeroArm {
-  /** Как сгибать кости пальцев в кулак. */
-  public static readonly CURL: { axis: 'x' | 'y' | 'z'; angle: number } = {
-    axis: 'z',
-    angle: -0.95,
-  };
+  private static readonly X = new Vector3(1, 0, 0);
+  private static readonly Z = new Vector3(0, 0, 1);
+  private static readonly DOWN = new Vector3(0, -1, 0);
   public readonly root = new Group();
   private readonly geometry: BufferGeometry;
   private readonly texture: CanvasTexture;
@@ -40,9 +38,6 @@ export class HeroArm {
     color: PlayerColor,
     shoulder: Vector3,
     hand: Vector3,
-    curl: { axis: 'x' | 'y' | 'z'; angle: number } = HeroArm.CURL,
-    /** Поворот руки вокруг её оси, рад: чтобы кулак смотрел пальцами вниз, на дужку. */
-    roll = 0,
   ) {
     const model = clone(assets.model);
     model.updateMatrixWorld(true);
@@ -57,15 +52,15 @@ export class HeroArm {
     }
     const mesh: SkinnedMesh = skinned;
     // Пальцы сжаты в кулак — кисть держит дужку фонаря.
-    // Запястье согнуто вниз — к дужке фонаря.
-    const wrist = bones.get('RightHand');
-    if (wrist) wrist.rotation[curl.axis] += curl.angle * 0.55;
-    for (const [name, bone] of bones) {
-      if (/^RightHand(Index|Thumb)\d$/.test(name)) {
-        const factor = name.includes('Thumb') ? 0.5 : 1;
-        bone.rotation[curl.axis] += curl.angle * factor;
-      }
+    // Кулак. В позе модели рука вытянута вдоль −X, ладонь смотрит вниз (−Y),
+    // большой палец — вперёд (+Z). Пальцы сгибаем к ладони вокруг мировой оси +Z,
+    // запястье чуть вниз, большой палец подворачиваем под ладонь вокруг +X.
+    HeroArm.bendWorld(bones.get('RightHand'), HeroArm.Z, 0.35);
+    for (const name of ['RightHandIndex1', 'RightHandIndex2', 'RightHandIndex3']) {
+      HeroArm.bendWorld(bones.get(name), HeroArm.Z, 1.15);
     }
+    HeroArm.bendWorld(bones.get('RightHandThumb1'), HeroArm.X, 0.7);
+    HeroArm.bendWorld(bones.get('RightHandThumb2'), HeroArm.X, 0.6);
     model.updateMatrixWorld(true);
     mesh.skeleton.update();
     this.geometry = HeroArm.extractArm(mesh);
@@ -83,9 +78,13 @@ export class HeroArm {
     const target = hand.clone().sub(shoulder);
     const scale = target.length() / modelDirection.length();
     const axis = target.clone().normalize();
-    this.root.quaternion
-      .copy(new Quaternion().setFromAxisAngle(axis, roll))
-      .multiply(new Quaternion().setFromUnitVectors(modelDirection.normalize(), axis));
+    const align = new Quaternion().setFromUnitVectors(modelDirection.normalize(), axis);
+    // Поворот вокруг оси руки: ладонь (в модели — вниз) смотрит как можно ниже —
+    // кулак лежит на дужке сверху, костяшками вверх.
+    const palm = HeroArm.DOWN.clone().applyQuaternion(align).projectOnPlane(axis).normalize();
+    const down = HeroArm.DOWN.clone().projectOnPlane(axis).normalize();
+    const roll = Math.atan2(palm.clone().cross(down).dot(axis), palm.dot(down));
+    this.root.quaternion.setFromAxisAngle(axis, roll).multiply(align);
     this.root.scale.setScalar(scale);
     this.root.position.copy(shoulder);
 
@@ -102,6 +101,21 @@ export class HeroArm {
     this.geometry.dispose();
     this.material.dispose();
     this.texture.dispose();
+  }
+
+  /**
+   * Повернуть кость вокруг оси в мировых координатах (с учётом поворота
+   * родителя). Кости обходятся от запястья к кончикам — каждая поворачивается
+   * вместе с уже согнутыми родителями.
+   */
+  private static bendWorld(bone: Bone | undefined, axis: Vector3, angle: number): void {
+    if (!bone) return;
+    bone.updateWorldMatrix(true, false);
+    const parent = bone.parent?.getWorldQuaternion(new Quaternion()) ?? new Quaternion();
+    const turn = new Quaternion().setFromAxisAngle(axis, angle);
+    // local' = parent⁻¹ · turn · parent · local
+    bone.quaternion.premultiply(parent.clone().invert().multiply(turn).multiply(parent));
+    bone.updateWorldMatrix(false, true);
   }
 
   /** Треугольники, которые двигают кости правой руки (без ключицы и тела). */

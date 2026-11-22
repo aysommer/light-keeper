@@ -44,13 +44,11 @@ export interface ViewmodelMotion {
  */
 export class FirstPersonViewmodel {
   /** Кисть низко справа, как фонарь в руке в Amnesia: рука опущена, предплечье из-под края экрана. */
-  private static readonly HAND = new Vector3(0.24, -0.17, -0.5);
+  private static readonly HAND = new Vector3(0.24, -0.14, -0.5);
   /** Фонарь в руке чуть меньше настоящего, чтобы не загораживать обзор. */
   private static readonly LANTERN_SCALE = 0.8;
   /** Куда уходит рука от кисти: по диагонали в правый нижний угол, за край экрана. */
-  private static readonly SHOULDER = new Vector3(0.79, -0.62, -0.15);
-  /** Поворот руки вокруг её оси: пальцы кулака смотрят вниз, на дужку фонаря. */
-  private static readonly ARM_ROLL = 1.2;
+  private static readonly SHOULDER = new Vector3(0.79, -0.59, -0.15);
   private static readonly LOWERED_OFFSET = 0.5;
   /** Длина руки героя от плеча до ладони, м (как у модели — без растяжения). */
   private static readonly ARM_LENGTH = 0.55;
@@ -91,14 +89,7 @@ export class FirstPersonViewmodel {
           .sub(hand)
           .setLength(FirstPersonViewmodel.ARM_LENGTH)
           .add(hand);
-        this.arm = new HeroArm(
-          assets,
-          color,
-          armShoulder,
-          hand,
-          undefined,
-          FirstPersonViewmodel.ARM_ROLL,
-        );
+        this.arm = new HeroArm(assets, color, armShoulder, hand);
         this.root.add(this.arm.root);
       })
       .catch(() => {
@@ -113,7 +104,7 @@ export class FirstPersonViewmodel {
     this.lampPivot.add(this.glow);
 
     // Компас и ключи — в кисти; записка — перед глазами, чтобы код можно было прочитать.
-    this.props.compass.position.copy(hand).add(new Vector3(-0.08, 0.05, -0.03));
+    this.props.compass.position.copy(hand).add(new Vector3(-0.03, 0.035, -0.01));
     this.props.keys.position.copy(hand).add(new Vector3(-0.01, -0.005, 0));
     this.props.note.position.set(0.04, -0.13, -0.42);
     this.props.note.rotation.set(-0.42, -0.12, 0.03);
