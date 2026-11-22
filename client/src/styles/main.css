@@ -1436,11 +1436,6 @@ kbd {
     jumpscare-shake 0.07s linear 0.35s infinite;
 }
 
-.jumpscare--active .jumpscare__mouth {
-  transform-origin: 100px 172px;
-  animation: jumpscare-mouth 0.25s ease-in-out infinite alternate;
-}
-
 .jumpscare__flash {
   position: absolute;
   inset: 0;
@@ -1475,12 +1470,6 @@ kbd {
   }
   100% {
     transform: scale(1.15) translate(4px, 5px) rotate(0.5deg);
-  }
-}
-
-@keyframes jumpscare-mouth {
-  to {
-    transform: scaleY(1.35);
   }
 }
 

@@ -11,6 +11,7 @@ import type { SpaceDetail } from '../scene/MaterialLibrary.ts';
 import { SceneCoords } from '../scene/SceneCoords.ts';
 import { SpaceMeshBuilder } from '../scene/SpaceMeshBuilder.ts';
 import { StairView } from '../scene/StairView.ts';
+import { WaySignView } from '../scene/WaySignView.ts';
 import type { SpaceView } from '../scene/SpaceView.ts';
 
 /** Источник правила движения для текущего пространства и этажа. */
@@ -36,6 +37,7 @@ export class ActiveSpace implements MovementProvider {
   /** Этажи на сцене (стопкой по высоте). */
   private views: SpaceView[] = [];
   private stairs: StairView[] = [];
+  private sign: WaySignView | null = null;
   private door!: ExitDoorView;
   private keys: KeyView[] = [];
   private note: NoteView | TapeRecorderView | null = null;
@@ -131,6 +133,8 @@ export class ActiveSpace implements MovementProvider {
     this.door = this.createDoor();
     this.keys = this.createKeys();
     this.note = this.createNote();
+    this.sign = space.sign ? new WaySignView(space.sign) : null;
+    if (this.sign) this.scene.add(this.sign.root);
     this.canisters = new CanisterField(
       this.scene,
       space.oilSpawns,
@@ -178,6 +182,7 @@ export class ActiveSpace implements MovementProvider {
     this.note?.dispose();
     this.door.dispose();
     this.stairs.forEach((stair) => stair.dispose());
+    this.sign?.dispose();
     this.views.forEach((view) => view.dispose());
   }
 }

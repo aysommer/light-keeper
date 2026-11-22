@@ -1,6 +1,6 @@
 /**
  * Скример: когда привидение ловит героя, на весь экран резко выскакивает его
- * лицо — белое полотно, тёмные провалы глаз и рта, — дёргается и вспыхивает.
+ * лицо — белое полотно и тёмные провалы глаз (без рта), — дёргается и вспыхивает.
  * Затем партия заканчивается (экран конца игры).
  */
 export class Jumpscare {
@@ -31,7 +31,6 @@ export class Jumpscare {
           d="M100 6 C40 6 16 60 16 120 L16 232 L40 214 L62 236 L84 214 L100 236 L116 214 L138 236 L160 214 L184 232 L184 120 C184 60 160 6 100 6 Z" />
         <ellipse cx="68" cy="100" rx="22" ry="34" fill="url(#jumpscare-hole)" transform="rotate(-8 68 100)" />
         <ellipse cx="132" cy="100" rx="22" ry="34" fill="url(#jumpscare-hole)" transform="rotate(8 132 100)" />
-        <ellipse class="jumpscare__mouth" cx="100" cy="172" rx="26" ry="38" fill="url(#jumpscare-hole)" />
       </svg>
       <div class="jumpscare__flash"></div>`;
   }

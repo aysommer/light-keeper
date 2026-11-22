@@ -14,6 +14,9 @@ import { RoomLayoutPlanner } from './RoomLayoutPlanner.ts';
 import { Space } from './Space.ts';
 import { SpaceFloor } from './SpaceFloor.ts';
 import { Stair } from './Stair.ts';
+import { RoomGraph } from './RoomGraph.ts';
+import { WaySign } from './WaySign.ts';
+import type { WaySignTarget } from './WaySign.ts';
 import { GridEdge } from './GridEdge.ts';
 import type { AABB } from '../math/AABB.ts';
 import { SpaceGrid } from './SpaceGrid.ts';
@@ -160,6 +163,15 @@ export class SpaceGenerator {
       // Код из цифр иногда не в записке, а на магнитофоне, который его повторяет.
       plan.code?.alphabet === 'digits' && rng.fork('code-hint').chance(0.5) ? 'tape' : 'note',
       stairs,
+      this.planSign(
+        ground,
+        startRoom,
+        startCenter,
+        floorCount > 1 ? stairs[0]!.position : plan.exit.position,
+        floorCount > 1 ? 'stairs' : 'exit',
+        grid,
+        floorCount > 1 ? null : plan.exit.roomId,
+      ),
       this.planEmptyOil(
         floors.flatMap((floor) => floor.rooms),
         rng.fork('oil-empty'),
@@ -211,6 +223,101 @@ export class SpaceGenerator {
       if (fallback) stairs.push(fallback);
     }
     return stairs;
+  }
+
+  /**
+   * Табличка в стартовой комнате: стрелка к проёму, через который короче всего
+   * идти к цели (по графу комнат), или прямо к цели, если она в этой же комнате.
+   * Висит на той стене, вдоль которой это направление читается лучше всего,
+   * на сплошном участке (не в проёме), ближе к старту.
+   */
+  private planSign(
+    ground: SpaceFloor,
+    startRoom: Room,
+    from: Vector2,
+    target: Vector2,
+    kind: WaySignTarget,
+    grid: SpaceGrid,
+    targetRoomId: string | null = null,
+  ): WaySign | null {
+    const graph = new RoomGraph(ground.rooms, ground.doors);
+    const targetId = targetRoomId ?? ground.roomAt(target)?.id ?? startRoom.id;
+    const path = graph.path(startRoom.id, targetId);
+    const doorBetween = (a: string, b: string) =>
+      ground.doors.find(
+        (d) => (d.roomA === a && d.roomB === b) || (d.roomB === a && d.roomA === b),
+      );
+    // Вешаем в стартовой комнате; если там нет сплошной стены — в следующей по пути.
+    let here = from;
+    for (let step = 0; step < Math.max(1, path.length); step++) {
+      const roomId = path[step] ?? startRoom.id;
+      const room = ground.rooms.find((r) => r.id === roomId) ?? startRoom;
+      const next = path[step + 1];
+      const door = next ? doorBetween(roomId, next) : undefined;
+      const sign = this.signIn(
+        ground,
+        room,
+        here,
+        (door ? door.position : target).sub(here),
+        kind,
+        grid,
+      );
+      if (sign) return sign;
+      if (!door) break;
+      here = door.position;
+    }
+    return null;
+  }
+
+  /** Табличка в комнате: на стене, вдоль которой направление читается лучше, на сплошном участке. */
+  private signIn(
+    ground: SpaceFloor,
+    room: Room,
+    from: Vector2,
+    direction: Vector2,
+    kind: WaySignTarget,
+    grid: SpaceGrid,
+  ): WaySign | null {
+    if (direction.length() < 1e-6) {
+      return null;
+    }
+    const way = direction.normalize();
+    const { col, row, width, height } = room.cells;
+    const doorways = new Set(ground.doors.map((d) => d.edge.key));
+    const sides = [
+      {
+        normal: new Vector2(0, -1),
+        edges: Array.from({ length: width }, (_, i) => GridEdge.horizontal(col + i, row + height)),
+      },
+      {
+        normal: new Vector2(0, 1),
+        edges: Array.from({ length: width }, (_, i) => GridEdge.horizontal(col + i, row)),
+      },
+      {
+        normal: new Vector2(1, 0),
+        edges: Array.from({ length: height }, (_, i) => GridEdge.vertical(col, row + i)),
+      },
+      {
+        normal: new Vector2(-1, 0),
+        edges: Array.from({ length: height }, (_, i) => GridEdge.vertical(col + width, row + i)),
+      },
+    ];
+    const along = (n: Vector2) => Math.abs(way.x * -n.y + way.y * n.x);
+    const ranked = [...sides].sort((a, b) => along(b.normal) - along(a.normal));
+    for (const side of ranked) {
+      const spot = side.edges
+        .filter((edge) => !doorways.has(edge.key))
+        .map((edge) => grid.edgeCenter(edge))
+        .sort((a, b) => a.distanceTo(from) - b.distanceTo(from))[0];
+      if (!spot) continue;
+      const half = this.settings.wallThickness / 2;
+      // Смотрящий на табличку стоит лицом к стене: вперёд = −нормаль, вправо = (f.y, −f.x).
+      const facing = side.normal.scale(-1);
+      const right = new Vector2(facing.y, -facing.x);
+      const arrow = way.x * right.x + way.y * right.y >= 0 ? 'right' : 'left';
+      return new WaySign(spot.add(side.normal.scale(half + 0.01)), side.normal, arrow, kind);
+    }
+    return null;
   }
 
   /** Сколько этажей: первое пространство — один, дальше иногда два или три. */

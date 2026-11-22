@@ -4,6 +4,7 @@ import type { Vector2 } from '../math/Vector2.ts';
 import type { Door } from './Door.ts';
 import type { SpaceFloor } from './SpaceFloor.ts';
 import type { Stair } from './Stair.ts';
+import type { WaySign } from './WaySign.ts';
 import type { CodeHint, ExitCode } from './ExitCode.ts';
 import type { ExitDoor } from './ExitDoor.ts';
 import type { Obstacle } from './Obstacle.ts';
@@ -51,6 +52,8 @@ export class Space {
     public readonly codeHint: CodeHint,
     /** Лестницы между этажами (по одной на каждую пару соседних этажей). */
     public readonly stairs: readonly Stair[],
+    /** Табличка-указатель в стартовой комнате (первый этаж). */
+    public readonly sign: WaySign | null,
     /** Какие канистры пустые (обманки) — по индексам `oilSpawns`. */
     public readonly oilEmpty: readonly boolean[] = [],
   ) {}

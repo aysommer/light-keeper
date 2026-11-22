@@ -298,3 +298,29 @@ describe('ExitDoor.reachableFrom', () => {
     }
   });
 });
+
+describe('Табличка-указатель', () => {
+  const spaces = (): Space[] =>
+    SEEDS.flatMap((seed) =>
+      Array.from({ length: 6 }, (_, i) => new SpaceGenerator(seed).generate(i)),
+    );
+
+  it('одна на пространство, на стене стартовой комнаты, лицом в комнату, не в проёме', () => {
+    for (const space of spaces()) {
+      const sign = space.sign!;
+      expect(sign).not.toBeNull();
+      expect(['left', 'right']).toContain(sign.arrow);
+      expect(sign.target).toBe(space.floorCount > 1 ? 'stairs' : 'exit');
+      // Перед табличкой — комната первого этажа; за ней — стена.
+      expect(space.roomAt(sign.position.add(sign.normal.scale(0.5)))).toBeDefined();
+      expect(
+        space.walls.some((wall) =>
+          wall.bounds.containsPoint(sign.position.sub(sign.normal.scale(0.05))),
+        ),
+      ).toBe(true);
+      for (const door of space.doors) {
+        expect(door.position.distanceTo(sign.position)).toBeGreaterThan(0.7);
+      }
+    }
+  });
+});
