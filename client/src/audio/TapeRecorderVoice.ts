@@ -5,16 +5,18 @@ import type { AudioEngine } from './AudioEngine.ts';
 
 /**
  * Голос магнитофона: по кругу повторяет код двери по-английски — «one… four…
- * seven… two…» — с паузами, как старая запись: узкая полоса частот, чуть
+ * seven… two…» — со случайными паузами 1–3 с между цифрами, как старая запись: узкая полоса частот, чуть
  * замедленно и «плавает», под шипение плёнки. Звук объёмный: слышен со
  * стороны магнитофона и тише вдали, поэтому его можно найти на слух.
  * Играет, только пока игрок на том же этаже и не дальше `HEAR_DISTANCE`.
  */
 export class TapeRecorderVoice {
   private static readonly HEAR_DISTANCE = 22;
-  /** Пауза после каждой цифры и после всего кода, с. */
-  private static readonly DIGIT_GAP = 0.75;
-  private static readonly LOOP_GAP = 2.6;
+  /** Пауза после каждой цифры — случайная, от и до, с. */
+  private static readonly DIGIT_GAP_MIN = 1;
+  private static readonly DIGIT_GAP_MAX = 3;
+  /** Пауза после всего кода — заметно длиннее любой паузы между цифрами, чтобы было слышно, где код кончился, с. */
+  private static readonly LOOP_GAP = 5;
   private static buffers: Promise<AudioBuffer[]> | null = null;
 
   private panner: PannerNode | null = null;
@@ -122,7 +124,10 @@ export class TapeRecorderVoice {
       source.start(t);
       this.sources.add(source);
       source.onended = () => this.sources.delete(source);
-      t += buffer.duration / rate + TapeRecorderVoice.DIGIT_GAP;
+      const gap =
+        TapeRecorderVoice.DIGIT_GAP_MIN +
+        Math.random() * (TapeRecorderVoice.DIGIT_GAP_MAX - TapeRecorderVoice.DIGIT_GAP_MIN);
+      t += buffer.duration / rate + gap;
     }
     this.nextCycleAt = t + TapeRecorderVoice.LOOP_GAP;
   }
