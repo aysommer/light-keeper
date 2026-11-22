@@ -206,7 +206,7 @@ export class NetworkSession {
     return this.latestGoose;
   }
 
-  /** Гусь у этого игрока на спине. */
+  /** Гусь у этого игрока в руках. */
   public get hasGoose(): boolean {
     return this.latestGoose?.holderId === this.playerId;
   }
@@ -334,7 +334,7 @@ export class NetworkSession {
       }
       const remote = this.remotes.get(state.id);
       remote?.setFloor(state.floor);
-      remote?.setGooseOnBack(snapshot.goose?.holderId === state.id);
+      remote?.setGooseInHands(snapshot.goose?.holderId === state.id);
       remote?.setInTambour(state.inTambour);
       remote?.setHands(state.item, state.lamp);
       remote?.setExchangeCount(snapshot.exchange.count);

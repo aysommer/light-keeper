@@ -75,7 +75,7 @@ export class FirstPersonViewmodel {
     this.lampPivot.add(this.glow);
 
     // Компас и ключи — в кисти; записка — перед глазами, чтобы код можно было прочитать.
-    this.props.compass.position.copy(hand).add(new Vector3(-0.03, 0.035, -0.01));
+    this.props.compass.position.copy(hand).add(new Vector3(-0.03, -0.025, -0.01));
     this.props.keys.position.copy(hand).add(new Vector3(-0.01, -0.005, 0));
     this.props.note.position.set(0.04, -0.13, -0.42);
     this.props.note.rotation.set(-0.42, -0.12, 0.03);
@@ -83,7 +83,17 @@ export class FirstPersonViewmodel {
     this.props.flag.position.copy(hand).add(new Vector3(0.02, -0.14, 0.02));
     this.props.flag.scale.setScalar(0.55);
     this.props.flag.rotation.set(-0.35, 0.4, 0);
-    this.root.add(this.props.compass, this.props.keys, this.props.note, this.props.flag);
+    // Гусь — в обеих руках перед собой, внизу кадра, спиной к игроку.
+    this.props.goose.position.set(0.06, -0.6, -0.72);
+    this.props.goose.scale.setScalar(0.7);
+    this.props.goose.rotation.set(0.2, 0.55, 0);
+    this.root.add(
+      this.props.compass,
+      this.props.keys,
+      this.props.note,
+      this.props.flag,
+      this.props.goose,
+    );
   }
 
   private level = 0;

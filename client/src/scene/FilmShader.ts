@@ -8,7 +8,7 @@ export const FilmShader = {
     tDiffuse: { value: null },
     uTime: { value: 0 },
     uScare: { value: 0 },
-    uGrain: { value: 0.05 },
+    uGrain: { value: 0.02 },
     uVignette: { value: 0.35 },
     uAberration: { value: 0.0012 },
   },

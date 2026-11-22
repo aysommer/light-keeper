@@ -1,9 +1,10 @@
-import { Group, InstancedMesh, Matrix4, Mesh, PlaneGeometry } from 'three';
+import { Group, InstancedMesh, Matrix4, Mesh, PlaneGeometry, Vector3 } from 'three';
 import type { BufferGeometry, Material } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { GameConfig, SeedHasher } from '@light-keeper/shared';
+import { AABB, GameConfig, SeedHasher } from '@light-keeper/shared';
 import type { Space, WorldSettings } from '@light-keeper/shared';
 import { BoxGeometryFactory } from './BoxGeometryFactory.ts';
+import type { CeilingPanelLight } from './CeilingLightPool.ts';
 import { MaterialLibrary } from './MaterialLibrary.ts';
 import type { PanelState, SpaceDetail } from './MaterialLibrary.ts';
 import { SceneCoords } from './SceneCoords.ts';
@@ -18,6 +19,11 @@ export class SpaceMeshBuilder {
   private static readonly RAIL_BOTTOM = 0.86;
   private static readonly RAIL_TOP = 0.94;
   private static readonly RAIL_DEPTH = 0.015;
+  /** Доли панелей: выключенных и мерцающих (остальные горят ровно). */
+  private static readonly PANELS_OFF = 0.3;
+  private static readonly PANELS_FLICKER = 0.15;
+  /** Сколько планки убрать по бокам двери выхода: наличник и кодовая панель. */
+  private static readonly RAIL_DOOR_MARGIN = 0.45;
 
   private readonly boxes = new BoxGeometryFactory(MaterialLibrary.WALL_TILE_METERS);
 
@@ -57,19 +63,46 @@ export class SpaceMeshBuilder {
     if (space.palette.pattern === 'plain') {
       this.addMerged(
         group,
-        floor.walls.map((wall) =>
-          this.boxes.create(
-            wall.bounds.expand(SpaceMeshBuilder.RAIL_DEPTH),
-            SpaceMeshBuilder.RAIL_BOTTOM,
-            SpaceMeshBuilder.RAIL_TOP,
+        floor.walls
+          .flatMap((wall) =>
+            floorIndex === space.exitFloor
+              ? this.railAroundExit(wall.bounds, space)
+              : [wall.bounds],
+          )
+          .map((bounds) =>
+            this.boxes.create(
+              bounds.expand(SpaceMeshBuilder.RAIL_DEPTH),
+              SpaceMeshBuilder.RAIL_BOTTOM,
+              SpaceMeshBuilder.RAIL_TOP,
+            ),
           ),
-        ),
         materials.trim,
         'rail',
       );
     }
-    group.add(...this.buildPanels(space, materials, floorIndex));
-    return new SpaceView(space.index, group, materials);
+    const lights: CeilingPanelLight[] = [];
+    group.add(...this.buildPanels(space, materials, floorIndex, lights));
+    return new SpaceView(space.index, group, materials, lights);
+  }
+
+  /** Планка не идёт поперёк двери выхода (и её кодовой панели): участок стены разрезается. */
+  private railAroundExit(wall: AABB, space: Space): AABB[] {
+    const door = space.exit.position;
+    if (!wall.expand(0.01).containsPoint(door)) {
+      return [wall];
+    }
+    const half = GameConfig.exit.doorWidth / 2 + SpaceMeshBuilder.RAIL_DOOR_MARGIN;
+    const alongX = wall.width >= wall.height;
+    const parts = alongX
+      ? [
+          new AABB(wall.minX, wall.minY, door.x - half, wall.maxY),
+          new AABB(door.x + half, wall.minY, wall.maxX, wall.maxY),
+        ]
+      : [
+          new AABB(wall.minX, wall.minY, wall.maxX, door.y - half),
+          new AABB(wall.minX, door.y + half, wall.maxX, wall.maxY),
+        ];
+    return parts.filter((part) => part.width > 0.01 && part.height > 0.01);
   }
 
   private buildFloor(space: Space, materials: MaterialLibrary): Mesh {
@@ -90,11 +123,15 @@ export class SpaceMeshBuilder {
     return mesh;
   }
 
-  /** Панели дневного света в центре каждой клетки; состояние детерминировано seed пространства. */
+  /**
+   * Панели дневного света в центре каждой клетки; состояние детерминировано seed
+   * пространства. Горящие (и мерцающие) попадают в `lights` — они освещают комнаты.
+   */
   private buildPanels(
     space: Space,
     materials: MaterialLibrary,
     floorIndex: number,
+    lights: CeilingPanelLight[],
   ): InstancedMesh[] {
     const byState: Record<PanelState, Matrix4[]> = { on: [], off: [], flicker: [] };
     const height = this.settings.ceilingHeight - 0.01;
@@ -119,12 +156,23 @@ export class SpaceMeshBuilder {
           row === hintRow;
         const state: PanelState = isHint
           ? 'flicker'
-          : roll < 0.6
+          : roll < SpaceMeshBuilder.PANELS_OFF
             ? 'off'
-            : roll < 0.85
+            : roll < SpaceMeshBuilder.PANELS_OFF + SpaceMeshBuilder.PANELS_FLICKER
               ? 'flicker'
               : 'on';
         const center = space.grid.cellCenter(col, row);
+        if (state !== 'off') {
+          lights.push({
+            position: new Vector3(
+              center.x,
+              SceneCoords.floorY(floorIndex) + height,
+              SceneCoords.sceneZ(center.y),
+            ),
+            floor: floorIndex,
+            flicker: state === 'flicker',
+          });
+        }
         byState[state].push(
           new Matrix4().makeTranslation(center.x, height, SceneCoords.sceneZ(center.y)),
         );

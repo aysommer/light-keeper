@@ -109,7 +109,7 @@ describe('Гусь-призрак', () => {
     expect(goose.position.distanceTo(blue.position)).toBeGreaterThan(before);
   });
 
-  it('пойман касанием и открывает дверь без ключа и кода', () => {
+  it('пойман касанием; в руках открывает дверь без ключа и кода', () => {
     const ctx = setup(gooseIndex());
     const goose = ctx.match.world.goose!;
     const blue = ctx.player('blue');
@@ -117,8 +117,9 @@ describe('Гусь-призрак', () => {
     blue.position = goose.position.add(new Vector2(GooseSystem.CATCH_DISTANCE / 2, 0));
     ctx.tick();
     expect(goose.holderId).toBe('blue');
+    ctx.items.blue = 'goose';
 
-    // У двери с гусем на спине — E, и дверь открыта (слот выбирать не нужно).
+    // У двери с гусем в руках — E, и дверь открыта.
     const exit = ctx.space().exit;
     blue.floor = ctx.space().exitFloor;
     blue.position = exit.frontPoint(0.6);
@@ -127,5 +128,49 @@ describe('Гусь-призрак', () => {
     expect(ctx.match.world.exit.open).toBe(true);
     expect(goose.gone).toBe(true);
     expect(ctx.match.world.exit.secondsLeft).toBeCloseTo(GameConfig.exit.timerSeconds, 0);
+  });
+
+  it('сменил слот — гусь вырвался и какое-то время не даётся', () => {
+    const ctx = setup(gooseIndex());
+    const goose = ctx.match.world.goose!;
+    const blue = ctx.player('blue');
+    blue.floor = goose.floor;
+    blue.position = goose.position.add(new Vector2(GooseSystem.CATCH_DISTANCE / 2, 0));
+    ctx.tick();
+    ctx.items.blue = 'goose';
+    ctx.tick();
+    expect(goose.holderId).toBe('blue');
+    ctx.items.blue = 'compass';
+    ctx.tick();
+    expect(goose.holderId).toBeNull();
+    // Сразу не ловится, даже вплотную.
+    ctx.tick();
+    expect(goose.holderId).toBeNull();
+  });
+
+  it('не взял гуся в руки — он вырывается сам', () => {
+    const ctx = setup(gooseIndex());
+    const goose = ctx.match.world.goose!;
+    const blue = ctx.player('blue');
+    blue.floor = goose.floor;
+    blue.position = goose.position.add(new Vector2(GooseSystem.CATCH_DISTANCE / 2, 0));
+    ctx.tick();
+    expect(goose.holderId).toBe('blue');
+    for (let i = 0; i < GooseSystem.GRAB_GRACE / 0.05 + 2; i++) ctx.tick();
+    expect(goose.holderId).toBeNull();
+  });
+
+  it('без гуся в руках дверь им не открыть', () => {
+    const ctx = setup(gooseIndex());
+    const goose = ctx.match.world.goose!;
+    const blue = ctx.player('blue');
+    blue.floor = goose.floor;
+    blue.position = goose.position.add(new Vector2(GooseSystem.CATCH_DISTANCE / 2, 0));
+    ctx.tick();
+    const exit = ctx.space().exit;
+    blue.floor = ctx.space().exitFloor;
+    blue.position = exit.frontPoint(0.6);
+    ctx.press('blue');
+    expect(goose.gone).toBe(false);
   });
 });

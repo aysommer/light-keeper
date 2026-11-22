@@ -31,6 +31,7 @@ export class MaterialLibrary {
   private readonly panels: Record<PanelState, MeshBasicMaterial>;
   private readonly flickerOn = new Color('#fff6d8');
   private readonly flickerOff = new Color('#4a4636');
+  private flickerIsLit = true;
   private sharp: boolean;
   private readonly cornerShade = new CornerShade();
 
@@ -73,10 +74,16 @@ export class MaterialLibrary {
     return this.panels[state];
   }
 
+  /** Горят ли сейчас мерцающие панели (их свет в комнате мигает вместе с ними). */
+  public get flickerLit(): boolean {
+    return this.flickerIsLit;
+  }
+
   /** Мерцание «умирающих» ламп дневного света. */
   public update(time: number): void {
     const signal = Math.sin(time * 23) + Math.sin(time * 7.3) + Math.sin(time * 1.7);
-    this.panels.flicker.color.copy(signal > 1.2 ? this.flickerOff : this.flickerOn);
+    this.flickerIsLit = signal <= 1.2;
+    this.panels.flicker.color.copy(this.flickerIsLit ? this.flickerOn : this.flickerOff);
   }
 
   private replaceMap(material: MeshStandardMaterial, map: Texture): void {

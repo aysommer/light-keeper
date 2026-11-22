@@ -224,6 +224,10 @@ export class GameScreen implements Screen {
           flash = { text: 'Записки нет — найди её', until: time + GameScreen.NO_LAMP_HINT_SECONDS };
           continue;
         }
+        if (wanted === 'goose' && !session.hasGoose) {
+          flash = { text: 'Гуся нет — поймай его', until: time + GameScreen.NO_LAMP_HINT_SECONDS };
+          continue;
+        }
         this.held.selectByKey(code);
         if (!session.hasLamp && this.held.current === 'lamp') {
           askedForLampUntil = time + GameScreen.NO_LAMP_HINT_SECONDS;
@@ -236,18 +240,31 @@ export class GameScreen implements Screen {
         if (session.ownKeys > 0) available.push('key');
         if (session.hasNote) available.push('note');
         if (session.ownFlags > 0) available.push('flag');
+        if (session.hasGoose) available.push('goose');
         const shown =
           this.held.current === 'lamp' && !session.hasLamp ? 'compass' : this.held.current;
         this.held.select(HeldItems.cycle(shown, wheel, available));
       }
-      // Лампу только что передали — она сразу в руке.
-      if (session.hasLamp && !hadLamp) this.held.select('lamp');
+      // Лампу только что передали — она сразу в руке (если руки не заняты гусем).
+      if (session.hasLamp && !hadLamp && !session.hasGoose) this.held.select('lamp');
       hadLamp = session.hasLamp;
+      // Гуся поймали — он сразу в руках. Взял другой предмет — сервер отпустит гуся.
+      if (session.hasGoose && !hadGoose) {
+        this.held.select('goose');
+        flash = {
+          text: 'Гусь пойман! Неси его в руках к двери. Возьмёшь другой предмет — вырвется',
+          until: time + 4,
+        };
+      } else if (!session.hasGoose && hadGoose && session.goose !== null) {
+        flash = { text: 'Гусь вырвался — лови заново!', until: time + 3 };
+      }
+      hadGoose = session.hasGoose;
       // Ключи вставлены или записка пропала (новое пространство) — рука возвращается к лампе.
       if (
         (this.held.current === 'key' && session.ownKeys === 0) ||
         (this.held.current === 'note' && !session.hasNote) ||
-        (this.held.current === 'flag' && session.ownFlags === 0)
+        (this.held.current === 'flag' && session.ownFlags === 0) ||
+        (this.held.current === 'goose' && !session.hasGoose)
       ) {
         this.held.select('lamp');
       }
@@ -269,7 +286,14 @@ export class GameScreen implements Screen {
         camera: sceneManager.camera,
         active: !session.inTambour && !inTransition,
       });
-      space.update(session.exit, session.oilTaken, session.oilDropped, delta, time);
+      space.update(
+        session.exit,
+        session.oilTaken,
+        session.oilDropped,
+        delta,
+        time,
+        sceneManager.camera.position,
+      );
       const exit = session.exit;
       const partnerPosition = session.partnerPosition();
       const partnerFloor = session.partnerFloor();
@@ -310,9 +334,10 @@ export class GameScreen implements Screen {
         : item === 'flag' && session.ownFlags > 0 && !session.inTambour
           ? 'E — поставить флажок'
           : null;
-      // Гусь на спине и дверь рядом — E откроет её гусем.
+      // Гусь в руках и дверь рядом — E откроет её гусем.
       const gooseDoorHint =
         session.hasGoose &&
+        item === 'goose' &&
         exit !== null &&
         !exit.open &&
         this.prompt.isNearDoor(space.space, player.position, floor)
@@ -422,11 +447,7 @@ export class GameScreen implements Screen {
         sceneManager.camera.position.y += (Math.random() - 0.5) * 0.03 * scare;
         sceneManager.camera.rotation.z += (Math.random() - 0.5) * 0.02 * scare;
       }
-      // Гусь: пойман — короткая подсказка; бегает рядом — позвать в погоню.
-      if (session.hasGoose && !hadGoose) {
-        flash = { text: 'Гусь пойман — он у тебя на спине. Неси к двери!', until: time + 3 };
-      }
-      hadGoose = session.hasGoose;
+      // Гусь бегает рядом — позвать в погоню.
       const freeGoose = session.goose && session.goose.holderId === null ? session.goose : null;
       const gooseNear =
         freeGoose !== null &&
@@ -435,6 +456,8 @@ export class GameScreen implements Screen {
       if (gooseNear && (flash === null || time >= flash.until)) {
         flash = { text: 'Гусь-призрак! Догони — он откроет дверь', until: time + 0.5 };
       }
+      // В тамбуре и при переходе слоты не нужны — экран тёмный.
+      this.hotbar.element.hidden = session.inTambour || inTransition;
       this.hotbar.update({
         selected: item,
         hasLamp: session.hasLamp,

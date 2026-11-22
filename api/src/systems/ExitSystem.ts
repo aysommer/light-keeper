@@ -112,12 +112,13 @@ export class ExitSystem implements System {
   ): void {
     const exit = world.exit;
     const kind = world.space.exit.kind;
-    // Гусь-призрак открывает любую дверь: с гусем на спине нажать E у двери.
+    // Гусь-призрак открывает любую дверь: с гусем в руках нажать E у двери.
     const goose = world.goose;
     if (goose && !goose.gone && goose.holderId !== null) {
       const holder = world.players.get(goose.holderId);
       if (
         holder &&
+        holder.item === 'goose' &&
         holder.interactPressed &&
         !holder.aimingAtPartner &&
         this.isNearDoor(world, holder)

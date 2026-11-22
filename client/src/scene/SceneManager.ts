@@ -56,9 +56,10 @@ export class SceneManager {
     container.append(this.renderer.domElement);
 
     this.scene.background = new Color(SceneManager.DARKNESS);
-    this.scene.fog = new Fog(SceneManager.DARKNESS, 3, 22);
-    // Слабый рассеянный свет: без лампы почти темно, но очертания видны.
-    this.scene.add(new HemisphereLight('#fff1c4', '#2b2414', 0.35));
+    this.scene.fog = new Fog(SceneManager.DARKNESS, 5, 30);
+    // Рассеянный свет: без лампы сумрачно, но глазам не тяжело. Основной свет —
+    // потолочные панели (CeilingLightPool) и лампа.
+    this.scene.add(new HemisphereLight('#fff1c4', '#3a3220', 0.6));
     this.scene.add(this.camera);
 
     this.composer = new EffectComposer(this.renderer);

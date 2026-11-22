@@ -8,7 +8,7 @@ export interface HotbarState {
   readonly keys: number;
   readonly hasNote: boolean;
   readonly flags: number;
-  /** Гусь-призрак на спине (слот только показывает, выбирать не нужно). */
+  /** Гусь-призрак пойман: его несут в руках, остальные слоты заперты. */
   readonly hasGoose: boolean;
 }
 
@@ -22,7 +22,8 @@ interface Slot {
 /**
  * Панель слотов внизу экрана, как в Minecraft: лампа, компас, ключи, записка,
  * флажки и гусь. Выбранный слот подсвечен, недоступные — тусклые, у ключей и
- * флажков — счётчик. Выбор — клавиши 1–5 или колесо мыши.
+ * флажков — счётчик. Выбор — клавиши 1–6 или колесо мыши. Пока гусь в руках,
+ * остальные слоты тусклые: взял другой предмет — гусь вырвался.
  */
 export class Hotbar {
   private static readonly SLOTS: readonly Slot[] = [
@@ -59,7 +60,7 @@ export class Hotbar {
     {
       item: 'goose',
       key: '6',
-      title: 'Гусь на спине',
+      title: 'Гусь',
       icon: '<ellipse cx="11" cy="15" rx="7" ry="4.5" fill="#e8eeff"/><path d="M15 13c1-3 1-6 2-8" stroke="#e8eeff" stroke-width="2.6" fill="none"/><circle cx="17" cy="5" r="2" fill="#e8eeff"/><path d="M18.5 5l3 .8-3 .8z" fill="#ff9a2e"/>',
     },
   ];
@@ -103,9 +104,8 @@ export class Hotbar {
     const counts: Partial<Record<HeldItem, number>> = { key: state.keys, flag: state.flags };
     for (const [item, slot] of this.slots) {
       slot.root.classList.toggle('hotbar__slot--selected', item === state.selected);
-      slot.root.classList.toggle('hotbar__slot--empty', !available[item]);
-      // Гусь не «в руке» — он на спине: слот просто горит, пока гусь пойман.
-      slot.root.classList.toggle('hotbar__slot--carried', item === 'goose' && state.hasGoose);
+      const lockedByGoose = state.hasGoose && item !== 'goose';
+      slot.root.classList.toggle('hotbar__slot--empty', !available[item] || lockedByGoose);
       const count = counts[item] ?? 0;
       slot.count.textContent = count > 1 ? String(count) : '';
     }

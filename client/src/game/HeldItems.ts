@@ -2,7 +2,7 @@ import type { HeldItem } from '@light-keeper/shared';
 
 export type { HeldItem };
 
-/** Что игрок держит в руках: 1 — лампа, 2 — компас, 3 — ключи, 4 — записка, 5 — флажок. */
+/** Что игрок держит в руках: 1 — лампа, 2 — компас, 3 — ключи, 4 — записка, 5 — флажок, 6 — гусь. */
 export class HeldItems {
   private static readonly KEYS: Readonly<Record<string, HeldItem>> = {
     Digit1: 'lamp',
@@ -15,6 +15,8 @@ export class HeldItems {
     Numpad4: 'note',
     Digit5: 'flag',
     Numpad5: 'flag',
+    Digit6: 'goose',
+    Numpad6: 'goose',
   };
 
   private selected: HeldItem = 'lamp';
@@ -47,7 +49,7 @@ export class HeldItems {
    * @param steps шаги колеса: + вперёд, − назад
    */
   public static cycle(current: HeldItem, steps: number, available: readonly HeldItem[]): HeldItem {
-    const order: readonly HeldItem[] = ['lamp', 'compass', 'key', 'note', 'flag'];
+    const order: readonly HeldItem[] = ['lamp', 'compass', 'key', 'note', 'flag', 'goose'];
     const slots = order.filter((item) => available.includes(item));
     if (slots.length === 0 || steps === 0) {
       return current;

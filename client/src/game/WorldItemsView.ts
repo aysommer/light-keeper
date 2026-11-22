@@ -10,7 +10,7 @@ import { SceneCoords } from '../scene/SceneCoords.ts';
 /**
  * Флажки на полу и гусь-призрак на свободе. Гусь плавно догоняет позицию из
  * снимков сервера, смотрит по ходу бега и время от времени гогочет «га-га»
- * (объёмный звук). Пойманного гуся рисует тот, у кого он на спине.
+ * (объёмный звук). Пойманного гуся рисует тот, у кого он в руках.
  */
 export class WorldItemsView {
   private readonly flags = new Map<number, FlagModel>();
@@ -31,7 +31,7 @@ export class WorldItemsView {
 
   /**
    * @param listenerFloor этаж игрока — гогот слышен только со своего этажа
-   * @param carrierAt где игрок, у которого гусь на спине (для звука)
+   * @param carrierAt где игрок, у которого гусь в руках (для звука)
    */
   public update(
     flags: readonly FlagSnapshot[],

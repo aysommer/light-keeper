@@ -1,7 +1,9 @@
-import type { Scene } from 'three';
+import type { Scene, Vector3 } from 'three';
 import { CollisionWorld, PlayerMovement, SpaceGenerator } from '@light-keeper/shared';
 import type { DroppedCanister, ExitSnapshot, Space } from '@light-keeper/shared';
 import { CanisterField } from '../scene/CanisterField.ts';
+import { CeilingLightPool } from '../scene/CeilingLightPool.ts';
+import type { CeilingPanelLight } from '../scene/CeilingLightPool.ts';
 import { ExitDoorView } from '../scene/ExitDoorView.ts';
 import { KeyView } from '../scene/KeyView.ts';
 import { NoteView } from '../scene/NoteView.ts';
@@ -43,6 +45,8 @@ export class ActiveSpace implements MovementProvider {
   private note: NoteView | TapeRecorderView | null = null;
   private canisters!: CanisterField;
   private detail: SpaceDetail;
+  private readonly ceilingLights: CeilingLightPool;
+  private panelLights: CeilingPanelLight[] = [];
 
   public constructor(
     matchSeed: number,
@@ -50,6 +54,7 @@ export class ActiveSpace implements MovementProvider {
     detail: SpaceDetail = MaterialLibrary.NO_DETAIL,
   ) {
     this.detail = detail;
+    this.ceilingLights = new CeilingLightPool(scene);
     this.generator = new SpaceGenerator(matchSeed);
     this.currentSpace = this.generator.generate(0);
     this.build();
@@ -97,15 +102,25 @@ export class ActiveSpace implements MovementProvider {
     this.build();
   }
 
-  /** Анимация пространства, двери, ключей и канистр по последнему состоянию с сервера. */
+  /**
+   * Анимация пространства, двери, ключей и канистр по последнему состоянию с сервера.
+   * @param viewer где игрок (сцена) — свет потолочных панелей вокруг него
+   */
   public update(
     exit: ExitSnapshot | null,
     oilTaken: readonly number[] | null,
     oilDropped: readonly DroppedCanister[] | null,
     deltaSeconds: number,
     time: number,
+    viewer: Vector3,
   ): void {
     this.views.forEach((view) => view.update(time));
+    this.ceilingLights.update(
+      this.panelLights,
+      viewer,
+      this.currentFloor,
+      this.views[0]?.materials.flickerLit ?? true,
+    );
     this.door.update(exit, deltaSeconds);
     this.keys.forEach((key) => key.update(exit, time));
     this.note?.update(exit, time);
@@ -114,6 +129,7 @@ export class ActiveSpace implements MovementProvider {
 
   public dispose(): void {
     this.disposeViews();
+    this.ceilingLights.dispose();
   }
 
   private build(): void {
@@ -125,6 +141,7 @@ export class ActiveSpace implements MovementProvider {
       this.scene.add(view.group);
       return view;
     });
+    this.panelLights = this.views.flatMap((view) => [...view.panelLights]);
     this.stairs = space.stairs.map((stair) => {
       const view = new StairView(stair);
       this.scene.add(view.root);

@@ -1498,6 +1498,10 @@ kbd {
   pointer-events: none;
 }
 
+.hotbar[hidden] {
+  display: none;
+}
+
 .hotbar__slot {
   position: relative;
   display: grid;
@@ -1519,11 +1523,6 @@ kbd {
 
 .hotbar__slot--empty .hotbar__icon {
   opacity: 0.2;
-}
-
-.hotbar__slot--carried {
-  border-color: #cfd8ff;
-  box-shadow: 0 0 12px rgb(207 216 255 / 0.5);
 }
 
 .hotbar__icon {

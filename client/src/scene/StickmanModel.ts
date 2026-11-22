@@ -32,15 +32,18 @@ export class StickmanModel {
     red: '#d63a3a',
     blue: '#2e9bd6',
   };
-  private static readonly LAMP_INTENSITY = 6;
+  private static readonly LAMP_INTENSITY = 2.6;
+  /** Лампу держат перед собой: на столько вперёд и вверх от кисти, м. */
+  private static readonly LAMP_FORWARD = 0.3;
+  private static readonly LAMP_RAISE = 0.12;
 
   public readonly root = new Group();
   private readonly rig: StickmanRig;
   /** Точка правой кисти (в координатах `root`): за ней следуют предметы в руке. */
   private readonly hand = new Group();
   private character: CharacterBody | null = null;
-  /** Пойманный гусь-призрак сидит на спине (модель смотрит в −Z, спина — +Z). */
-  private gooseOnBack: GooseModel | null = null;
+  /** Пойманный гусь-призрак — в руках перед грудью (модель смотрит в −Z). */
+  private gooseInHands: GooseModel | null = null;
   private disposed = false;
   private readonly handWorld = new Vector3();
   private readonly animator = new StickmanAnimator();
@@ -135,10 +138,10 @@ export class StickmanModel {
       this.rig.setEyesOpen(eyesOpen);
     }
     this.lampSwing.rotation.x = pose.lampSwing;
-    this.gooseOnBack?.update(deltaSeconds, 0);
-    this.followHand(reach);
-
+    this.gooseInHands?.update(deltaSeconds, 0);
     const lampInHand = item === 'lamp';
+    this.followHand(reach, lampInHand);
+
     this.lantern.root.visible = lampInHand;
     this.compass.visible = item === 'compass';
     this.key.visible = item === 'key';
@@ -151,21 +154,21 @@ export class StickmanModel {
     this.lantern.setGlow(level, LampFlame.heatGlow(lamp?.heat ?? 0));
   }
 
-  /** Гусь на спине: показать или убрать. */
-  public setGooseOnBack(carrying: boolean): void {
-    if (carrying && !this.gooseOnBack) {
-      this.gooseOnBack = new GooseModel();
-      this.gooseOnBack.root.scale.setScalar(0.8);
-      this.gooseOnBack.root.position.set(0, 1.05, 0.22);
-      this.root.add(this.gooseOnBack.root);
-    } else if (!carrying && this.gooseOnBack) {
-      this.gooseOnBack.dispose();
-      this.gooseOnBack = null;
+  /** Гусь в руках: показать или убрать. */
+  public setGooseInHands(carrying: boolean): void {
+    if (carrying && !this.gooseInHands) {
+      this.gooseInHands = new GooseModel();
+      this.gooseInHands.root.scale.setScalar(0.8);
+      this.gooseInHands.root.position.set(0, 0.72, -0.3);
+      this.root.add(this.gooseInHands.root);
+    } else if (!carrying && this.gooseInHands) {
+      this.gooseInHands.dispose();
+      this.gooseInHands = null;
     }
   }
 
   /** Предметы в руке следуют за кистью текущего тела (при передаче лампы — тянутся вперёд). */
-  private followHand(reach: number): void {
+  private followHand(reach: number, lampInHand: boolean): void {
     this.root.updateMatrixWorld(true);
     const world =
       this.character?.handPosition(this.handWorld) ??
@@ -173,11 +176,17 @@ export class StickmanModel {
     this.hand.position.copy(this.root.worldToLocal(world));
     this.hand.position.z -= reach * 0.3;
     this.hand.position.y += reach * 0.15;
+    // Лампу несут перед собой, а не у бедра: свет не упирается в тело.
+    this.lampSwing.position.set(
+      0,
+      lampInHand ? StickmanModel.LAMP_RAISE : 0,
+      lampInHand ? -StickmanModel.LAMP_FORWARD : 0,
+    );
   }
 
   public dispose(): void {
     this.disposed = true;
-    this.gooseOnBack?.dispose();
+    this.gooseInHands?.dispose();
     this.character?.dispose();
     this.shadow.dispose();
     this.key.geometry.dispose();

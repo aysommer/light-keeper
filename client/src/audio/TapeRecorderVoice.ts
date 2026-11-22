@@ -8,10 +8,15 @@ import type { AudioEngine } from './AudioEngine.ts';
  * seven… two…» — со случайными паузами 1–3 с между цифрами, как старая запись: узкая полоса частот, чуть
  * замедленно и «плавает», под шипение плёнки. Звук объёмный: слышен со
  * стороны магнитофона и тише вдали, поэтому его можно найти на слух.
- * Играет, только пока игрок на том же этаже и не дальше `HEAR_DISTANCE`.
+ * Слышен только в той комнате, где стоит магнитофон: вышел за порог — запись
+ * плавно стихает (стены глушат), вернулся — снова слышно.
  */
 export class TapeRecorderVoice {
-  private static readonly HEAR_DISTANCE = 22;
+  private static readonly HEAR_DISTANCE = 14;
+  /** За сколько секунд стихает/возвращается звук при выходе из комнаты и входе в неё. */
+  private static readonly FADE_SECONDS = 0.35;
+  /** Сколько молчать за пределами комнаты, прежде чем совсем остановить запись, с. */
+  private static readonly STOP_AFTER = 1.5;
   /** Пауза после каждой цифры — случайная, от и до, с. */
   private static readonly DIGIT_GAP_MIN = 1;
   private static readonly DIGIT_GAP_MAX = 3;
@@ -22,6 +27,9 @@ export class TapeRecorderVoice {
   private panner: PannerNode | null = null;
   private hiss: AudioBufferSourceNode | null = null;
   private filter: BiquadFilterNode | null = null;
+  private roomGain: GainNode | null = null;
+  private inRoom = false;
+  private leftRoomAt = 0;
   private spaceKey = '';
   private nextCycleAt = 0;
   private loaded: AudioBuffer[] | null = null;
@@ -42,15 +50,24 @@ export class TapeRecorderVoice {
       this.stop();
       this.spaceKey = key;
     }
-    const audible =
-      ctx !== null &&
-      tape !== null &&
-      space.code !== null &&
-      active &&
-      floor === space.noteFloor &&
-      tape.distanceTo(listener) <= TapeRecorderVoice.HEAR_DISTANCE;
-    if (!audible || !ctx || !tape || !space.code) {
+    const playable = ctx !== null && tape !== null && space.code !== null && active;
+    if (!playable || !ctx || !tape || !space.code) {
       this.stop();
+      return;
+    }
+    const tapeFloor = space.floor(space.noteFloor);
+    const room = tapeFloor.roomAt(tape);
+    const inRoom =
+      floor === space.noteFloor && room !== undefined && tapeFloor.roomAt(listener) === room;
+    if (!inRoom) {
+      if (this.inRoom) {
+        this.inRoom = false;
+        this.leftRoomAt = ctx.currentTime;
+        this.roomGain?.gain.setTargetAtTime(0, ctx.currentTime, TapeRecorderVoice.FADE_SECONDS);
+      }
+      if (ctx.currentTime - this.leftRoomAt > TapeRecorderVoice.STOP_AFTER) {
+        this.stop();
+      }
       return;
     }
     if (!this.loaded) {
@@ -58,6 +75,10 @@ export class TapeRecorderVoice {
       return;
     }
     this.ensureChain(ctx, SceneCoords.toScene(tape, 0.12, space.noteFloor));
+    if (!this.inRoom) {
+      this.inRoom = true;
+      this.roomGain?.gain.setTargetAtTime(1, ctx.currentTime, TapeRecorderVoice.FADE_SECONDS);
+    }
     if (ctx.currentTime >= this.nextCycleAt - 0.05) {
       this.scheduleCycle(ctx, space.code.symbols, Math.max(ctx.currentTime, this.nextCycleAt));
     }
@@ -88,11 +109,15 @@ export class TapeRecorderVoice {
     }
     this.panner = this.engine.panner(position, 2, TapeRecorderVoice.HEAR_DISTANCE);
     if (!this.panner) return;
+    // Громкость «в комнате / за стеной»: начинаем с тишины и плавно открываем.
+    this.roomGain = ctx.createGain();
+    this.roomGain.gain.value = 0;
+    this.roomGain.connect(this.panner);
     this.filter = ctx.createBiquadFilter();
     this.filter.type = 'bandpass';
     this.filter.frequency.value = 1300;
     this.filter.Q.value = 0.6;
-    this.filter.connect(this.panner);
+    this.filter.connect(this.roomGain);
     const hiss = this.engine.noiseSource(true);
     if (hiss) {
       const hissFilter = ctx.createBiquadFilter();
@@ -100,7 +125,7 @@ export class TapeRecorderVoice {
       hissFilter.frequency.value = 2500;
       const hissGain = ctx.createGain();
       hissGain.gain.value = 0.025;
-      hiss.connect(hissFilter).connect(hissGain).connect(this.panner);
+      hiss.connect(hissFilter).connect(hissGain).connect(this.roomGain);
       hiss.start();
       this.hiss = hiss;
     }
@@ -150,5 +175,7 @@ export class TapeRecorderVoice {
     this.panner?.disconnect();
     this.panner = null;
     this.filter = null;
+    this.roomGain = null;
+    this.inRoom = false;
   }
 }

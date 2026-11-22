@@ -15,6 +15,7 @@ import type { BufferGeometry, Material, Texture } from 'three';
 import type { ExitCode, HeldItem } from '@light-keeper/shared';
 import { CodeSymbols } from '../ui/CodeSymbols.ts';
 import { FlagModel } from './FlagModel.ts';
+import { GooseModel } from './GooseModel.ts';
 
 /**
  * Предметы в руке от первого лица (кроме лампы): компас со стрелкой на
@@ -31,6 +32,10 @@ export class HeldProps {
   /** Флажок в руке (слот 5). */
   private readonly flagModel = new FlagModel(0.4);
   public readonly flag = this.flagModel.root;
+  /** Пойманный гусь-призрак в руках (слот 6). */
+  private readonly gooseModel = new GooseModel();
+  public readonly goose = this.gooseModel.root;
+  private lastTime: number | null = null;
   private readonly needle = new Group();
   private readonly keyMeshes: Group[] = [];
   private readonly geometries: BufferGeometry[] = [];
@@ -90,6 +95,10 @@ export class HeldProps {
     this.note.visible = item === 'note';
     this.flag.visible = item === 'flag';
     if (this.flag.visible) this.flagModel.update(time);
+    this.goose.visible = item === 'goose';
+    // Гусь в руках не сидит смирно: вертит шеей и перебирает лапами.
+    this.gooseModel.update(this.lastTime === null ? 0 : Math.min(0.1, time - this.lastTime), 0);
+    this.lastTime = time;
     if (this.compass.visible) {
       // Неизвестно, где напарник, — стрелка беспокойно гуляет.
       const angle = bearing ?? Math.sin(time * 1.7) * 1.2 + Math.sin(time * 0.6) * 2;
@@ -104,6 +113,7 @@ export class HeldProps {
 
   public dispose(): void {
     this.flagModel.dispose();
+    this.gooseModel.dispose();
     this.geometries.forEach((geometry) => geometry.dispose());
     this.materials.forEach((material) => material.dispose());
     this.noteTexture.dispose();
