@@ -13,6 +13,9 @@ export class HandLampLight {
   public constructor(camera: Camera) {
     this.light = new PointLight('#ffcf8a', this.baseIntensity, 16, 1.6);
     this.light.position.set(0.15, -0.35, 0.25);
+    // С галочкой «Тени от лампы» — даёт тень; светит и в объёмном тумане.
+    this.light.userData['shadowCaster'] = true;
+    this.light.userData['volumetric'] = true;
     camera.add(this.light);
   }
 

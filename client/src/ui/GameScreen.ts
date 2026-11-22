@@ -119,6 +119,10 @@ export class GameScreen implements Screen {
       sceneManager.setBloom(graphics.bloom);
       sceneManager.setDust(graphics.dust);
       sceneManager.setGroundShadows(graphics.groundShadows);
+      sceneManager.setLampShadows(graphics.lampShadows);
+      sceneManager.setAmbientOcclusion(graphics.ambientOcclusion);
+      sceneManager.setVolumetricFog(graphics.volumetricFog);
+      space.setReflections(graphics.reflections);
       space.setDetail(graphics);
     };
     applyGraphics(options.graphics.options);

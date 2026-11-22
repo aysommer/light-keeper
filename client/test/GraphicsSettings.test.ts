@@ -21,6 +21,10 @@ describe('GraphicsSettings', () => {
       sharpTextures: false,
       groundShadows: false,
       cornerShade: false,
+      lampShadows: false,
+      ambientOcclusion: false,
+      reflections: false,
+      volumetricFog: false,
     });
     expect(new GraphicsSettings(null).options.antialias).toBe(false);
   });
@@ -47,6 +51,10 @@ describe('GraphicsSettings', () => {
       sharpTextures: false,
       groundShadows: false,
       cornerShade: false,
+      lampShadows: false,
+      ambientOcclusion: false,
+      reflections: false,
+      volumetricFog: false,
     });
   });
 

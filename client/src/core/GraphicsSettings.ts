@@ -12,6 +12,14 @@ export interface GraphicsOptions {
   readonly groundShadows: boolean;
   /** Стены темнеют у пола и потолка. */
   readonly cornerShade: boolean;
+  /** Своя лампа и лампа напарника отбрасывают тени. */
+  readonly lampShadows: boolean;
+  /** Мягкое затенение щелей, углов и под мебелью (GTAO). */
+  readonly ambientOcclusion: boolean;
+  /** Отражения на полу. */
+  readonly reflections: boolean;
+  /** Объёмный туман: воздух светится вокруг ламп. */
+  readonly volumetricFog: boolean;
 }
 
 /** Где хранить настройки (в браузере — localStorage; в тестах — заглушка). */
@@ -33,6 +41,10 @@ export class GraphicsSettings {
     sharpTextures: false,
     groundShadows: false,
     cornerShade: false,
+    lampShadows: false,
+    ambientOcclusion: false,
+    reflections: false,
+    volumetricFog: false,
   };
   private static readonly STORAGE_KEY = 'light-keeper:graphics';
 

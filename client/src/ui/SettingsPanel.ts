@@ -15,6 +15,10 @@ export class SettingsPanel {
     { key: 'sharpTextures', label: 'Чёткие текстуры' },
     { key: 'groundShadows', label: 'Тени под ногами' },
     { key: 'cornerShade', label: 'Затенение углов' },
+    { key: 'lampShadows', label: 'Тени от лампы' },
+    { key: 'ambientOcclusion', label: 'Мягкое затенение' },
+    { key: 'reflections', label: 'Отражения' },
+    { key: 'volumetricFog', label: 'Объёмный туман' },
   ];
 
   public readonly element: HTMLElement;

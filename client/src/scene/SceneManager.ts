@@ -3,12 +3,19 @@ import {
   Color,
   Fog,
   HemisphereLight,
+  Mesh,
+  MeshBasicMaterial,
+  PCFShadowMap,
   PerspectiveCamera,
+  PointLight,
   Scene,
   SRGBColorSpace,
+  Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three';
+import type { Material, Object3D } from 'three';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -17,6 +24,7 @@ import { DustField } from './DustField.ts';
 import { FilmShader } from './FilmShader.ts';
 import { GroundShadow } from './GroundShadow.ts';
 import { SoftBloomPass } from './SoftBloomPass.ts';
+import { VolumetricFogPass } from './VolumetricFogPass.ts';
 
 /** Рендерер, сцена, камера и реакция на изменение размера окна. */
 export class SceneManager {
@@ -45,6 +53,15 @@ export class SceneManager {
   private bloom: SoftBloomPass | null = null;
   /** Пыль: тоже создаётся только при включении. */
   private dust: DustField | null = null;
+  private readonly viewmodelPass: RenderPass;
+  /** Мягкое затенение щелей и углов (GTAO) — создаётся только при включении. */
+  private ambientOcclusion: GTAOPass | null = null;
+  /** Объёмный туман — создаётся только при включении. */
+  private volumetricFog: VolumetricFogPass | null = null;
+  private lampShadows = false;
+  /** Источники для тумана (`userData.volumetric`) — обновляются обходом сцены. */
+  private volumetricLights: PointLight[] = [];
+  private framesToScan = 0;
 
   public constructor(private readonly container: HTMLElement) {
     // Сглаживание холста не нужно: картинка идёт через буферы пост-обработки,
@@ -66,10 +83,10 @@ export class SceneManager {
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    const viewmodelPass = new RenderPass(this.viewmodelScene, this.viewmodelCamera);
-    viewmodelPass.clear = false;
-    viewmodelPass.clearDepth = true;
-    this.composer.addPass(viewmodelPass);
+    this.viewmodelPass = new RenderPass(this.viewmodelScene, this.viewmodelCamera);
+    this.viewmodelPass.clear = false;
+    this.viewmodelPass.clearDepth = true;
+    this.composer.addPass(this.viewmodelPass);
     this.film = new ShaderPass(FilmShader);
     this.composer.addPass(this.film);
     this.composer.addPass(new OutputPass());
@@ -133,6 +150,53 @@ export class SceneManager {
    * @param time время, с (для зерна); @param scare испуг 0–1;
    * @param light свет своей лампы 0…~1 (пыль видна в её свете)
    */
+  /**
+   * Тени от лампы: своя лампа и лампа напарника отбрасывают тени (стены,
+   * мебель, герои). Точечный источник с тенью рисует сцену ещё 6 раз — тяжело.
+   */
+  public setLampShadows(enabled: boolean): void {
+    if (enabled === this.lampShadows) return;
+    this.lampShadows = enabled;
+    this.renderer.shadowMap.enabled = enabled;
+    this.renderer.shadowMap.type = PCFShadowMap;
+    this.applyShadowFlags();
+  }
+
+  /** Мягкое затенение щелей, углов и под мебелью — по глубине кадра (GTAO). */
+  public setAmbientOcclusion(enabled: boolean): void {
+    if (enabled && !this.ambientOcclusion) {
+      const size = this.renderer.getDrawingBufferSize(new Vector2());
+      this.ambientOcclusion = new GTAOPass(this.scene, this.camera, size.x, size.y);
+      this.ambientOcclusion.updateGtaoMaterial({ radius: 1.2, thickness: 2, scale: 1.4 });
+      this.ambientOcclusion.blendIntensity = 1;
+      this.composer.insertPass(this.ambientOcclusion, 1);
+    } else if (!enabled && this.ambientOcclusion) {
+      this.composer.removePass(this.ambientOcclusion);
+      this.ambientOcclusion.dispose();
+      this.ambientOcclusion = null;
+    }
+  }
+
+  /** Объёмный туман: воздух светится вокруг лампы и потолочных панелей. */
+  public setVolumetricFog(enabled: boolean): void {
+    if (enabled && !this.volumetricFog) {
+      this.volumetricFog = new VolumetricFogPass(
+        this.scene,
+        this.camera,
+        () => this.volumetricLights,
+      );
+      this.composer.insertPass(
+        this.volumetricFog,
+        this.composer.passes.indexOf(this.viewmodelPass),
+      );
+      this.framesToScan = 0;
+    } else if (!enabled && this.volumetricFog) {
+      this.composer.removePass(this.volumetricFog);
+      this.volumetricFog.dispose();
+      this.volumetricFog = null;
+    }
+  }
+
   /** Тон картинки (см. SpaceTone): меняется плавно — при переходе в новое пространство. */
   public setTone(tone: Vector3): void {
     this.toneTarget.copy(tone);
@@ -145,13 +209,55 @@ export class SceneManager {
     const uniforms = this.film.uniforms as Record<string, { value: number }>;
     uniforms['uTime']!.value = time % 1000;
     uniforms['uScare']!.value = scare;
+    // Сцена меняется (новые пространства, герои) — флаги теней и список
+    // источников для тумана обновляются обходом раз в полсекунды.
+    if ((this.lampShadows || this.volumetricFog) && --this.framesToScan <= 0) {
+      this.framesToScan = 30;
+      this.applyShadowFlags();
+    }
     this.composer.render();
+  }
+
+  /**
+   * Кто отбрасывает и принимает тени: непрозрачные меши (кроме помеченных
+   * `userData.noShadow` — например, фонарь, внутри которого сам источник);
+   * тень дают только источники с `userData.shadowCaster`.
+   */
+  private applyShadowFlags(): void {
+    const enabled = this.lampShadows;
+    const lights: PointLight[] = [];
+    const visit = (object: Object3D, noShadow: boolean): void => {
+      const skip = noShadow || object.userData['noShadow'] === true;
+      if (object instanceof PointLight) {
+        if (object.userData['volumetric'] === true) lights.push(object);
+        const cast = enabled && object.userData['shadowCaster'] === true;
+        if (cast && !object.castShadow) {
+          object.shadow.mapSize.set(512, 512);
+          object.shadow.bias = -0.003;
+          object.shadow.normalBias = 0.03;
+          object.shadow.camera.near = 0.1;
+        }
+        object.castShadow = cast;
+      } else if (object instanceof Mesh) {
+        const material = object.material as Material | Material[];
+        const solid = ![material]
+          .flat()
+          .some((m) => m.transparent || m instanceof MeshBasicMaterial);
+        object.castShadow = enabled && solid && !skip;
+        object.receiveShadow = enabled && solid;
+      }
+      object.children.forEach((child) => visit(child, skip));
+    };
+    visit(this.scene, false);
+    this.volumetricLights = lights;
   }
 
   public dispose(): void {
     this.resizeObserver.disconnect();
     this.setBloom(false);
     this.setDust(false);
+    this.setAmbientOcclusion(false);
+    this.setVolumetricFog(false);
     this.composer.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

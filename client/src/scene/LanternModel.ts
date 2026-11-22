@@ -36,6 +36,8 @@ export class LanternModel {
   });
 
   public constructor() {
+    // Источник света — внутри фонаря: сам фонарь тени не отбрасывает.
+    this.root.userData['noShadow'] = true;
     const handle = this.mesh(new TorusGeometry(0.035, 0.006, 8, 20), this.metal);
     handle.position.y = -0.035;
     const cap = this.mesh(new ConeGeometry(0.055, 0.04, 16), this.metal);

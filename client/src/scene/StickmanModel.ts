@@ -80,6 +80,9 @@ export class StickmanModel {
     this.lampSwing.add(this.lantern.root);
     this.lampLight = new PointLight('#ffcf8a', StickmanModel.LAMP_INTENSITY, 14, 1.6);
     this.lampLight.position.y = LanternModel.GLASS_CENTER_Y;
+    // Лампа напарника тоже даёт тени (галочка «Тени от лампы»). В тумане её нет:
+    // туман не знает о стенах, и лампа за стеной светилась бы сквозь неё.
+    this.lampLight.userData['shadowCaster'] = true;
     this.lampSwing.add(this.lampLight);
 
     // Компас в руке — плоский латунный диск.

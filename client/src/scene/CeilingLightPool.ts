@@ -35,6 +35,7 @@ export class CeilingLightPool {
     for (let i = 0; i < CeilingLightPool.SIZE; i++) {
       const light = new PointLight('#fff0d2', 0, CeilingLightPool.RANGE, 1.5);
       light.name = `ceiling-light-${i}`;
+      light.userData['volumetric'] = true;
       this.lights.push(light);
       scene.add(light);
     }

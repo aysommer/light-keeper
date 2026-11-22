@@ -5,6 +5,7 @@ import { CanisterField } from '../scene/CanisterField.ts';
 import { CeilingLightPool } from '../scene/CeilingLightPool.ts';
 import type { CeilingPanelLight } from '../scene/CeilingLightPool.ts';
 import { ExitDoorView } from '../scene/ExitDoorView.ts';
+import { FloorReflection } from '../scene/FloorReflection.ts';
 import { KeyView } from '../scene/KeyView.ts';
 import { NoteView } from '../scene/NoteView.ts';
 import { TapeRecorderView } from '../scene/TapeRecorderView.ts';
@@ -50,6 +51,9 @@ export class ActiveSpace implements MovementProvider {
   /** Комната игрока (последняя известная — в проёме комнаты нет) и её видимые панели. */
   private lightRoom = '';
   private visiblePanels: CeilingPanelLight[] = [];
+  /** Отражения на полу (галочка «Отражения»): по плоскости на этаж. */
+  private reflectionsOn = false;
+  private reflections: FloorReflection[] = [];
 
   public constructor(
     matchSeed: number,
@@ -95,6 +99,24 @@ export class ActiveSpace implements MovementProvider {
     this.views.forEach((view) => view.materials.setDetail(detail));
   }
 
+  /** Отражения на полу: включаются сразу и для следующих пространств. */
+  public setReflections(enabled: boolean): void {
+    if (enabled === this.reflectionsOn) return;
+    this.reflectionsOn = enabled;
+    this.rebuildReflections();
+  }
+
+  private rebuildReflections(): void {
+    this.reflections.forEach((reflection) => reflection.dispose());
+    this.reflections = this.reflectionsOn
+      ? this.currentSpace.floors.map((_, floor) => {
+          const reflection = new FloorReflection(this.currentSpace, floor);
+          this.scene.add(reflection.mirror);
+          return reflection;
+        })
+      : [];
+  }
+
   public enter(index: number): void {
     if (index === this.currentSpace.index) {
       return;
@@ -118,6 +140,10 @@ export class ActiveSpace implements MovementProvider {
     viewer: Vector3,
   ): void {
     this.views.forEach((view) => view.update(time));
+    // Отражение рисуется только на этаже игрока — иначе сцена считалась бы лишний раз.
+    this.reflections.forEach((reflection, floor) => {
+      reflection.mirror.visible = floor === this.currentFloor;
+    });
     this.ceilingLights.update(
       this.panelsSeenFrom(new Vector2(viewer.x, -viewer.z)),
       viewer,
@@ -190,6 +216,7 @@ export class ActiveSpace implements MovementProvider {
     this.panelLights = this.views.flatMap((view) => [...view.panelLights]);
     this.lightRoom = '';
     this.visiblePanels = [];
+    this.rebuildReflections();
     this.stairs = space.stairs.map((stair) => {
       const view = new StairView(stair);
       this.scene.add(view.root);
@@ -242,6 +269,8 @@ export class ActiveSpace implements MovementProvider {
   }
 
   private disposeViews(): void {
+    this.reflections.forEach((reflection) => reflection.dispose());
+    this.reflections = [];
     this.canisters.dispose();
     this.keys.forEach((key) => key.dispose());
     this.note?.dispose();
